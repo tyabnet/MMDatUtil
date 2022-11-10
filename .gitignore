@@ -1,0 +1,12 @@
+#visual studio intermediate files
+.vs/
+*.vsidx
+*.lock
+*.suo
+*.db
+*.ipch
+*.obj
+*.tmp
+*.user
+*.filter
+x64/

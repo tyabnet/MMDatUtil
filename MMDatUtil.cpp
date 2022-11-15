@@ -7,6 +7,7 @@
 #include <unordered_set>
 #include <filesystem>
 #include "MMDatUtil.h"
+#include "MMScript.h"
 
 
 
@@ -210,6 +211,34 @@ class CommandLineParser
                     m_cmdOptions.m_sincdirs = getStringParm(++i);
                     break;
 
+                case 22:  // sfixspace  no parameter
+                    m_cmdOptions.m_bScrFixSpace = true;
+                    break;
+
+                case 23:  // snocomments  no parameter
+                    m_cmdOptions.m_bScrNoComments = true;
+                    break;
+ 
+                case 24:  // sdefine key=value
+                {
+                    if (++i >= m_tokens.size())
+                    {
+                        m_bValid = false;
+                        m_error = "missing name=value for option " + m_tokens[i - 1];
+                        break;
+                    }
+                    std::size_t epos = m_tokens[i].find('=');
+                    if ((epos == std::string::npos) || (epos < 1) || ((epos+1) >= m_tokens[i].size()))
+                    {
+                        m_bValid = false;
+                        m_error = "missing name=value for option " + m_tokens[i - 1];
+                        break;
+                    }
+                    std::string_view key = std::string_view(m_tokens[i]).substr(0, epos);
+                    std::string_view value = std::string_view(m_tokens[i]).substr(epos+1);
+                    m_cmdOptions.addKeyValue(key, value);
+                    break;
+                }
                 }
             }
         }
@@ -278,6 +307,9 @@ class CommandLineParser
         { "-creator",      19 },
         { "-fix",          20 },
         { "-sincdirs",     21 },
+        { "-sfixspace",  22 },
+        { "-snocomment", 23 },
+        { "-sdefine",    24 },
     };
 
     std::string_view getStringParm(std::size_t i)
@@ -411,8 +443,11 @@ void help()
     printf("      -mapname       levelname: value saved in outmap info section\n");
     printf("      -creator       creator: value saved in outmap info section\n");
     printf("      -fix           fix invalid/missing tile, height, crystal, ore values\n");
-    printf("      -script        filename of script file to replace outmap's script. TODO\n");
+    printf("      -script        filename of script file to replace outmap's script\n");
     printf("      -sincdirs      ; separated list of paths to search for script includes\n");
+    printf("      -scrfixspace   automatically remove spaces where not allowed in scripts\n");
+    printf("      -scrnocomment  remove all comments in script except #.\n");
+    printf("      -srcdefine     name=value   define script subsitution\n");
     printf("\n");
     printf("  -srcmap is used to provide merge data unless -copysrc is used\n");
     printf("  -script will replace outmap's script with the contents of that file.\n");
@@ -515,6 +550,7 @@ int main(int , char* )
     RRMap srcMap;
     RRMap outMap;
     ScriptFile scriptFile;
+    ScriptProcessor sfProcess;  // used to process scripts
 
     // get srcmap if we want one
     if (!cmdParser.getOptions().m_srcmap.empty())
@@ -562,6 +598,8 @@ int main(int , char* )
         {
             printf("  Rows: %d  Columns: %d  Total lines: %d\n", srcMap.height(), srcMap.width(), srcMap.lines());
         }
+        ScriptProcessor sp;
+        sp.setScriptFile(srcMap.getScript());  // copies the script, does raw parsing
     }
 
     // have an output map
@@ -716,7 +754,6 @@ int main(int , char* )
                 printf("  line: %d : %s\n", scriptFile.getError().getWarnLines()[i].getLineNum(), std::string(scriptFile.getError().getWarnLines()[i].getLine()).c_str());
             }
 
-
             if (err)
             {
                 for (int i = 0; i < scriptFile.getError().getErrors().size(); i++)
@@ -727,6 +764,34 @@ int main(int , char* )
                 }
                 return 1;
             }
+
+            sfProcess.setScriptFile(scriptFile);  // copies the script, does raw parsing
+            err = sfProcess.addCmdDefines(cmdParser.getOptions(), outMap);  // process any -sdefine options
+            if (!err)
+                err = sfProcess.ProcessScript(cmdParser.getOptions());
+
+            for (int i = 0; i < sfProcess.getError().getWarnings().size(); i++)
+            {
+                printf("  Warning: %s\n", sfProcess.getError().getWarnings()[i].c_str());
+                printf("  line: %d : %s\n", sfProcess.getError().getWarnLines()[i].getLineNum(), std::string(sfProcess.getError().getWarnLines()[i].getLine()).c_str());
+            }
+
+            if (err)
+            {
+                for (int i = 0; i < sfProcess.getError().getErrors().size(); i++)
+                {
+                    printf("  Error: %s\n", sfProcess.getError().getErrors()[i].c_str());
+                    if (sfProcess.getError().getErrLines()[i].getLineNum() > 0)
+                        printf("   line: %d. : %s\n", sfProcess.getError().getErrLines()[i].getLineNum(), std::string(sfProcess.getError().getErrLines()[i].getLine()).c_str());
+                }
+                return 1;
+
+            }
+
+
+            // TODO check/display errors/warnings, etc.
+
+            scriptFile = sfProcess.getScriptFile();
 
             // no errors reading script. Lets put it into outmap now.
             outMap.replaceScript(scriptFile);

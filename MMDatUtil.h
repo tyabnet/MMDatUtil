@@ -84,6 +84,26 @@ static std::string searchPaths(const std::string &filename, const std::string & 
 }
 
 
+// returns quoted string in YYYMMDD format for the last modified time of the given path
+// null string if any error
+static std::string getDateStr(std::string_view path)
+{
+    std::string datestr;
+    std::filesystem::path fp = path;
+    std::error_code ec;
+    std::filesystem::file_time_type lwt = std::filesystem::last_write_time(path, ec);
+    if (ec.value() == 0)
+    {
+        time_t tfile = std::chrono::system_clock::to_time_t(std::chrono::clock_cast<std::chrono::system_clock>(lwt));
+        struct tm tlf;
+        localtime_s(&tlf, &tfile);
+        char buffer[128];
+        sprintf_s(buffer,"%04d%02d%02d", tlf.tm_year+1900, tlf.tm_mon, tlf.tm_mday);     // requires c++20
+        datestr = buffer;
+    }
+    return datestr;
+}
+
 
 static bool isEmptyStr(std::string_view str)
 {
@@ -331,12 +351,33 @@ static void getFileEncoding(FILE* fp, bool& bUTF8BOM, bool& bUTF16LE, bool& bUni
 class CommandLineOptions
 {
 public:
+    class keyValue
+    {
+    public:
+        keyValue() = default;
+        keyValue(std::string_view key, std::string_view value) : m_key(key), m_value(value) {}
+        ~keyValue() = default;
+
+        const std::string& key()   const { return m_key; }
+        const std::string& value() const { return m_value; }
+
+    protected:
+        std::string m_key;
+        std::string m_value;
+    };
+    void addKeyValue(std::string_view key, std::string_view value)
+    {
+        m_defines.push_back(keyValue(key, value));
+    }
+
     std::string  m_srcmap;
     std::string  m_outmap;
     std::string  m_srcscript;
     std::string  m_mapName;        // override map name in info section
     std::string  m_creator;        // override curator name in info section
     std::string  m_sincdirs;       // list of paths to search for script includes
+
+    std::vector<keyValue> m_defines;
 
     int          m_nOffsetRow  = 0;
     int          m_nOffsetCol  = 0;
@@ -347,14 +388,16 @@ public:
     int          m_nDefCrystal = 0;
     int          m_nDefOre     = 0;
 
-    bool         m_bMergeHeight  = false;
-    bool         m_bMergeCrystal = false;
-    bool         m_bMergeOre     = false;
-    bool         m_bMergeTiles   = false;
-    bool         m_bOverwrite    = false;
-    bool         m_bEraseOutMap  = false;
-    bool         m_bHelp         = false;
-    bool         m_bFix          = false;
+    bool         m_bMergeHeight   = false;
+    bool         m_bMergeCrystal  = false;
+    bool         m_bMergeOre      = false;
+    bool         m_bMergeTiles    = false;
+    bool         m_bOverwrite     = false;
+    bool         m_bEraseOutMap   = false;
+    bool         m_bHelp          = false;
+    bool         m_bFix           = false;
+    bool         m_bScrFixSpace   = false;  // automatic fix spaces where not allowed
+    bool         m_bScrNoComments = false;  // remove all non #. comments
 };
 
 
@@ -529,6 +572,7 @@ public:
     int size() const { return (int)m_lines.size(); }
 
     const ErrorWarning& getError() const { return m_errors; }
+    const std::vector<ScriptLine> & getLines() const { return m_lines; }
 
     void addLine(const InputLine& line, const std::string& fileName)
     {
@@ -688,10 +732,11 @@ protected:
         return error;
     }
 
-    std::unordered_set<std::string> m_fileNames;   // storage for all embedded file names since lines hold string_views
-    std::vector<ScriptLine>         m_lines;       // all the lines it holds
+    std::unordered_set<std::string> m_fileNames;   // storage for all embedded file names since lines hold string_views. These are the names used to open the file.
+    std::vector<ScriptLine>         m_lines;       // all the lines it holds, every line holds a str_view to the filename it is associated with.
     ErrorWarning                    m_errors;
 };
+
 
 
 // section contains the name and all of the strings that make up the section.
@@ -1078,18 +1123,24 @@ public:
         return output;
     }
 
-
-    // comparision operator for hash. Only on the name
-    bool operator() (const MapSection& lhs, const MapSection& rhs) const
+    // std::unordered_set hash and comparision methods only
+    class compHash
     {
-        return lhs.m_name == rhs.m_name;
-    }
+    public:
+        // comparision operator for hash. Only on the name
+        bool operator() (const MapSection& lhs, const MapSection& rhs) const
+        {
+            return lhs.getName() == rhs.getName();
+        }
 
-    // hash operator for hash - only on the name field
-    std::size_t operator()(const MapSection& s)const noexcept
-    {
-        return std::hash<std::string>{}(m_name);
-    }
+        // hash operator - only on the name field
+        std::size_t operator()(const MapSection& s)const noexcept
+        {
+            return std::hash<std::string>{}(s.getName());
+        }
+    };
+
+    const std::string& getName() const { return m_name; }
 
 
 protected:
@@ -1103,7 +1154,7 @@ protected:
         eStateError,               // error processing. name without {
     };
     ErrorWarning            m_errWarn;
-    std::string             m_name;
+    std::string             m_name;       // name converted to lower case
     std::vector<InputLine>  m_data;	      // lines read in for interior of section
     InputLine               m_nameLine;   // this is the line that contained the name and open {
     InputLine               m_closeLine;  // this is the line that contained the closing }
@@ -1141,6 +1192,8 @@ class RRMap
 
     bool valid() const { return m_bValid; }
     const ErrorWarning & getError() const { return m_error; }
+
+    const ScriptFile& getScript() const { return m_script; }
 
     int height() const { return m_Height; }
     int width() const { return m_Width; }
@@ -1696,7 +1749,7 @@ class RRMap
         return *this;
     }
       
-    typedef std::unordered_set<MapSection, MapSection, MapSection> MapSectionSet;
+    typedef std::unordered_set<MapSection, MapSection::compHash, MapSection::compHash> MapSectionSet;
 
     std::vector<InputLine>         m_lines;            // base lines read in
     MapSectionSet                  m_sections;         // sections - in a map for faster lookup

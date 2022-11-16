@@ -17,334 +17,57 @@
 #include <Windows.h>
 #endif
 
-static bool fExists(const std::string& FileName)
-{
-    std::error_code ec;
-    return std::filesystem::exists(std::filesystem::path(FileName),ec);
-}
+bool fExists(const std::string& FileName); // code in MMDatUtil.cpp
 
 // utility that will search a list of paths and ; separated paths and an array of already found paths for given file
 // file may have a relative path already or may be just a name.
-static std::string searchPaths(const std::string &filename, const std::string & incDirs, const std::vector<std::filesystem::path> &paths )
-{
-    std::error_code ec;
-    const std::filesystem::path fileName = filename;
-    if (std::filesystem::exists(fileName,ec))
-        return filename;
-
-    std::filesystem::path fileNameOnly = fileName.filename();           // get just the filename
-    std::filesystem::path filePathOnly = fileName;
-    filePathOnly.remove_filename();    // get just the path
-
-    std::filesystem::path temp;
-
-    // first search the paths already found
-    for (std::size_t i = 0; i < paths.size(); i++)
-    {
-        temp = paths[i] / fileNameOnly;
-        if (std::filesystem::exists(temp,ec))
-            return temp.string();
-        if (!filePathOnly.empty())
-        {
-            temp = paths[i] / fileName;
-            if (std::filesystem::exists(temp,ec))
-                return temp.string();
-        }
-    }
-
-    // if that fails, now we try each of the paths in incDirs
-    std::size_t spos = 0;
-    std::size_t epos = 0;
-    std::string_view dirs = incDirs;
-    for (; spos < dirs.size(); )
-    {
-        epos = dirs.find(';', spos);
-        std::string_view sub;
-        if (epos != std::string_view::npos)
-            sub = dirs.substr(spos, epos - spos);
-        else
-            sub = dirs.substr(spos);
-        if (!sub.empty())
-        {
-            temp = sub / fileNameOnly;
-            if (std::filesystem::exists(temp, ec))
-                return temp.string();
-            if (!filePathOnly.empty())
-            {
-                temp = sub / fileName;
-                if (std::filesystem::exists(temp, ec))
-                    return temp.string();
-            }
-        }
-        if (epos == std::string_view::npos)
-            break;
-        spos = epos+1;
-    }
-    return std::string();   // unable to find
-}
+std::string searchPaths(const std::string& filename, const std::string& incDirs, const std::vector<std::filesystem::path>& paths); // code in MMDatUtil.cpp
 
 
-// returns quoted string in YYYMMDD format for the last modified time of the given path
+// returns string that has the short form of the git commit for the given path.
+// nullstr returned if any error - no git, file not under git control, etc.
+std::string getGitCommit(std::string_view path);    // code in MMDatUtil.cpp
+
+
+// returns string specified by format for the last modified time of the given path
 // null string if any error
-static std::string getDateStr(std::string_view path)
-{
-    std::string datestr;
-    std::filesystem::path fp = path;
-    std::error_code ec;
-    std::filesystem::file_time_type lwt = std::filesystem::last_write_time(path, ec);
-    if (ec.value() == 0)
-    {
-        time_t tfile = std::chrono::system_clock::to_time_t(std::chrono::clock_cast<std::chrono::system_clock>(lwt));
-        struct tm tlf;
-        localtime_s(&tlf, &tfile);
-        char buffer[128];
-        sprintf_s(buffer,"%04d%02d%02d", tlf.tm_year+1900, tlf.tm_mon, tlf.tm_mday);     // requires c++20
-        datestr = buffer;
-    }
-    return datestr;
-}
+// format chars are Y is year, M is month, D is day, H is hour, N is minute, S is second. G is git commit support
+// years is 4 digits always. month, day, hour, minute, second are 2 digit 0 filled
+// git commit is the short form as determined by git
+// all other chars are copied as is to output preserving case.
+std::string getDateStr(std::string_view path, std::string_view format);   // code in MMDatUtil.cpp
 
-
-static bool isEmptyStr(std::string_view str)
-{
-    // skip leading space
-    std::size_t pos;
-    std::size_t len = str.length();
-    for (pos = 0; (pos < len) && (str[pos] <= ' '); pos++); // skip leading space
-    return (pos == len) || (str[pos] == 0);
-}
+bool isEmptyStr(std::string_view str);
 
 // must return a new string
-static std::string toLower(std::string str)
-{
-    std::string ret;
-    std::size_t len = str.length();
-    ret.reserve(len + 1);
-
-    for (int i = 0; i < (int)len; i++)
-    {
-        ret += (char)tolower(str[i]);
-    }
-    return ret;
-}
+std::string toLower(std::string str);
 
 // must return a new string
-static std::string toLower(std::string_view str)
-{
-    std::string ret;
-    std::size_t len = str.length();
-    ret.reserve(len + 1);
+std::string toLower(std::string_view str);
 
-    for (int i = 0; i < (int)len; i++)
-    {
-        ret += (char)tolower(str[i]);
-    }
-    return ret;
-}
-
-static std::string_view removeLeadingWhite(std::string_view str)
-{
-    std::size_t pos;
-    std::size_t len = str.length();
-    for (pos = 0; (pos < len) && (str[pos] <= ' '); pos++); // skip leading space
-    return str.substr(pos);
-}
+std::string_view removeLeadingWhite(std::string_view str);
 
 // first char must be alpha, followed by only alpha or digits. No leading/trailing spaces allowed
 // this is not for script, but for keys in other sections
-static bool isValidVarName(std::string_view name)
-{
-    int len = (int)name.length();
-    bool valid = isalpha(name[0]);
-    for (int i = 1; i < len && valid; i++)
-    {
-        valid = (isalpha(name[i]) || isdigit(name[i]));
-    }
-    return valid;
-}
+bool isValidVarName(std::string_view name);
 
-static bool isInteger(std::string_view val, bool bAllowNeg )
-{
-    bool valid = true;
-    std::size_t i = 0;
-    if (val[0] == '-')
-    {
-        if (!bAllowNeg)
-            return false;
-        i++;
-    }
-    std::size_t len = val.length();
-    for (; i < len && valid; i++)
-    {
-        valid = isdigit(val[i]);
-    }
-    return valid;
-}
+bool isInteger(std::string_view val, bool bAllowNeg);
 
 // standard does not provide a stoi for string_view, so here is one
-static int stoi(std::string_view val)
-{
-    int sum = 0;
-    if (val.length() > 0)
-    {
-        int sign = 1;
-        std::size_t i = 0;
-        if (val[0] == '-')
-        {
-            sign = -1;
-            i++;
-        }
-        for (; (i < val.length()) && isdigit(val[i]); i++)
-        {
-            sum = (sum * 10) + val[i] - '0';
-        }
-        sum *= sign;
-    }
-    return sum;
-}
+int stoi(std::string_view val);
 
 // returns string
-static std::string readLineUTF8( FILE* fp )  // read from a multibyte source, return std::string
-{
-    std::string line;
-    line.reserve(8192);	// so += is fast
-    for (; !feof(fp);)
-    {
-        int ch = fgetc(fp);
-        if (ch == EOF)
-            break;
-        ch &= 0xff;
-        if (ch == 0)
-            break;
-        if (ch == '\r')         // ignore carriage returns, only care about line feeds.
-            continue;
-        if (ch == '\n')
-            break;
-        if (ch == 26)  // CTRL-Z
-            break;
-        line += (uint8_t)ch;
-    }
-    line.shrink_to_fit();
-    return line;
-}
-
+std::string readLineUTF8(FILE* fp);  // read from a multibyte source, return std::string
 
 // note that we are passing in strings - not string_views - conversion needs null term string
-static std::wstring utf8_to_wstring(const std::string & str)
-{
-    std::wstring ret;
-    if (!str.empty())
-    {
-#if (_MSVC_LANG >= 201703L) || (__cplusplus >= 201703L)  // c++17 and greater no longer support, so we just use windows
-        std::size_t size = str.length() * 10;    // way more than worst case avoids having to first query.
-        wchar_t* utf16 = (wchar_t*)calloc(size, 1);
-        if (utf16)
-        {
-            MultiByteToWideChar(CP_UTF8, 0, str.c_str(), -1, utf16, (int)((size / 2) - 1));
-            ret = utf16;
-            free(utf16);
-        }
-#else
-        std::wstring_convert<std::codecvt_utf8<wchar_t>> myconv;
-        ret = myconv.from_bytes(str);
-#endif
-    }
-    return ret;
-}
+std::wstring utf8_to_wstring(const std::string& str);
 
 // note that we are passing in strings - not string_view - conversion needs null term string
-static std::string wstring_to_utf8(const std::wstring & str)
-{
-    std::string ret;
-    if (!str.empty())
-    {
-#if (_MSVC_LANG >= 201703L) || (__cplusplus >= 201703L)  // c++17 and greater no longer support, so we just use windows
-        std::size_t size = str.length() * 8;    // way more than worst case avoids having to first query.
-        char* utf8 = (char*)calloc(size, 1);
-        if (utf8)
-        {
-            WideCharToMultiByte(CP_UTF8, 0, str.c_str(), -1, utf8, (int)(size - 1), NULL, NULL);
-            ret = utf8;
-            free(utf8);
-        }
-#else
-        std::wstring_convert<std::codecvt_utf8<wchar_t>> myconv;
-        ret = myconv.to_bytes(str);
-#endif
-    }
-    return ret;
-}
+std::string wstring_to_utf8(const std::wstring& str);
 
-std::string readLineUTF16(FILE* fp, bool lbf = true);  // define header with automatic low byte first setting
-static std::string readLineUTF16(FILE* fp, bool lbf )  // read from unicode save into utf8 in std::string.
-{
-    std::wstring wline;
-    wline.reserve(8192);	// so += is fast
-    for (; !feof(fp);)
-    {
-        int ch = fgetc(fp);
-        if ((ch == EOF) || feof(fp))
-            break;
-        int ch1 = fgetc(fp);
-        if (ch == EOF)
-            break;
-        ch &= 0xff;
-        ch1 &= 0xff;
-        if (lbf)
-            ch |= ch1 << 8;
-        else
-            ch = (ch << 8) | ch1;
-        if (ch == 0)
-            break;
-        if (ch == '\r')         // ignore carriage returns, only care about line feeds.
-            continue;
-        if (ch == 26)     // CTRL-Z
-            break;
-        if (ch == '\n')
-            break;
-        wline += (wchar_t)ch;
-    }
+std::string readLineUTF16(FILE* fp, bool lbf = true);  // read from unicode save into utf8 in std::string.
 
-    // now convert to UTF8
-    return wstring_to_utf8(wline);
-}
-
-static void getFileEncoding(FILE* fp, bool& bUTF8BOM, bool& bUTF16LE, bool& bUnicode)  // get encoding flags
-{
-    // maps can have UTF-8 encoding Byte Order Mark (BOM) which is 3 bytes or they can be unicode which has a 2 byte BOM
-    if (feof(fp))
-        return;   // nothing to read
-    int ch1 = fgetc(fp);
-    if (feof(fp))
-        return;   // nothing to read
-    int ch2 = fgetc(fp);
-    if (feof(fp))
-        return;   // nothing to read
-    int ch3 = fgetc(fp);
-    if (feof(fp))
-        return;   // nothing to read
-
-    bUTF8BOM = false;
-    bUTF16LE = false;
-    bUnicode = false;
-
-    if ((ch1 == 0xff) && (ch2 == 0xfe))  // low byte first unicode
-        bUTF16LE = bUnicode = true;
-    if ((ch1 == 0xfe) && (ch2 == 0xff))  // high byte first unicode
-        bUnicode = true;
-    if (bUnicode)
-    {
-        fseek(fp, 0, 0);
-        fseek(fp, 2, 0);
-    }
-    else  // check for UTF-8 mark
-    {
-        if ((ch1 == 0xEF) && (ch2 == 0xBB) && (ch3 == 0xBF))  // we have 3 byte BOM, so just ignore it.
-            bUTF8BOM = true;
-        else
-            fseek(fp, 0, 0);  // none of the above, so reset back to beginning
-    }
-}
+void getFileEncoding(FILE* fp, bool& bUTF8BOM, bool& bUTF16LE, bool& bUnicode);  // get encoding flags
 
 
 // options we pass
@@ -373,9 +96,10 @@ public:
     std::string  m_srcmap;
     std::string  m_outmap;
     std::string  m_srcscript;
-    std::string  m_mapName;        // override map name in info section
-    std::string  m_creator;        // override curator name in info section
-    std::string  m_sincdirs;       // list of paths to search for script includes
+    std::string  m_mapName;             // override map name in info section
+    std::string  m_creator;             // override curator name in info section
+    std::string  m_sincdirs;            // list of paths to search for script includes
+    std::string  m_datestr = "\"y.m.d\""; // TyabScriptDate and TyabScriptIncDate format
 
     std::vector<keyValue> m_defines;
 
@@ -972,7 +696,7 @@ public:
         }
 
         // called after all lines are sent, generate warning if not enough rows. We will fill in with default value
-        void enoughRows(const InputLine& iline, bool bAllowNeg, ErrorWarning& errorWarning, const std::string& errwarnpre, bool bFix, int defValue)
+        void enoughRows(const InputLine& iline, ErrorWarning& errorWarning, const std::string& errwarnpre, bool bFix, int defValue)
         {
             std::size_t arrSize = (std::size_t)m_width * m_height;
             if (m_data.size() < arrSize)
@@ -1445,8 +1169,8 @@ class RRMap
             m_bValid = section.valid();
             if (m_bValid)
             {
-                auto it = m_sections.find(section);  // name must not already exist
-                if (it == m_sections.cend())
+                auto itt = m_sections.find(section);  // name must not already exist
+                if (itt == m_sections.cend())
                 {
                     m_sections.insert(section);
                 }
@@ -1614,7 +1338,7 @@ class RRMap
                     return;
                 }
             }
-            m_tileSection.enoughRows(ms->getLines().back(), false, m_error, "section tiles ", options.m_bFix, options.m_nDefTileID);
+            m_tileSection.enoughRows(ms->getLines().back(), m_error, "section tiles ", options.m_bFix, options.m_nDefTileID);
         }
     }
 
@@ -1634,7 +1358,7 @@ class RRMap
                     return;
                 }
             }
-            m_heightSection.enoughRows(ms->getLines().back(), false, m_error, "section height ", options.m_bFix, options.m_nDefHeight);
+            m_heightSection.enoughRows(ms->getLines().back(), m_error, "section height ", options.m_bFix, options.m_nDefHeight);
         }
     }
 
@@ -1706,8 +1430,8 @@ class RRMap
                 m_bValid = false;
                 return;
             }
-            m_crystals.enoughRows(ms->getLines().back(), false, m_error, "section resources, crystals ", options.m_bFix, options.m_nDefCrystal);
-            m_ore.enoughRows(ms->getLines().back(), false, m_error, "section resources, ore ", options.m_bFix, options.m_nDefOre);
+            m_crystals.enoughRows(ms->getLines().back(), m_error, "section resources, crystals ", options.m_bFix, options.m_nDefCrystal);
+            m_ore.enoughRows(ms->getLines().back(), m_error, "section resources, ore ", options.m_bFix, options.m_nDefOre);
 
         }
     }

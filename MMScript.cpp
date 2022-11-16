@@ -4,9 +4,6 @@
 #include "MMScript.h"
 
 
-
-
-
 class ScriptUserVariable
 {
 public:
@@ -691,7 +688,7 @@ void ScriptProcessor::ScriptProcessLine::rawParse()
 
 
 // pass 0, nothing has been parsed. We are looking for pragma comments, and we clean up blanks lines to really be blank
-void  ScriptProcessor::ScriptPass0(ScriptProcessLine& pl, const CommandLineOptions& options)  // process tokens as part of pass 1
+void  ScriptProcessor::ScriptPass0(ScriptProcessLine& pl, const CommandLineOptions& /*options*/)  // process tokens as part of pass 1
 {
     if (pl.processed())     // line has already been processed, no need to process more
         return;
@@ -746,7 +743,7 @@ void  ScriptProcessor::ScriptPass0(ScriptProcessLine& pl, const CommandLineOptio
                 {
                     for (spos = epos; spos < commentLC.size() && pl.isSpace(commentLC[spos]); spos++);  // skip spaces to start of name
                     epos = spos;
-                    for (; epos < commentLC.size() && (commentLC[epos] == '='); epos++);  // find = value
+                    for (; epos < commentLC.size() && (commentLC[epos] != '='); epos++);  // find = value
                     if (epos+1 >= commentLC.size())
                     {
                         m_errors.setWarning(pl.getLine().getInputLine(), pl.getFileName() + " #pragma define name=value invalid, ignoring");
@@ -756,7 +753,8 @@ void  ScriptProcessor::ScriptPass0(ScriptProcessLine& pl, const CommandLineOptio
                     spos = epos + 1;
                     if (comment[spos] == '"')
                     {
-                        for (epos = ++spos; epos < comment.size() && (comment[epos] != '"'); epos++);  // find = value
+                        for (epos = spos+1; epos < comment.size() && (comment[epos] != '"'); epos++);  // find = value
+                        epos++; // allows the closing quote to be included, we will catch missing " down below
                     }
                     else
                     {
@@ -768,6 +766,16 @@ void  ScriptProcessor::ScriptPass0(ScriptProcessLine& pl, const CommandLineOptio
                     {
                         m_errors.setWarning(pl.getLine().getInputLine(), pl.getFileName() + " #pragma define name=value invalid, ignoring");
                         break;
+                    }
+
+                    // if the value starts with a quote, it must end in a quote
+                    if (value[0] == '"')
+                    {
+                        if ((value.size() < 2) || value[value.size() - 1] != '"')
+                        {
+                            m_errors.setWarning(pl.getLine().getInputLine(), pl.getFileName() + " #pragma define name=value invalid missing closing quote, ignoring");
+                            break;
+                        }
                     }
 
                     // make sure it is unique
@@ -786,13 +794,40 @@ void  ScriptProcessor::ScriptPass0(ScriptProcessLine& pl, const CommandLineOptio
                     // now we need to change the comment so it does not get processed again
                     pl.setLine('#' + std::string(pl.getLine().getInputLine().getLine()));
                 }
-                else if (pragmaname == "tyabscriptdate")    // modified time for main script
+                else if (pragmaname == "tyabscriptdate" || pragmaname == "tyabscriptincdate")    // modified time for main or included script, follows is the format
                 {
-                    pl.setLine('#' + std::string(pl.getLine().getInputLine().getLine()) + std::string(m_defines.getValue("tyabscriptdate")));
-                }
-                else if (pragmaname == "tyabscriptincdate")    // modified time for current included script
-                {
-                    pl.setLine('#' + std::string(pl.getLine().getInputLine().getLine()) + getDateStr(pl.getLine().getFileName()));
+                    std::string filename;
+                    std::string format;
+                    filename = m_lines[0].getFileName();
+                    if (pragmaname == "tyabscriptincdate")
+                    {
+                        filename = pl.getFileName();
+                    }
+
+                    // next parameter is the format script
+                    for (spos = epos; spos < comment.size() && pl.isSpace(comment[spos]); spos++);  // skip spaces to start of format
+                    if (spos < comment.size())
+                    {
+                        if (comment[spos] == '"')
+                        {
+                            for (epos = spos + 1; epos < comment.size() && (comment[epos] != '"'); epos++);  // find = value
+                            if (comment[epos] == '"')
+                                epos++;
+                        }
+                        else
+                        {
+                            for (epos = spos; epos < comment.size() && (pl.isSpace(comment[epos]) == false); epos++);  // find = value
+                        }
+                    }
+                    if ((spos >= comment.size()) || (epos > comment.size()))
+                    {
+                        m_errors.setWarning(pl.getLine().getInputLine(), pl.getFileName() + " #pragma " + std::string(pragmaname) + " date format invalid, ignoring");
+                    }
+                    else
+                    {
+                        format = comment.substr(spos, epos - spos);
+                        pl.setLine('#' + std::string(pl.getLine().getInputLine().getLine()) + getDateStr(filename, format));
+                    }
                 }
                 else
                 {
@@ -810,7 +845,7 @@ void  ScriptProcessor::ScriptPass0(ScriptProcessLine& pl, const CommandLineOptio
 }
 
 
-void  ScriptProcessor::ScriptPass1(ScriptProcessLine& pl, const CommandLineOptions& options)  // process tokens as part of pass 1
+void  ScriptProcessor::ScriptPass1(ScriptProcessLine& pl, const CommandLineOptions& /*options*/)  // process tokens as part of pass 1
 {
     if (pl.processed())     // line has already been processed, no need to process more
         return;
@@ -823,12 +858,12 @@ void  ScriptProcessor::ScriptPass1(ScriptProcessLine& pl, const CommandLineOptio
 }
 
 
-void  ScriptProcessor::ScriptPass2(ScriptProcessLine& pl, const CommandLineOptions& options)  // process tokens as part of pass 2
+void  ScriptProcessor::ScriptPass2(ScriptProcessLine& pl, const CommandLineOptions& /*options*/)  // process tokens as part of pass 2
 {
     if (pl.processed())
         return;
 
-    const std::vector<TokenAndId>& tokens = pl.getTokens();
+    //const std::vector<TokenAndId>& tokens = pl.getTokens();
 
 
 }

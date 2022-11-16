@@ -235,7 +235,7 @@ public:
         bool found = (m_builtins.find(key) != m_builtins.cend());
         if (!found)
         {
-            found = (m_BuiltInTriggers.find(key) != m_builtins.cend());
+            found = (m_BuiltInTriggers.find(key) != m_BuiltInTriggers.cend());
         }
         return found;
     }
@@ -643,7 +643,8 @@ public:
         {
             ScriptPass1(m_lines[i], options);  // process tokens as part of pass 1.
         }
-        return 0;   // no error
+        if (!m_errors.getErrors().empty())
+            return 1;
 
 
         // now to 2nd pass script processing
@@ -651,7 +652,10 @@ public:
         {
             ScriptPass2(m_lines[i], options );  // process tokens as part of pass 1.
         }
-        return 0;   // no error
+        if (!m_errors.getErrors().empty())
+            return 1;
+
+        return 0;
     }
 
     ScriptFile getScriptFile() const
@@ -676,11 +680,11 @@ public:
         std::string sdate;
         if (!m_lines.empty())
         {
-            sdate = getDateStr(m_lines[0].getFileName());
+            sdate = getDateStr(m_lines[0].getFileName(),"y.m.d");
         }
 
-        m_defines.addKeyValue("TyabScriptDate", sdate);         // will be computed when needed
-        m_defines.addKeyValue("TyabScriptIncDate", "$IDATE");   // will be computed when needed
+        m_defines.addKeyValue("TyabScriptDate", sdate);        // main script we know its date
+        m_defines.addKeyValue("TyabScriptIncDate", "y.m.d");   // included scripts we will compute when referenced
 
         for (std::size_t i = 0; i < cmdline.m_defines.size(); i++)
         {
@@ -694,6 +698,9 @@ public:
                 m_errors.setError(InputLine(), "name=value from command line is reserved name: " + std::string(cmdline.m_defines[i].key()));
                 return 1;
             }
+
+            m_defines.addKeyValue(cmdline.m_defines[i].key(), cmdline.m_defines[i].value());
+
         }
         return 0;
     }

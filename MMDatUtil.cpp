@@ -770,7 +770,7 @@ class CommandLineParser
         { "-sfixspace",    22 },
         { "-snocomment",   23 },
         { "-sdefine",      24 },
-        { "-sdatefmd",     25 },
+        { "-sdatefmt",     25 },
     };
 
     std::string_view getStringParm(std::size_t i)

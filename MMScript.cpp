@@ -762,12 +762,11 @@ void  ScriptProcessor::ScriptPass0(ScriptProcessLine& pl, const CommandLineOptio
                     }
                     std::string_view value(comment.substr(spos, epos - spos));
 
-                    if (!isValidVarName(keyname))
-                    {
-                        m_errors.setWarning(pl.getLine().getInputLine(), pl.getFileName() + " #pragma define name=value invalid, ignoring");
-                        break;
-                    }
-
+                    // values must be one of the following types
+                    // - quoted string. Will be valid to be used where a quoted string is valid
+                    // - Alphanumeric name. First char is alpha, remaining chars are either alpha or numeric.
+                    // - positive int number.  Note that MM engine does not allow negative int literal values.
+                    // - positive floating point number. Note that the MM engine does not allow negative float literal values
                     // if the value starts with a quote, it must end in a quote
                     if (value[0] == '"')
                     {
@@ -777,6 +776,18 @@ void  ScriptProcessor::ScriptPass0(ScriptProcessLine& pl, const CommandLineOptio
                             break;
                         }
                     }
+                    else if (!isValidVarName(value) || !isFloat(value,false) || !isInteger(value,false))
+                    {
+                        m_errors.setWarning(pl.getLine().getInputLine(), pl.getFileName() + " Invalid value: "+ std::string(value) + "Must be string, alphanumeric name, float, int");
+                        break;
+                    }
+
+                    if (!isValidVarName(keyname))
+                    {
+                        m_errors.setWarning(pl.getLine().getInputLine(), pl.getFileName() + " #pragma define name=value invalid, ignoring");
+                        break;
+                    }
+
 
                     // make sure it is unique
                     if (m_langdef.contains(keyname))
@@ -845,16 +856,89 @@ void  ScriptProcessor::ScriptPass0(ScriptProcessLine& pl, const CommandLineOptio
 }
 
 
-void  ScriptProcessor::ScriptPass1(ScriptProcessLine& pl, const CommandLineOptions& /*options*/)  // process tokens as part of pass 1
+// return true if we match the defination which is the first item in defination. If we match, we return true even if we then find errors.
+// we skip the tokens first item if it is spaces, we have already either fixed or generated an error for that.
+bool ScriptProcessor::matchDefination(const LangDef::Defination& defination, const std::vector<TokenAndId>& tokens, ScriptProcessLine& /*pl*/, const CommandLineOptions& /*options*/)
+{
+    std::size_t tokenNum = 0;
+    // skip any leading spaces, we have already fix them or logged an error
+    if (tokens[0].getTokenId() == LangDef::TokenTypes::eTokenSpace || tokens[0].getTokenId() == LangDef::TokenTypes::eTokenSpaces)
+        tokenNum++;
+
+    for (std::size_t defIndex = 0; defIndex < defination.size(); defIndex++)
+    {
+        switch (defination[defIndex].tokenid)
+        {
+        case LangDef::TokenTypes::eTokenName:       // we are expecting a name
+        {
+            if (tokens[tokenNum].getTokenId() == LangDef::TokenTypes::eTokenName)   // input tokens match the type
+            {
+                // see if name matches one of our macros
+                //bool bDefine = m_defines.contains(tokens[tokenNum].getTokenLC());
+
+            }
+        }
+
+
+
+        }
+
+    }
+
+
+
+
+
+    return false;
+}
+
+// pass 1. Find all variable declarations, build list of all user variables and event chain names.
+// this will catch all duplicate names, use of reserved names,
+// and subsitute variable declarations initialization values that use the #pragma define values
+// tag all variable declarations as processed
+void  ScriptProcessor::ScriptPass1(ScriptProcessLine& pl, const CommandLineOptions& options)  // process tokens as part of pass 1
 {
     if (pl.processed())     // line has already been processed, no need to process more
         return;
 
-    const std::vector<TokenAndId>& tokens = pl.getTokens();
-
-    for (size_t tokennum = 0; tokennum < tokens.size(); tokennum++)
+    std::vector<TokenAndId>& tokens = pl.getTokens();
+    if (tokens.empty()) // TODO I don't think this can ever happen, but just in case
     {
+        pl.setProcessed(true);
+        return;
     }
+
+    // first thing to handle is any leading space. Tag as an error if we are not fixing
+    if (tokens[0].getTokenId() == LangDef::TokenTypes::eTokenSpace || tokens[0].getTokenId() == LangDef::TokenTypes::eTokenSpaces)
+    {
+        if (options.m_bScrFixSpace)
+        {
+            tokens[0].clrString();  // we fix by clearing the token strings to nothing
+        }
+        else
+        {
+            m_errors.setError(pl.getLine().getInputLine(), "leading whilespace not allowed");
+        }
+    }
+
+    // see if these match
+    bool bMatch = matchDefination(m_langdef.cmdInt, tokens, pl, options);
+    if (!bMatch)
+        bMatch = matchDefination(m_langdef.cmdFloat, tokens, pl, options);
+    if (!bMatch)
+        bMatch = matchDefination(m_langdef.cmdArray, tokens, pl, options);
+    if (!bMatch)
+        bMatch = matchDefination(m_langdef.cmdString, tokens, pl, options);
+    if (!bMatch)
+        bMatch = matchDefination(m_langdef.cmdBool, tokens, pl, options);
+    if (!bMatch)
+        bMatch = matchDefination(m_langdef.cmdArrow, tokens, pl, options);
+    if (!bMatch)
+        bMatch = matchDefination(m_langdef.cmdMiner, tokens, pl, options);
+    if (!bMatch)
+        bMatch = matchDefination(m_langdef.cmdVehicle, tokens, pl, options);
+    if (!bMatch)
+        bMatch = matchDefination(m_langdef.cmdBuilding, tokens, pl, options);
 }
 
 

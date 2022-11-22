@@ -52,6 +52,7 @@ std::string_view removeLeadingWhite(std::string_view str);
 bool isValidVarName(std::string_view name);
 
 bool isInteger(std::string_view val, bool bAllowNeg);
+bool isFloat(std::string_view val, bool bAllowNeg);
 
 // standard does not provide a stoi for string_view, so here is one
 int stoi(std::string_view val);
@@ -112,6 +113,11 @@ public:
     int          m_nDefCrystal = 0;
     int          m_nDefOre     = 0;
 
+    int          m_srow = 0;    // rect start row
+    int          m_scol = 0;    // rect start col
+    int          m_erow = 0;    // rect end row
+    int          m_ecol = 0;    // rect end col
+
     bool         m_bMergeHeight   = false;
     bool         m_bMergeCrystal  = false;
     bool         m_bMergeOre      = false;
@@ -122,6 +128,7 @@ public:
     bool         m_bFix           = false;
     bool         m_bScrFixSpace   = false;  // automatic fix spaces where not allowed
     bool         m_bScrNoComments = false;  // remove all non #. comments
+    bool         m_bMergeRect     = false;  // if true merge src is a subregion
 };
 
 
@@ -626,11 +633,11 @@ public:
         // merge in data from src using the given offset, clipping to our boundary - it does not grow the data
         // negative offsets will clip src
         // be careful, offsets can be negative don't use std::size_t since its unsigned
-        void merge(arrayItem const &src, int colOffset, int rowOffset)  // merge in values from src that are in range
+        void merge(arrayItem const &src, int srow, int scol, int erow, int ecol, int colOffset, int rowOffset)  // merge in values from src that are in range
         {
-            for (intmax_t row = 0; row < src.m_height; row++)
+            for (intmax_t row = srow; row < erow; row++)
             {
-                for (intmax_t col = 0; col < src.m_width; col++)
+                for (intmax_t col = scol; col < ecol; col++)
                 {
                     if (((row + rowOffset) >= 0) && ((row + rowOffset) < m_height) && ((col + colOffset) >= 0) && ((col + colOffset) < m_width))
                     {
@@ -907,10 +914,10 @@ class RRMap
         m_ore.clear          (options.m_nDefOre);
 
         // now merge from source applying any offset
-        m_tileSection.merge(rhs.m_tileSection, options.m_nOffsetCol, options.m_nOffsetRow);
-        m_heightSection.merge(rhs.m_heightSection, options.m_nOffsetCol, options.m_nOffsetRow);
-        m_crystals.merge(rhs.m_crystals, options.m_nOffsetCol, options.m_nOffsetRow);
-        m_ore.merge(rhs.m_ore, options.m_nOffsetCol, options.m_nOffsetRow);
+        m_tileSection.merge(rhs.m_tileSection, options.m_srow, options.m_scol, options.m_erow, options.m_ecol, options.m_nOffsetCol, options.m_nOffsetRow);
+        m_heightSection.merge(rhs.m_heightSection, options.m_srow, options.m_scol, options.m_erow, options.m_ecol, options.m_nOffsetCol, options.m_nOffsetRow);
+        m_crystals.merge(rhs.m_crystals, options.m_srow, options.m_scol, options.m_erow, options.m_ecol, options.m_nOffsetCol, options.m_nOffsetRow);
+        m_ore.merge(rhs.m_ore, options.m_srow, options.m_scol, options.m_erow, options.m_ecol, options.m_nOffsetCol, options.m_nOffsetRow);
 
     }
 
@@ -927,25 +934,25 @@ class RRMap
     bool getUnicodeLE() const { return m_bUTF16LE; }
     bool getUnicode() const { return m_bUnicode; }
 
-    void mergeTiles(const RRMap& src, int rowOffset, int colOffset)   // will copy tiles and height into map
+    void mergeTiles(const RRMap& src, int srow, int scol, int erow, int ecol, int rowOffset, int colOffset)   // will copy tiles and height into map
     {
-        m_tileSection.merge(src.m_tileSection, rowOffset, colOffset);
+        m_tileSection.merge(src.m_tileSection, srow, scol, erow, ecol, rowOffset, colOffset);
         m_tileSection.setBorders(38);    // make sure the border is properly defined  38 is solid rock regular
     }
 
-    void mergeHeight(const RRMap& src, int rowOffset, int colOffset)   // will copy tiles and height into map
+    void mergeHeight(const RRMap& src, int srow, int scol, int erow, int ecol, int rowOffset, int colOffset)   // will copy tiles and height into map
     {
-        m_heightSection.merge(src.m_heightSection, rowOffset, colOffset);
+        m_heightSection.merge(src.m_heightSection, srow, scol, erow, ecol, rowOffset, colOffset);
     }
 
-    void mergeCrystal(const RRMap& src, int rowOffset, int colOffset)   // will copy tiles and height into map
+    void mergeCrystal(const RRMap& src, int srow, int scol, int erow, int ecol, int rowOffset, int colOffset)   // will copy tiles and height into map
     {
-        m_crystals.merge(src.m_crystals, rowOffset, colOffset);
+        m_crystals.merge(src.m_crystals, srow, scol, erow, ecol, rowOffset, colOffset);
     }
 
-    void mergeOre(const RRMap & src, int rowOffset, int colOffset)   // will copy tiles and height into map
+    void mergeOre(const RRMap & src, int srow, int scol, int erow, int ecol, int rowOffset, int colOffset)   // will copy tiles and height into map
     {
-        m_ore.merge(src.m_ore, rowOffset, colOffset);
+        m_ore.merge(src.m_ore, srow, scol, erow, ecol, rowOffset, colOffset);
     }
 
     // resize to given height and width. If 0, use existing value. Modify tiles, height, crystals, ore and map size in info section

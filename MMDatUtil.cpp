@@ -272,9 +272,10 @@ bool isValidVarName(std::string_view name)
     return valid;
 }
 
+// must have at least a single digit with nothing but digits and an optional leading -sign.
 bool isInteger(std::string_view val, bool bAllowNeg)
 {
-    bool valid = true;
+    bool valid = false; // ensures we must have at least a single digit
     std::size_t i = 0;
     if (val[0] == '-')
     {
@@ -289,6 +290,37 @@ bool isInteger(std::string_view val, bool bAllowNeg)
     }
     return valid;
 }
+
+// must have as last a single digit with nothing but digits and an optiona leading - sign and up to a single decimal point.
+bool isFloat(std::string_view val, bool bAllowNeg)
+{
+    bool valid = false; // start off false ensures we must have at least a single digit
+    std::size_t i = 0;
+    if (val[0] == '-')
+    {
+        if (!bAllowNeg)
+            return false;
+        i++;
+    }
+    bool bDecimalpoint = false;
+    std::size_t len = val.length();
+    for (; i < len && valid; i++)
+    {
+        if (val[i] == '.')
+        {
+            if (!bDecimalpoint)
+                bDecimalpoint = true;
+            else
+                return false;  // cant have more than 1 decimal point
+        }
+        else
+        {
+            valid = isdigit(val[i]);
+        }
+    }
+    return valid;
+}
+
 
 // standard does not provide a stoi for string_view, so here is one
 int stoi(std::string_view val)
@@ -527,10 +559,12 @@ class CommandLineParser
                 else
                     m_tokens.push_back(token);
             }
-            else  // parameter just copy everything until next white space
+            else  // parameter just copy everything until next white space or ,
             {
-                for (token = cmdline[pos++]; (pos < len) && !isspace(cmdline[pos]); pos++)
+                for (token = cmdline[pos++]; (pos < len) && !isspace(cmdline[pos] && (cmdline[pos] != ',')); pos++)
                     token += cmdline[pos];
+                if (cmdline[pos] == ',')
+                    pos++;
                 m_tokens.push_back(token);
             }
         }
@@ -699,6 +733,28 @@ class CommandLineParser
                     m_cmdOptions.m_datestr = '"' + std::string(getStringParm(++i)) + '"';
                     break;
 
+                case 26:  // mergerect
+                {   // subregion. startrow,startcol,endrow,endcol. Each will be in its own token
+                    m_cmdOptions.m_srow = getIntParm(++i, false);
+                    if (m_error.empty())
+                        m_cmdOptions.m_scol = getIntParm(++i, false);
+                    if (m_error.empty())
+                        m_cmdOptions.m_erow = getIntParm(++i, false);
+                    if (m_error.empty())
+                        m_cmdOptions.m_ecol = getIntParm(++i, false);
+                    if (m_error.empty())
+                    {
+                        if ((m_cmdOptions.m_srow <= m_cmdOptions.m_erow) && (m_cmdOptions.m_scol <= m_cmdOptions.m_ecol))
+                            m_cmdOptions.m_bMergeRect = true;
+                        else
+                        {
+                            m_bValid = false;
+                            m_error = "invalid -mergerect values";
+                        }
+                    }
+                    break;
+                }
+
                 }
             }
         }
@@ -736,6 +792,7 @@ class CommandLineParser
 
 
     const CommandLineOptions& getOptions() const { return m_cmdOptions; }
+          CommandLineOptions& getOptions()       { return m_cmdOptions; }
 
 
 
@@ -771,6 +828,7 @@ class CommandLineParser
         { "-snocomment",   23 },
         { "-sdefine",      24 },
         { "-sdatefmt",     25 },
+        { "-mergerect",    26 },
     };
 
     std::string_view getStringParm(std::size_t i)
@@ -893,6 +951,7 @@ void help()
     printf("      -mergecrystal merge crystals values from srcmap into outmap\n");
     printf("      -mergeore     merge ore values from srcmap into outmap\n");
     printf("      -mergetile    merge tile values from srcmap into outmap\n");
+    printf("      -mergerect    startrow,startcol,endrow,endcol for merge\n");
     printf("      -offsetrow    add row offset when merging/copying srcmap into outmap\n");
     printf("      -offsetcol    add col offset when merging/copying srcmap into outmap\n");
     printf("      -resizerow    resize outmap rows for tiles,height,resources\n");
@@ -965,6 +1024,7 @@ int main(int , char* )
             cmdParser.getOptions().m_bMergeOre ||
             cmdParser.getOptions().m_bMergeTiles ||
             cmdParser.getOptions().m_bEraseOutMap ||
+            cmdParser.getOptions().m_bMergeRect ||
             cmdParser.getOptions().m_nOffsetCol ||
             cmdParser.getOptions().m_nOffsetRow ||
             cmdParser.getOptions().m_outmap.empty()     // both srcmap and outmap cannot be empty
@@ -1039,6 +1099,22 @@ int main(int , char* )
 
         srcMap.readMap(fp, cmdParser.getOptions());
         fclose(fp);
+
+        if (cmdParser.getOptions().m_bMergeRect)
+        {
+            if (cmdParser.getOptions().m_erow >= srcMap.height() || cmdParser.getOptions().m_ecol >= srcMap.width())
+            {
+                printf(" Error: -mergerect values are outside srcmap");
+                return 1;
+            }
+        }
+        else
+        {      // if not using subregion, set region to entire source
+            cmdParser.getOptions().m_srow = 0;
+            cmdParser.getOptions().m_scol = 0;
+            cmdParser.getOptions().m_erow = srcMap.height() - 1;
+            cmdParser.getOptions().m_ecol = srcMap.width() - 1;
+        }
 
         // display any warnings found
         for (int i = 0; i < srcMap.getError().getWarnings().size(); i++)
@@ -1173,22 +1249,22 @@ int main(int , char* )
         // see if merging
         if (cmdParser.getOptions().m_bMergeTiles)
         {
-            outMap.mergeTiles(srcMap, cmdParser.getOptions().m_nOffsetRow, cmdParser.getOptions().m_nOffsetCol);
+            outMap.mergeTiles(srcMap, cmdParser.getOptions().m_srow, cmdParser.getOptions().m_scol, cmdParser.getOptions().m_erow, cmdParser.getOptions().m_ecol, cmdParser.getOptions().m_nOffsetRow, cmdParser.getOptions().m_nOffsetCol);
             printf(" Merging srcmap tiles into outmap using offsets row: %d, columns: %d\n", cmdParser.getOptions().m_nOffsetRow, cmdParser.getOptions().m_nOffsetCol);
         }
         if (cmdParser.getOptions().m_bMergeHeight )
         {
-            outMap.mergeHeight(srcMap, cmdParser.getOptions().m_nOffsetRow, cmdParser.getOptions().m_nOffsetCol);
+            outMap.mergeHeight(srcMap, cmdParser.getOptions().m_srow, cmdParser.getOptions().m_scol, cmdParser.getOptions().m_erow, cmdParser.getOptions().m_ecol, cmdParser.getOptions().m_nOffsetRow, cmdParser.getOptions().m_nOffsetCol);
             printf(" Merging srcmap Heights into outmap using offsets row: %d, columns: %d\n", cmdParser.getOptions().m_nOffsetRow, cmdParser.getOptions().m_nOffsetCol);
         }
         if (cmdParser.getOptions().m_bMergeCrystal)
         {
-            outMap.mergeCrystal(srcMap, cmdParser.getOptions().m_nOffsetRow, cmdParser.getOptions().m_nOffsetCol);
+            outMap.mergeCrystal(srcMap, cmdParser.getOptions().m_srow, cmdParser.getOptions().m_scol, cmdParser.getOptions().m_erow, cmdParser.getOptions().m_ecol, cmdParser.getOptions().m_nOffsetRow, cmdParser.getOptions().m_nOffsetCol);
             printf(" Merging srcmap crystals into outmap using offsets row: %d, columns: %d\n", cmdParser.getOptions().m_nOffsetRow, cmdParser.getOptions().m_nOffsetCol);
         }
         if (cmdParser.getOptions().m_bMergeOre)
         {
-            outMap.mergeOre(srcMap, cmdParser.getOptions().m_nOffsetRow, cmdParser.getOptions().m_nOffsetCol);
+            outMap.mergeOre(srcMap, cmdParser.getOptions().m_srow, cmdParser.getOptions().m_scol, cmdParser.getOptions().m_erow, cmdParser.getOptions().m_ecol, cmdParser.getOptions().m_nOffsetRow, cmdParser.getOptions().m_nOffsetCol);
             printf(" Merging srcmap ore into outmap using offsets row: %d, columns: %d\n", cmdParser.getOptions().m_nOffsetRow, cmdParser.getOptions().m_nOffsetCol);
         }
 

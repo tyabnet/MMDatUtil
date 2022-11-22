@@ -48,6 +48,13 @@ public:
         return sv == m_tokenlc;
     }
 
+    // used when fixing space(s), we just clear the strings to nothing
+    void clrString()
+    {
+        m_token = std::string_view();
+        m_tokenlc = std::string_view();
+    }
+
 
     // just for the std::unordered_set hash and comparision functions
     class compHash {
@@ -573,6 +580,7 @@ public:
         }
 
         const std::vector<TokenAndId> & getTokens() const { return m_tokens; }
+              std::vector<TokenAndId>& getTokens() { return m_tokens; }
 
         void setTokens(std::vector<TokenAndId>& tokens)
         {
@@ -709,6 +717,9 @@ protected:
     void ScriptPass0(ScriptProcessLine& pl, const CommandLineOptions& options);  // process comment pragmas pass 0
     void ScriptPass1(ScriptProcessLine &pl, const CommandLineOptions& options);  // process tokens as part of pass 1
     void ScriptPass2(ScriptProcessLine &pl, const CommandLineOptions& options);  // process tokens as part of pass 2
+
+    bool matchDefination(const LangDef::Defination& defination, const std::vector<TokenAndId>& tokens, ScriptProcessLine& pl, const CommandLineOptions& options);
+
 
 
     std::vector<ScriptProcessLine> m_lines;

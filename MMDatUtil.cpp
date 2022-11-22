@@ -284,9 +284,11 @@ bool isInteger(std::string_view val, bool bAllowNeg)
         i++;
     }
     std::size_t len = val.length();
-    for (; i < len && valid; i++)
+    for (; i < len; i++)
     {
         valid = isdigit(val[i]);
+        if (!valid)
+            break;
     }
     return valid;
 }
@@ -304,7 +306,7 @@ bool isFloat(std::string_view val, bool bAllowNeg)
     }
     bool bDecimalpoint = false;
     std::size_t len = val.length();
-    for (; i < len && valid; i++)
+    for (; i < len; i++)
     {
         if (val[i] == '.')
         {
@@ -316,6 +318,8 @@ bool isFloat(std::string_view val, bool bAllowNeg)
         else
         {
             valid = isdigit(val[i]);
+            if (!valid)
+                break;
         }
     }
     return valid;
@@ -561,10 +565,8 @@ class CommandLineParser
             }
             else  // parameter just copy everything until next white space or ,
             {
-                for (token = cmdline[pos++]; (pos < len) && !isspace(cmdline[pos] && (cmdline[pos] != ',')); pos++)
+                for (token = cmdline[pos++]; (pos < len) && !isspace(cmdline[pos]) && (cmdline[pos] != ','); pos++)
                     token += cmdline[pos];
-                if (cmdline[pos] == ',')
-                    pos++;
                 m_tokens.push_back(token);
             }
         }
@@ -619,7 +621,7 @@ class CommandLineParser
                     break;
 
                 case 7:  // mergetiles  no parameter
-                    m_cmdOptions.m_bMergeHeight = true;
+                    m_cmdOptions.m_bMergeTiles = true;
                     break;
 
                 case 8:  // offsetrow  integer parameter
@@ -1086,7 +1088,7 @@ int main(int , char* )
             showHelpOption();
             return 1;
         }
-        printf("  Reading: %s\n", cmdParser.getOptions().m_srcmap.c_str());
+        printf("  Reading srcmap: %s\n", cmdParser.getOptions().m_srcmap.c_str());
         srcMap.getEncoding(fp);
         if (srcMap.getUnicode())
         {
@@ -1203,7 +1205,7 @@ int main(int , char* )
                 printf("  %s\n", cmdParser.getOptions().m_outmap.c_str());
                 return 1;
             }
-            printf("  Reading: %s\n", cmdParser.getOptions().m_outmap.c_str());
+            printf("  Reading outmap: %s\n", cmdParser.getOptions().m_outmap.c_str());
             outMap.getEncoding(fp);
             if (outMap.getUnicode())
             {
@@ -1246,6 +1248,11 @@ int main(int , char* )
             printf(" Resizing outmap to Rows: %d, Columns: %d\n", outMap.height(), outMap.width());
         }
 
+        // see if using subregion
+        if (cmdParser.getOptions().m_bMergeRect)
+        {
+            printf(" Using srcmap subregion: [%d,%d] to [%d,%d]\n", cmdParser.getOptions().m_srow, cmdParser.getOptions().m_scol, cmdParser.getOptions().m_erow, cmdParser.getOptions().m_ecol);
+        }
         // see if merging
         if (cmdParser.getOptions().m_bMergeTiles)
         {

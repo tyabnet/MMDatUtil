@@ -633,15 +633,16 @@ public:
         // merge in data from src using the given offset, clipping to our boundary - it does not grow the data
         // negative offsets will clip src
         // be careful, offsets can be negative don't use std::size_t since its unsigned
-        void merge(arrayItem const &src, int srow, int scol, int erow, int ecol, int colOffset, int rowOffset)  // merge in values from src that are in range
+        void merge(arrayItem const &src, int srow, int scol, int erow, int ecol, int rowOffset, int colOffset )  // merge in values from src that are in range
         {
-            for (intmax_t row = srow; row < erow; row++)
+            for (intmax_t row = srow; row <= erow; row++)
             {
-                for (intmax_t col = scol; col < ecol; col++)
+                for (intmax_t col = scol; col <= ecol; col++)
                 {
                     if (((row + rowOffset) >= 0) && ((row + rowOffset) < m_height) && ((col + colOffset) >= 0) && ((col + colOffset) < m_width))
                     {
-                        m_data[(row + rowOffset) * m_width + (col + colOffset)] = src.m_data[row * src.m_width + col];
+                        int val = src.m_data[row * src.m_width + col];
+                        m_data[(row + rowOffset) * m_width + (col + colOffset)] = val;
                     }
                 }
             }

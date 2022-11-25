@@ -348,7 +348,10 @@ protected:
         { "sound",                        eEvent | e1Parms | eParmsString },  // TODO check
         { "pan",                          eEvent | e2Parms | eParmsInt },
         { "shake",                        eEvent | e1Parms | eParmsFloat },
-        { "save",                         eEvent | e1Parms | eParmsVar },
+        { "save",                         eEvent | e1Parms | eParmsVar | eMiner },
+        { "savebuilding",                 eEvent | e1Parms | eParmsVar | eBuilding },
+        { "savevehicle",                  eEvent | e1Parms | eParmsVar | eVehicle },
+        { "kill",                         eEvent | e1Parms | eParmsVar | eMiner | eBuilding | eVehicle },
 
         { "reset",                        eEvent | e0Parms },
         { "pause",                        eEvent | e0Parms },

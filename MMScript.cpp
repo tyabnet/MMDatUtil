@@ -372,24 +372,24 @@ void ScriptProcessor::ScriptProcessLine::rawParse()
     for (std::size_t npos = 0; npos < commentpos;)
     {
         std::size_t epos = npos + 1;
-        // if we have a digit, say while we have digits. Also handle float
+        // if we have an alpha, treat as some sort of name for the remaining alpha and digits
         uint8_t ch = input[npos];
         if (isalpha(ch))   // have an alpha char. Continue while more alpha or digits
         {
             for (; epos < commentpos; epos++)
             {
-                if (!isdigit(input[epos]) && !isalpha(input[epos]))
+                if (!isdigit(input[epos]) && !isalpha(input[epos])) // this char ends the token
                     break;
             }
             token = input.substr(npos, epos - npos);
             m_tokens.push_back(TokenAndId(token, LangDef::eTokenName));
         }
-        // see if single space or sequence of spaces
+        
         else
         {
             switch (ch)
             {
-            case ' ':  // space
+            case ' ':  // space   see if single space or sequence of spaces
             case 9:    //tab
             {
                 for (; (epos < commentpos) && isSpace(input[epos]); epos++)
@@ -659,7 +659,7 @@ void ScriptProcessor::ScriptProcessLine::rawParse()
                 if (epos == npos)
                     token = "\"\"";
                 else
-                    token = input.substr(npos, epos - npos + 1);
+                    token = input.substr(npos, epos++ - npos + 1);
                 m_tokens.push_back(TokenAndId(token, LangDef::eTokenString));
 
                 break;
@@ -688,165 +688,32 @@ void ScriptProcessor::ScriptProcessLine::rawParse()
 
 
 // pass 0, nothing has been parsed. We are looking for pragma comments, and we clean up blanks lines to really be blank
-void  ScriptProcessor::ScriptPass0(ScriptProcessLine& pl, const CommandLineOptions& /*options*/)  // process tokens as part of pass 1
+void  ScriptProcessor::ScriptPass0(ScriptProcessLine& pl, const CommandLineOptions& options)  // process tokens as part of pass 1
 {
     if (pl.processed())     // line has already been processed, no need to process more
         return;
 
-    const std::vector<TokenAndId>& tokens = pl.getTokens();
+    std::vector<TokenAndId>& tokens = pl.getTokens();
+
+    if (tokens.empty()) // TODO I don't think this can ever happen, but just in case
+    {
+        pl.setProcessed(true);
+        return;
+    }
 
     for (size_t tokennum = 0; tokennum < tokens.size(); tokennum++)
     {
-        switch (tokens[0].getTokenId())
+        switch (tokens[tokennum].getTokenId())
         {
-        case LangDef::eTokenBlankLine:
+        case LangDef::eTokenBlankLine:  // parser ensured this is only token in the line
         {
             pl.setProcessed(true);
-            pl.setLine("");         // always fix to be a real blank line
+            tokens[tokennum].clrString();  // removed any spaces, it is now really a blank line
             break;
         }
         case LangDef::eTokenComment:
         {
-            if (pl.commentLine())       // entire line is comment
-                pl.setProcessed(true);  // so no need to process this line again
-
-            std::string_view comment   = tokens[tokennum].getToken();      // mixed case version  need this for the value
-            std::string_view commentLC = tokens[tokennum].getTokenLC();    // lower case version used to determine if this is a pragma and the type and name
-
-            std::size_t spos = commentLC.find("##pragma", 0);
-            if (spos != std::string_view::npos)
-            {
-                break;          // already processed #pragma, just skip
-            }
-
-            std::string_view pragmastr = "#pragma";
-            spos = commentLC.find(pragmastr, 0);
-            if ((spos != std::string_view::npos) || (tokennum != 0))
-            {
-                if ((spos != 0) || (tokennum != 0))
-                {
-                    m_errors.setWarning(pl.getLine().getInputLine(), pl.getFileName() + " #pragma not at line beginning, ignoring");
-                    break;
-                }
-
-                // we have a valid #pragma. Get the pragma name. This entire token is comments so we have to parse it manually
-                for (spos = pragmastr.size(); spos < commentLC.size() && pl.isSpace(commentLC[spos]); spos++);  // skip spaces to start of name
-                std::size_t epos = spos;
-                for (; epos < commentLC.size() && (pl.isSpace(commentLC[epos]) == false); epos++);  // find end of pragma name
-                if (spos >= commentLC.size())
-                {
-                    m_errors.setWarning(pl.getLine().getInputLine(), pl.getFileName() + " #pragma name invalid, ignoring");
-                    break;
-                }
-                std::string_view pragmaname = commentLC.substr(spos, epos - spos);
-                if (pragmaname == "define")    // define pragma
-                {
-                    for (spos = epos; spos < commentLC.size() && pl.isSpace(commentLC[spos]); spos++);  // skip spaces to start of name
-                    epos = spos;
-                    for (; epos < commentLC.size() && (commentLC[epos] != '='); epos++);  // find = value
-                    if (epos+1 >= commentLC.size())
-                    {
-                        m_errors.setWarning(pl.getLine().getInputLine(), pl.getFileName() + " #pragma define name=value invalid, ignoring");
-                        break;
-                    }
-                    std::string_view keyname(commentLC.substr(spos, epos - spos));
-                    spos = epos + 1;
-                    if (comment[spos] == '"')
-                    {
-                        for (epos = spos+1; epos < comment.size() && (comment[epos] != '"'); epos++);  // find = value
-                        epos++; // allows the closing quote to be included, we will catch missing " down below
-                    }
-                    else
-                    {
-                        for (epos = spos; epos < comment.size() && (pl.isSpace(comment[epos]) == false); epos++);  // find = value
-                    }
-                    std::string_view value(comment.substr(spos, epos - spos));
-
-                    // values must be one of the following types
-                    // - quoted string. Will be valid to be used where a quoted string is valid
-                    // - Alphanumeric name. First char is alpha, remaining chars are either alpha or numeric.
-                    // - positive int number.  Note that MM engine does not allow negative int literal values.
-                    // - positive floating point number. Note that the MM engine does not allow negative float literal values
-                    // if the value starts with a quote, it must end in a quote
-                    if (value[0] == '"')
-                    {
-                        if ((value.size() < 2) || value[value.size() - 1] != '"')
-                        {
-                            m_errors.setWarning(pl.getLine().getInputLine(), pl.getFileName() + " #pragma define name=value invalid missing closing quote, ignoring");
-                            break;
-                        }
-                    }
-                    else if (!isValidVarName(value) || !isFloat(value,false) || !isInteger(value,false))
-                    {
-                        m_errors.setWarning(pl.getLine().getInputLine(), pl.getFileName() + " Invalid value: "+ std::string(value) + "Must be string, alphanumeric name, float, int");
-                        break;
-                    }
-
-                    if (!isValidVarName(keyname))
-                    {
-                        m_errors.setWarning(pl.getLine().getInputLine(), pl.getFileName() + " #pragma define name=value invalid, ignoring");
-                        break;
-                    }
-
-
-                    // make sure it is unique
-                    if (m_langdef.contains(keyname))
-                    {
-                        m_errors.setWarning(pl.getLine().getInputLine(), pl.getFileName() + " #pragma define cannot use reserved name, ignoring");
-                        break;
-                    }
-                    if (m_defines.contains(keyname))
-                    {
-                        m_errors.setWarning(pl.getLine().getInputLine(), pl.getFileName() + " #pragma define cannot redefine, ignoring");
-                        break;
-                    }
-                    m_defines.addKeyValue(keyname, value);
-
-                    // now we need to change the comment so it does not get processed again
-                    pl.setLine('#' + std::string(pl.getLine().getInputLine().getLine()));
-                }
-                else if (pragmaname == "tyabscriptdate" || pragmaname == "tyabscriptincdate")    // modified time for main or included script, follows is the format
-                {
-                    std::string filename;
-                    std::string format;
-                    filename = m_lines[0].getFileName();
-                    if (pragmaname == "tyabscriptincdate")
-                    {
-                        filename = pl.getFileName();
-                    }
-
-                    // next parameter is the format script
-                    for (spos = epos; spos < comment.size() && pl.isSpace(comment[spos]); spos++);  // skip spaces to start of format
-                    if (spos < comment.size())
-                    {
-                        if (comment[spos] == '"')
-                        {
-                            for (epos = spos + 1; epos < comment.size() && (comment[epos] != '"'); epos++);  // find = value
-                            if (comment[epos] == '"')
-                                epos++;
-                        }
-                        else
-                        {
-                            for (epos = spos; epos < comment.size() && (pl.isSpace(comment[epos]) == false); epos++);  // find = value
-                        }
-                    }
-                    if ((spos >= comment.size()) || (epos > comment.size()))
-                    {
-                        m_errors.setWarning(pl.getLine().getInputLine(), pl.getFileName() + " #pragma " + std::string(pragmaname) + " date format invalid, ignoring");
-                    }
-                    else
-                    {
-                        format = comment.substr(spos, epos - spos);
-                        pl.setLine('#' + std::string(pl.getLine().getInputLine().getLine()) + getDateStr(filename, format));
-                    }
-                }
-                else
-                {
-                    m_errors.setWarning(pl.getLine().getInputLine(), pl.getFileName() + " #pragma name unknown: " + std::string(pragmaname) + " ignoring");
-                    break;
-                }
-
-            }
+            Pass0Comment(tokennum, tokens[tokennum], pl, options);
             break;
         }
         };
@@ -855,13 +722,177 @@ void  ScriptProcessor::ScriptPass0(ScriptProcessLine& pl, const CommandLineOptio
 
 }
 
+// pass 0 have a comment.
+// if comment starts wtih #pragma, treat as pragma. If stipping comments, strip anything not a #pragma or #. If a valid pragma save back as ##pragma
+void ScriptProcessor::Pass0Comment( std::size_t tokennum,  TokenAndId& token, ScriptProcessLine& pl, const CommandLineOptions& options)
+{
+    if (pl.commentLine())       // entire line is comment
+        pl.setProcessed(true);  // so no need to process this line again
+
+    std::string_view comment = token.getToken();      // mixed case version  need this for the value
+    std::string_view commentLC = token.getTokenLC();  // lower case version used to determine if this is a pragma and the type and name
+
+    std::string_view prespaces; // this will be set to any prespaces
+    std::size_t spos = 0;
+    for (; spos < comment.size() && pl.isSpace(comment[spos]); spos++);
+    prespaces = comment.substr(0, spos);
+    comment = comment.substr(spos);     // should start with #, tokenizer ensured this
+    commentLC = commentLC.substr(spos); // should start with #, tokenizer ensured this
+
+    spos = commentLC.find("##pragma", 0);
+    if (spos == 0)
+    {
+        return;          // already processed #pragma, just skip
+    }
+
+    std::string_view pragmastr = "#pragma";
+    spos = commentLC.find(pragmastr, 0);
+    if (spos != std::string_view::npos)
+    {
+        if ((spos != 0) || (tokennum != 0))
+        {
+            m_errors.setWarning(pl.getLine().getInputLine(), pl.getFileName() + ": #pragma must be a full line comment and at beginning");
+            return;
+        }
+
+        // we have a valid #pragma. Get the pragma name. This entire token is comments so we have to parse it manually
+        for (spos += pragmastr.size(); spos < commentLC.size() && pl.isSpace(commentLC[spos]); spos++);  // skip spaces to start of name
+        std::size_t epos = spos;
+        for (; epos < commentLC.size() && (pl.isSpace(commentLC[epos]) == false); epos++);  // find end of pragma name
+        if (spos >= commentLC.size())
+        {
+            m_errors.setWarning(pl.getLine().getInputLine(), pl.getFileName() + ": #pragma name invalid, ignoring");
+            return;
+        }
+        std::string_view pragmaname = commentLC.substr(spos, epos - spos);
+        if (pragmaname == "define")    // define pragma
+        {
+            for (spos = epos; spos < commentLC.size() && pl.isSpace(commentLC[spos]); spos++);  // skip spaces to start of name
+            epos = spos;
+            for (; epos < commentLC.size() && (commentLC[epos] != '='); epos++);  // find = value
+            if (epos + 1 >= commentLC.size())
+            {
+                m_errors.setWarning(pl.getLine().getInputLine(), pl.getFileName() + ": #pragma define name=value invalid, ignoring");
+                return;
+            }
+            std::string_view keyname(commentLC.substr(spos, epos - spos));
+            spos = epos + 1;
+            if (comment[spos] == '"')
+            {
+                for (epos = spos + 1; epos < comment.size() && (comment[epos] != '"'); epos++);  // find = value
+                epos++; // allows the closing quote to be included, we will catch missing " down below
+            }
+            else
+            {
+                for (epos = spos; epos < comment.size() && (pl.isSpace(comment[epos]) == false); epos++);  // find = value
+            }
+            std::string_view value(comment.substr(spos, epos - spos));
+
+            // values must be one of the following types
+            // - quoted string. Will be valid to be used where a quoted string is valid
+            // - Alphanumeric name. First char is alpha, remaining chars are either alpha or numeric.
+            // - positive int number.  Note that MM engine does not allow negative int literal values.
+            // - positive floating point number. Note that the MM engine does not allow negative float literal values
+            // if the value starts with a quote, it must end in a quote
+            if (value[0] == '"')
+            {
+                if ((value.size() < 2) || value[value.size() - 1] != '"')
+                {
+                    m_errors.setWarning(pl.getLine().getInputLine(), pl.getFileName() + ": #pragma define name=value invalid missing closing quote, ignoring");
+                    return;
+                }
+            }
+            else if (!isValidVarName(value) || !isFloat(value, false) || !isInteger(value, false))
+            {
+                m_errors.setWarning(pl.getLine().getInputLine(), pl.getFileName() + ": Invalid value: " + std::string(value) + "Must be string, alphanumeric name, float, int");
+                return;
+            }
+
+            if (!isValidVarName(keyname))
+            {
+                m_errors.setWarning(pl.getLine().getInputLine(), pl.getFileName() + ": #pragma define name=value invalid, ignoring");
+                return;
+            }
+
+
+            // make sure it is unique
+            if (m_langdef.contains(keyname))
+            {
+                m_errors.setWarning(pl.getLine().getInputLine(), pl.getFileName() + ": #pragma define cannot use reserved name, ignoring");
+                return;
+            }
+            if (m_defines.contains(keyname))
+            {
+                m_errors.setWarning(pl.getLine().getInputLine(), pl.getFileName() + ": #pragma define cannot redefine, ignoring");
+                return;
+            }
+            m_defines.addKeyValue(keyname, value);
+
+            // now we need to change the comment so it does not get processed again
+            token.changeString(std::string(prespaces) + '#' + std::string(comment));
+        }
+        else if (pragmaname == "tyabscriptdate" || pragmaname == "tyabscriptincdate")    // modified time for main or included script, follows is the format
+        {
+            std::string filename;
+            std::string format;
+            filename = m_lines[0].getFileName();
+            if (pragmaname == "tyabscriptincdate")
+            {
+                filename = pl.getFileName();
+            }
+
+            // next parameter is the format script
+            for (spos = epos; spos < comment.size() && pl.isSpace(comment[spos]); spos++);  // skip spaces to start of format
+            if (spos < comment.size())
+            {
+                if (comment[spos] == '"')
+                {
+                    for (epos = spos + 1; epos < comment.size() && (comment[epos] != '"'); epos++);  // find = value
+                    if (comment[epos] == '"')
+                        epos++;
+                }
+                else
+                {
+                    for (epos = spos; epos < comment.size() && (pl.isSpace(comment[epos]) == false); epos++);  // find = value
+                }
+            }
+            if ((spos >= comment.size()) || (epos > comment.size()))
+            {
+                m_errors.setWarning(pl.getLine().getInputLine(), pl.getFileName() + ": #pragma " + std::string(pragmaname) + " date format invalid, ignoring");
+            }
+            else
+            {
+                format = comment.substr(spos, epos - spos);
+                // now we need to change the comment so it does not get processed again and include the date info.
+                token.changeString(std::string(prespaces) + '#' + std::string(comment) + getDateStr(filename, format));
+            }
+        }
+        else
+        {
+            m_errors.setWarning(pl.getLine().getInputLine(), pl.getFileName() + ": #pragma name unknown: " + std::string(pragmaname) + " ignoring");
+        }
+    }
+    else    // this is just a comment token.  If we are stipping comments, see if the first non-space is #. and if so we keep it
+    {
+        if (options.m_bScrNoComments)   // removing comments  epos is the starting first non-white space char of the comment.
+        {
+            if (comment.find("#.",0)==0)
+            {
+                return;     // keep comment
+            }
+            token.clrString();  // comment is removed
+        }
+
+    }
+}
+
 
 // return true if we match the defination which is the first item in defination. If we match, we return true even if we then find errors.
 // we skip the tokens first item if it is spaces, we have already either fixed or generated an error for that.
 bool ScriptProcessor::matchDefination(const LangDef::Defination& defination, const std::vector<TokenAndId>& tokens, ScriptProcessLine& /*pl*/, const CommandLineOptions& /*options*/)
 {
     std::size_t tokenNum = 0;
-    // skip any leading spaces, we have already fix them or logged an error
+    // skip any leading spaces, we have already fixed them or logged an error
     if (tokens[0].getTokenId() == LangDef::TokenTypes::eTokenSpace || tokens[0].getTokenId() == LangDef::TokenTypes::eTokenSpaces)
         tokenNum++;
 
@@ -902,45 +933,214 @@ void  ScriptProcessor::ScriptPass1(ScriptProcessLine& pl, const CommandLineOptio
         return;
 
     std::vector<TokenAndId>& tokens = pl.getTokens();
-    if (tokens.empty()) // TODO I don't think this can ever happen, but just in case
-    {
-        pl.setProcessed(true);
-        return;
-    }
+    std::size_t tokennum = 0;
 
     // first thing to handle is any leading space. Tag as an error if we are not fixing
-    if (tokens[0].getTokenId() == LangDef::TokenTypes::eTokenSpace || tokens[0].getTokenId() == LangDef::TokenTypes::eTokenSpaces)
+    if ((tokens[0].getTokenId() == LangDef::TokenTypes::eTokenSpace) || (tokens[0].getTokenId() == LangDef::TokenTypes::eTokenSpaces))
     {
         if (options.m_bScrFixSpace)
         {
             tokens[0].clrString();  // we fix by clearing the token strings to nothing
+            tokennum++;             // move to next token
         }
         else
         {
-            m_errors.setError(pl.getLine().getInputLine(), "leading whilespace not allowed");
+            m_errors.setError(pl.getLine().getInputLine(), pl.getFileName() + ": leading whitespace not allowed");
         }
     }
 
-    // see if these match
-    bool bMatch = matchDefination(m_langdef.cmdInt, tokens, pl, options);
-    if (!bMatch)
-        bMatch = matchDefination(m_langdef.cmdFloat, tokens, pl, options);
-    if (!bMatch)
-        bMatch = matchDefination(m_langdef.cmdArray, tokens, pl, options);
-    if (!bMatch)
-        bMatch = matchDefination(m_langdef.cmdString, tokens, pl, options);
-    if (!bMatch)
-        bMatch = matchDefination(m_langdef.cmdBool, tokens, pl, options);
-    if (!bMatch)
-        bMatch = matchDefination(m_langdef.cmdArrow, tokens, pl, options);
-    if (!bMatch)
-        bMatch = matchDefination(m_langdef.cmdMiner, tokens, pl, options);
-    if (!bMatch)
-        bMatch = matchDefination(m_langdef.cmdVehicle, tokens, pl, options);
-    if (!bMatch)
-        bMatch = matchDefination(m_langdef.cmdBuilding, tokens, pl, options);
+    // in pass 1 we are looking for the following:
+    //  - variables (int, bool, float, etc)
+    //  - variable:
+    //  - triggers (if, when)
+    //  - event chain names (name followed by ::
+    // only generate errors if we know we are one of these and its invalid. Eventchain name is the only one we can't fully parse here
+
+    uint64_t id = tokens[tokennum].getTokenId();
+    if (id == LangDef::eTokenName)
+    {
+        std::string_view tokenlc = tokens[tokennum].getTokenLC();   // get lower case name
+
+        // first thing we do is see if this can be replaced by a define
+        if (m_defines.contains(tokenlc))
+        {
+            // now get the value. It itself can be another define, so recurive process until we get a final result. Check for circular definations
+            bool bError = false;
+            std::string value = processDefines(tokenlc, pl, bError);
+            if (!bError)
+            {
+                tokens[tokennum].changeString(value);
+                tokenlc = tokens[tokennum].getTokenLC();   // get lower case name of subsituted token
+            }
+        }
+
+        // see if this could start an event chain.
+        if (nextTokenId(tokennum, tokens, false) == LangDef::eTokenDColon)   // this looks like we are defining an event chain
+        {
+            id = nextTokenId(tokennum, tokens, true);
+            if ((id == LangDef::eTokenSpace) || (id == LangDef::eTokenSpaces))  // if there is space(s)
+            {
+                if (options.m_bScrFixSpace)     // and we can fix the space(s)
+                {
+                    tokens[tokennum + 1].clrString();   // fix them.
+                }
+                else
+                    m_errors.setError(pl.getLine().getInputLine(), pl.getFileName() + ": whitespace not allowed");
+            }
+
+            if (m_langdef.contains(tokenlc))
+            {
+                m_errors.setError(pl.getLine().getInputLine(), pl.getFileName() + ": Cannot use reserved name for eventchain name: " + std::string(tokenlc));
+                return;
+            }
+
+            if (containsUsrName(tokenlc))
+            {
+                m_errors.setError(pl.getLine().getInputLine(), pl.getFileName() + ": Eventchain name is already user defined as var/eventchain " + std::string(tokenlc) );
+                return;
+            }
+
+            if (!isValidVarName(tokenlc))
+            {
+                m_errors.setError(pl.getLine().getInputLine(), pl.getFileName() + ": Eventchain name is invalid " + std::string(tokenlc));
+                return;
+            }
+            // name is valid and unique, add it
+            addUsrName(tokens[tokennum]);
+            return;
+
+
+        }
+        else  // not an eventchain, so check for the cases we allow
+        {
+            switch (id)
+            {
+            case LangDef::eDefMiner:        // miner
+            {
+            }
+            break;
+
+            case LangDef::eDefBuilding:     // building
+            {
+            }
+            break;
+
+            case LangDef::eDefVehicle:      // vehicle
+            {
+            }
+            break;
+
+            case LangDef::eDefInt:          // int
+            {
+            }
+            break;
+
+            case LangDef::eDefFloat:        // float
+            {
+            }
+            break;
+
+            case LangDef::eDefString:       // string
+            {
+            }
+            break;
+
+            case LangDef::eDefArray:        // intarray
+            {
+            }
+            break;
+
+            case LangDef::eDefBool:         // bool 
+            {
+            }
+            break;
+
+            case LangDef::eDefObjective:    // variable:
+            {
+            }
+            break;
+
+            case LangDef::eDefArrow:        // arrow
+            {
+            }
+            break;
+
+            case LangDef::eOccurance:       // if and when
+            {
+            }
+            break;
+
+
+
+
+
+
+
+            }
+
+        }
+        // see if this matches 
+    }
 }
 
+// input is lower case of name that does match items in defines. Track all of the redefinations to check for circular reference
+std::string ScriptProcessor::processDefines(std::string_view token, const ScriptProcessLine& pl, bool& bError)
+{
+    std::unordered_set<std::string_view> redefs;
+    redefs.reserve(32);   // prevent excessive rehashing on growth
+
+    std::string rets = processDefines(token, bError, redefs);
+
+    if (bError)
+    {
+        m_errors.setError(pl.getLine().getInputLine(), "Circular define value detected: " + rets);
+    }
+    else if (!isValidVarName(rets))
+    {
+        bError = true;
+        m_errors.setError(pl.getLine().getInputLine(), "Invalid define value detected: " + rets);
+    }
+
+    return rets;
+}
+
+std::string ScriptProcessor::processDefines(std::string_view token, bool& bError, std::unordered_set<std::string_view> & redefs)
+{
+    std::string tokenlc = toLower(token);
+    if (redefs.contains(tokenlc))       // check for circular reference
+    {
+        bError = true;                  // found it
+        return std::string(tokenlc);    // we return the name that was already replaced.
+    }
+    redefs.insert(tokenlc);             // no circular refence so add this one for next recursion
+
+    return m_defines.contains(tokenlc) ? processDefines(m_defines.getValue(tokenlc), bError, redefs) : std::string(token);
+}
+
+
+
+
+
+std::size_t ScriptProcessor::nextTokenId(std::size_t tokennum, const std::vector<TokenAndId> & tokens, bool bAllowSpace)
+{
+    tokennum++;
+    if (tokennum < tokens.size())
+    {
+        uint64_t id = tokens[tokennum].getTokenId();
+        if ((id == LangDef::eTokenSpace) || (id == LangDef::eTokenSpaces))
+        {
+            if (bAllowSpace)
+                return id;
+            tokennum++;
+            if (tokennum < tokens.size())
+            {
+                return tokens[tokennum].getTokenId();
+            }
+        }
+
+    }
+    return 0;
+}
 
 void  ScriptProcessor::ScriptPass2(ScriptProcessLine& pl, const CommandLineOptions& /*options*/)  // process tokens as part of pass 2
 {

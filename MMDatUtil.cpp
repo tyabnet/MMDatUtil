@@ -176,7 +176,7 @@ std::string getDateStr(std::string_view path, std::string_view format)
                 break;
 
             case 'm':   // month
-                sprintf_s(buffer, "%02d", tlf.tm_mon);
+                sprintf_s(buffer, "%02d", tlf.tm_mon+1);
                 sdate += buffer;
                 break;
 
@@ -1052,7 +1052,7 @@ int main(int , char* )
         std::size_t npos = toLower(cmdParser.getOptions().m_outmap).rfind(".dat");
         if (npos == std::string::npos)
         {
-            printf(" ERROR: outmap: %s must have a .dat extension\n", cmdParser.getOptions().m_srcmap.c_str());
+            printf(" ERROR: outmap: %s must have a .dat extension\n", cmdParser.getOptions().m_outmap.c_str());
             showHelpOption();
             return 1;
         }

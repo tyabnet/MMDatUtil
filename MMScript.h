@@ -15,7 +15,7 @@
 // note that we can have multiple names, one a macro and one a trigger. This class is setup for direct use in unordered_set
 // where the key is lower case string
 // thus to search, do it twice, once as a macro and once as a trigger.
-// saves a ref to the parsed token, a lower case version of that as a string, and the parse ID
+// saves a copy of the parsed token, a lower case version, and the parse ID
 // this class does not itself know anything about meaning, predefineds, etc.
 
 class TokenAndId
@@ -25,8 +25,19 @@ public:
     ~TokenAndId() = default;
 
     TokenAndId(std::string_view token, uint64_t id ) { setTokenAndId(token, id); }
+    TokenAndId(const TokenAndId& ref)
+    {
+        setTokenAndId(ref.getToken(), ref.getTokenId() );
+    }
 
     void setTokenAndId(std::string_view token, uint64_t id)
+    {
+        m_token = token;
+        m_tokenlc = toLower(token);  // make copy so we can covert to lower case
+        m_id = id;
+    }
+
+    void setTokenAndId(const std::string & token, uint64_t id)
     {
         m_token = token;
         m_tokenlc = toLower(token);  // make copy so we can covert to lower case
@@ -48,11 +59,18 @@ public:
         return sv == m_tokenlc;
     }
 
-    // used when fixing space(s), we just clear the strings to nothing
+    // used when fixing space(s) or ignoring comments, we just clear the strings to nothing
     void clrString()
     {
-        m_token = std::string_view();
-        m_tokenlc = std::string_view();
+        m_token.clear();
+        m_tokenlc.clear();
+    }
+
+    // used when saving pragmas, we save as ##pragma. Also used for #pragma defines and when we change variable names
+    void changeString( const std::string & newStr )
+    {
+        m_token = newStr;
+        m_tokenlc = toLower(newStr);
     }
 
 
@@ -75,9 +93,27 @@ public:
 
 
 protected:
-    std::string_view    m_token;         // original 
-    std::string         m_tokenlc;       // lower case of token
-    uint64_t            m_id = 0;
+    std::string    m_token;         // in case we modify, we have to store our own copy
+    std::string    m_tokenlc;       // lower case of token
+    uint64_t       m_id = 0;
+};
+
+
+// storage for user variables. we track how many times they are accessed
+class UsrName : public TokenAndId
+{
+public:
+    UsrName() = default;
+    ~UsrName() = default;
+
+    UsrName(std::string_view token, uint64_t id) : TokenAndId(token, id) {}
+    UsrName(const TokenAndId& ref) : TokenAndId(ref) {}
+
+    void incCount() { m_count++; }
+    int getCount() const { return m_count; }
+protected:
+    int m_count = 0;
+
 };
 
 
@@ -247,11 +283,22 @@ public:
         return found;
     }
 
+    uint64_t builtIn(std::string_view str) const
+    {
+        TokenAndId key(str, 0);
+        auto it = m_builtins.find(key);
+        if (it != m_builtins.cend())
+        {
+            return (*it).getTokenId();
+        }
+        return 0;
+    }
+
 protected:
     typedef std::unordered_set<TokenAndId, TokenAndId::compHash, TokenAndId::compHash> TokenSet_t;
 
     // preload the hash at constructor
-    TokenSet_t m_builtins =
+    const TokenSet_t m_builtins =
     {
         { "crystals",                     eMacro | e0Parms | eRetInt },
         { "ore",                          eMacro | e0Parms | eRetInt },
@@ -268,7 +315,7 @@ protected:
         { "ConstructedBuilding",          eMacro | e0Parms | eRetBuilding },
         { "random",                       eMacro | e2Parms | eRetInt | eRetFloat | eParmsInt | eParmsFloat },
 
-        { "init",                         eDefInit },
+        //{ "init",                         eDefInit },
 
         { "BuildingToolStore_C",          eMacro | e0Parms | eRetInt | eCollection | eBuilding | eEnableDisableParm },
         { "BuildingTeleportPad_C",        eMacro | e0Parms | eRetInt | eCollection | eBuilding | eEnableDisableParm },
@@ -575,10 +622,15 @@ public:
             return std::string(m_line.getFileName());
         }
 
+        // build line from the parsed tokens - it was those that could have been modified
         std::string buildString() const
         {
             std::string str;
-            str = m_line.getInputLine().getLine();
+            str.reserve(256);
+            for (std::size_t i = 0; i < m_tokens.size(); i++)
+            {
+                str += m_tokens[i].getToken();
+            }
             return str;
         }
 
@@ -646,7 +698,7 @@ public:
             m_lines[i].rawParse();               // returns all tokens
             ScriptPass0( m_lines[i], options );  // process pragams
         }
-        if (!m_errors.getErrors().empty())
+        if (!m_errors.getErrors().empty())  // if we had errors, then stop
             return 1;
 
         // now to 1nd pass script processing
@@ -654,7 +706,7 @@ public:
         {
             ScriptPass1(m_lines[i], options);  // process tokens as part of pass 1.
         }
-        if (!m_errors.getErrors().empty())
+        if (!m_errors.getErrors().empty())  // if we had errors, then stop
             return 1;
 
 
@@ -663,7 +715,7 @@ public:
         {
             ScriptPass2(m_lines[i], options );  // process tokens as part of pass 1.
         }
-        if (!m_errors.getErrors().empty())
+        if (!m_errors.getErrors().empty())  // if we had errors, then stop
             return 1;
 
         return 0;
@@ -721,13 +773,33 @@ protected:
     void ScriptPass1(ScriptProcessLine &pl, const CommandLineOptions& options);  // process tokens as part of pass 1
     void ScriptPass2(ScriptProcessLine &pl, const CommandLineOptions& options);  // process tokens as part of pass 2
 
+    void Pass0Comment(std::size_t tokennum, TokenAndId & tokens, ScriptProcessLine& pl, const CommandLineOptions& options);
+    std::size_t nextTokenId(std::size_t tokennum, const std::vector<TokenAndId>& tokens, bool bAllowSpace);
+
+    std::string processDefines(std::string_view token, const ScriptProcessLine& pl, bool& bError);
+    std::string processDefines(std::string_view token, bool& bError, std::unordered_set<std::string_view>& redefs);
+
+
     bool matchDefination(const LangDef::Defination& defination, const std::vector<TokenAndId>& tokens, ScriptProcessLine& pl, const CommandLineOptions& options);
+
+    bool containsUsrName(std::string_view str)
+    {
+        UsrName key(str, 0);
+        return m_varNames.contains(key);
+    }
+
+    void addUsrName(const TokenAndId& key)
+    {
+        m_varNames.insert(key);
+    }
 
 
 
     std::vector<ScriptProcessLine> m_lines;
     ErrorWarning                   m_errors;
 
+    typedef std::unordered_set<UsrName, UsrName::TokenAndId::compHash, UsrName::TokenAndId::compHash> UsrName_t;
+    UsrName_t                      m_varNames;  // user variable names
     Defines                        m_defines;   // user macros
     LangDef                        m_langdef;
 

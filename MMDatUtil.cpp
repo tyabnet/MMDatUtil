@@ -625,11 +625,11 @@ class CommandLineParser
                     break;
 
                 case 8:  // offsetrow  integer parameter
-                    m_cmdOptions.m_nOffsetRow = getIntParm(++i, true);
+                    m_cmdOptions.m_nOffsetRow = getIntParm(++i, true, tok.getName());
                     break;
 
                 case 9:  // offsetcol  integer parameter
-                    m_cmdOptions.m_nOffsetCol = getIntParm(++i, true);
+                    m_cmdOptions.m_nOffsetCol = getIntParm(++i, true, tok.getName());
                     break;
 
                 case 10:  // overwrite  no parameter
@@ -637,11 +637,11 @@ class CommandLineParser
                     break;
 
                 case 11:  // resizerow  integer parameter
-                    m_cmdOptions.m_nRowResize = getIntParm(++i, false);
+                    m_cmdOptions.m_nRowResize = getIntParm(++i, false, tok.getName());
                     break;
 
                 case 12:  // resizecol  integer parameter
-                    m_cmdOptions.m_nColResize = getIntParm(++i, false);
+                    m_cmdOptions.m_nColResize = getIntParm(++i, false, tok.getName());
                     break;
 
                 case 13:  // copysrc  no parameter
@@ -650,7 +650,7 @@ class CommandLineParser
                     break;
 
                 case 14:  // deftile  integer parameter
-                    m_cmdOptions.m_nDefTileID = getIntParm(++i, false);
+                    m_cmdOptions.m_nDefTileID = getIntParm(++i, false, tok.getName());
                     if (m_bValid && ((m_cmdOptions.m_nDefTileID <= 0) || (m_cmdOptions.m_nDefTileID > 175)))
                     {
                         m_bValid = false;
@@ -660,15 +660,15 @@ class CommandLineParser
                     break;
 
                 case 15:  // defheight  integer parameter
-                    m_cmdOptions.m_nDefHeight = getIntParm(++i, true);
+                    m_cmdOptions.m_nDefHeight = getIntParm(++i, true, tok.getName());
                     break;
 
                 case 16:  // decrystal  integer parameter
-                    m_cmdOptions.m_nDefCrystal = getIntParm(++i, false);
+                    m_cmdOptions.m_nDefCrystal = getIntParm(++i, false, tok.getName());
                     break;
 
                 case 17:  // defore  integer parameter
-                    m_cmdOptions.m_nDefOre = getIntParm(++i, false);
+                    m_cmdOptions.m_nDefOre = getIntParm(++i, false, tok.getName());
                     break;
 
                 case 18: // mapname  name of map parameter
@@ -737,13 +737,13 @@ class CommandLineParser
 
                 case 26:  // mergerect
                 {   // subregion. startrow,startcol,endrow,endcol. Each will be in its own token
-                    m_cmdOptions.m_srow = getIntParm(++i, false);
+                    m_cmdOptions.m_srow = getIntParm(++i, false, tok.getName());
                     if (m_error.empty())
-                        m_cmdOptions.m_scol = getIntParm(++i, false);
+                        m_cmdOptions.m_scol = getIntParm(++i, false, tok.getName());
                     if (m_error.empty())
-                        m_cmdOptions.m_erow = getIntParm(++i, false);
+                        m_cmdOptions.m_erow = getIntParm(++i, false, tok.getName());
                     if (m_error.empty())
-                        m_cmdOptions.m_ecol = getIntParm(++i, false);
+                        m_cmdOptions.m_ecol = getIntParm(++i, false, tok.getName());
                     if (m_error.empty())
                     {
                         if ((m_cmdOptions.m_srow <= m_cmdOptions.m_erow) && (m_cmdOptions.m_scol <= m_cmdOptions.m_ecol))
@@ -754,6 +754,38 @@ class CommandLineParser
                             m_error = "invalid -mergerect values";
                         }
                     }
+                    break;
+                }
+
+                case 27: // flattenhigh
+                {
+                    m_cmdOptions.m_flathighval       = getIntParm(++i, true, tok.getName());
+                    m_cmdOptions.m_flathighnewheight = getIntParm(++i, true, tok.getName());
+                    m_cmdOptions.m_bFlattenHigh      = true;
+                    break;
+                }
+
+                case 28: // flattenlow
+                {
+                    m_cmdOptions.m_flatlowval       = getIntParm(++i, true, tok.getName());
+                    m_cmdOptions.m_flatlownewheight = getIntParm(++i, true, tok.getName());
+                    m_cmdOptions.m_bFlattenLow      = true;
+                    break;
+                }
+
+                case 29: //flattenbetween
+                {
+                    m_cmdOptions.m_flatBetweenLow  = getIntParm(++i, true, tok.getName());
+                    m_cmdOptions.m_flatBetweenHigh = getIntParm(++i, true, tok.getName());
+                    m_cmdOptions.m_flatBetweenVal  = getIntParm(++i, true, tok.getName());
+                    m_cmdOptions.m_bFlattenBetween = true;
+                    break;
+                }
+
+                case 30: // borderheight
+                {
+                    m_cmdOptions.m_BorderHeight  = getIntParm(++i, true, tok.getName());
+                    m_cmdOptions.m_bBorderHeight = true;
                     break;
                 }
 
@@ -783,6 +815,7 @@ class CommandLineParser
           }
 
           int getId() const { return m_id; }
+          std::string_view getName() const { return m_name; }
 
     protected:
         std::string_view m_name;
@@ -804,33 +837,37 @@ class CommandLineParser
 
     const std::unordered_set<optionNameID,optionNameID,optionNameID> m_options =  // predefined command line options
     {
-        { "-help",          0 },
-        { "-srcmap",        1 },
-        { "-outmap",        2 },
-        { "-script",        3 },
-        { "-mergeheight",   4 },
-        { "-mergecrystal",  5 },
-        { "-mergeore",      6 },
-        { "-mergetile",     7 },
-        { "-offsetrow",     8 },
-        { "-offsetcol",     9 },
-        { "-overwrite",    10 },
-        { "-resizerow",    11 },
-        { "-resizecol",    12 },
-        { "-copysrc",      13 },
-        { "-deftile",      14 },
-        { "-defheight",    15 },
-        { "-defcrystal",   16 },
-        { "-defore",       17 },
-        { "-mapname",      18 },
-        { "-creator",      19 },
-        { "-fix",          20 },
-        { "-sincdirs",     21 },
-        { "-sfixspace",    22 },
-        { "-snocomment",   23 },
-        { "-sdefine",      24 },
-        { "-sdatefmt",     25 },
-        { "-mergerect",    26 },
+        { "-help",            0 },
+        { "-srcmap",          1 },
+        { "-outmap",          2 },
+        { "-script",          3 },
+        { "-mergeheight",     4 },
+        { "-mergecrystal",    5 },
+        { "-mergeore",        6 },
+        { "-mergetile",       7 },
+        { "-offsetrow",       8 },
+        { "-offsetcol",       9 },
+        { "-overwrite",      10 },
+        { "-resizerow",      11 },
+        { "-resizecol",      12 },
+        { "-copysrc",        13 },
+        { "-deftile",        14 },
+        { "-defheight",      15 },
+        { "-defcrystal",     16 },
+        { "-defore",         17 },
+        { "-mapname",        18 },
+        { "-creator",        19 },
+        { "-fix",            20 },
+        { "-sincdirs",       21 },
+        { "-sfixspace",      22 },
+        { "-snocomment",     23 },
+        { "-sdefine",        24 },
+        { "-sdatefmt",       25 },
+        { "-mergerect",      26 },
+        { "-flattenabove",   27 },
+        { "-flattenbelow",   28 },
+        { "-flattenbetween", 29 },
+        { "-borderheight",   30 }
     };
 
     std::string_view getStringParm(std::size_t i)
@@ -844,13 +881,13 @@ class CommandLineParser
         return std::string_view();
     }
 
-    int getIntParm(std::size_t i, bool bAllowNeg)
+    int getIntParm(std::size_t i, bool bAllowNeg, std::string_view option)
     {
         if (i < m_tokens.size())
-            return getInteger(m_tokens[i], bAllowNeg, m_tokens[i - 1]);
+            return getInteger(m_tokens[i], bAllowNeg, option);
         m_bValid = false;
         m_error = "missing integer for option: ";
-        m_error += m_tokens[i - 1];
+        m_error += option;
         return 0;
     }
 
@@ -944,33 +981,37 @@ void help()
     printf("    parameters are until the next space unless it is double quoted.\n");
     printf("    strings may have a \\\" in them to embed a quote.\n");
     printf("    Option:\n");
-    printf("      -help         display this help\n");
-    printf("      -srcmap       file name of a source merge .DAT\n");
-    printf("      -outmap       file name of a destination .DAT\n");
-    printf("      -overwrite    allow changing existing outmap\n");
-    printf("      -copysrc      outmap is recreated from srcmap, implies -overwrite\n");
-    printf("      -mergeheight  merge height values from srcmap into outmap\n");
-    printf("      -mergecrystal merge crystals values from srcmap into outmap\n");
-    printf("      -mergeore     merge ore values from srcmap into outmap\n");
-    printf("      -mergetile    merge tile values from srcmap into outmap\n");
-    printf("      -mergerect    startrow,startcol,endrow,endcol for merge\n");
-    printf("      -offsetrow    add row offset when merging/copying srcmap into outmap\n");
-    printf("      -offsetcol    add col offset when merging/copying srcmap into outmap\n");
-    printf("      -resizerow    resize outmap rows for tiles,height,resources\n");
-    printf("      -resizecol    resize outmap cols for tiles,height,resources\n");
-    printf("      -deftile      value for invalid tiles or resize, default 1\n");
-    printf("      -defheight    value for invalid heights or resize, default 0\n");
-    printf("      -defcrystal   value for invalid crystals or resize, default 0\n");
-    printf("      -defore       value for invalid ore or resize, default 0\n");
-    printf("      -mapname      levelname: value saved in outmap info section\n");
-    printf("      -creator      creator: value saved in outmap info section\n");
-    printf("      -fix          fix invalid/missing tile, height, crystal, ore values\n");
-    printf("      -script       filename of script file to replace outmap's script\n");
-    printf("      -sincdirs     ; separated list of paths to search for script includes\n");
-    printf("      -sfixspace    automatically remove spaces where not allowed in scripts\n");
-    printf("      -snocomment   remove all comments in script except #.\n");
-    printf("      -sdefine      name=value   define script subsitution\n");
-    printf("      -sdatefmt     format for TyabScript{Inc}Date, default \"y.m.d\"");
+    printf("      -help           display this help\n");
+    printf("      -srcmap         file name of a source merge .DAT\n");
+    printf("      -outmap         file name of a destination .DAT\n");
+    printf("      -overwrite      allow changing existing outmap\n");
+    printf("      -copysrc        outmap is recreated from srcmap, implies -overwrite\n");
+    printf("      -mergeheight    merge height values from srcmap into outmap\n");
+    printf("      -mergecrystal   merge crystals values from srcmap into outmap\n");
+    printf("      -mergeore       merge ore values from srcmap into outmap\n");
+    printf("      -mergetile      merge tile values from srcmap into outmap\n");
+    printf("      -mergerect      startrow,startcol,endrow,endcol for merge\n");
+    printf("      -offsetrow      add row offset when merging/copying srcmap into outmap\n");
+    printf("      -offsetcol      add col offset when merging/copying srcmap into outmap\n");
+    printf("      -resizerow      resize outmap rows for tiles,height,resources\n");
+    printf("      -resizecol      resize outmap cols for tiles,height,resources\n");
+    printf("      -deftile        value for invalid tiles or resize, default 1\n");
+    printf("      -defheight      value for invalid heights or resize, default 0\n");
+    printf("      -defcrystal     value for invalid crystals or resize, default 0\n");
+    printf("      -defore         value for invalid ore or resize, default 0\n");
+    printf("      -mapname        levelname: value saved in outmap info section\n");
+    printf("      -creator        creator: value saved in outmap info section\n");
+    printf("      -fix            fix invalid/missing tile, height, crystal, ore values\n");
+    printf("      -script         filename of script file to replace outmap's script\n");
+    printf("      -sincdirs       ; separated list of paths to search for script includes\n");
+    printf("      -sfixspace      automatically remove spaces where not allowed in scripts\n");
+    printf("      -snocomment     remove all comments in script except #.\n");
+    printf("      -sdefine        name=value   define script subsitution\n");
+    printf("      -sdatefmt       format for TyabScript{Inc}Date, default \"y.m.d\"");
+    printf("      -flattenabove   height, newheight. Heights above height are set to newheight\n");
+    printf("      -flattenbelow   height, newheight. Heights below height are set to newheight\n");
+    printf("      -flattenbetween low, high, value. low <= height <= hight are set to value\n");
+    printf("      -borderheight   force all borders to have this height value\n");
     printf("\n");
     printf("  -srcmap is used to provide merge data unless -copysrc is used\n");
     printf("  -script will replace outmap's script with the contents of that file.\n");
@@ -1274,6 +1315,30 @@ int main(int , char* )
             outMap.mergeOre(srcMap, cmdParser.getOptions().m_srow, cmdParser.getOptions().m_scol, cmdParser.getOptions().m_erow, cmdParser.getOptions().m_ecol, cmdParser.getOptions().m_nOffsetRow, cmdParser.getOptions().m_nOffsetCol);
             printf(" Merging srcmap ore into outmap using offsets row: %d, columns: %d\n", cmdParser.getOptions().m_nOffsetRow, cmdParser.getOptions().m_nOffsetCol);
         }
+
+        // process any height changes
+        if (cmdParser.getOptions().m_bFlattenHigh)
+        {
+            outMap.flattenHeightHigh(cmdParser.getOptions().m_flathighval, cmdParser.getOptions().m_flathighnewheight);
+            printf(" Heights over %d set to %d\n", cmdParser.getOptions().m_flathighval, cmdParser.getOptions().m_flathighnewheight);
+        }
+        if (cmdParser.getOptions().m_bFlattenLow)
+        {
+            outMap.flattenHeightLow(cmdParser.getOptions().m_flatlowval, cmdParser.getOptions().m_flatlownewheight);
+            printf(" Heights below %d set to %d\n", cmdParser.getOptions().m_flatlowval, cmdParser.getOptions().m_flatlownewheight);
+        }
+        if (cmdParser.getOptions().m_bFlattenBetween)
+        {
+            outMap.flattenHeightBetween(cmdParser.getOptions().m_flatBetweenLow, cmdParser.getOptions().m_flatBetweenHigh, cmdParser.getOptions().m_flatBetweenVal);
+            printf(" Heights: [%d,%d] set to %d\n", cmdParser.getOptions().m_flatBetweenLow, cmdParser.getOptions().m_flatBetweenHigh, cmdParser.getOptions().m_flatBetweenVal);
+        }
+
+        if (cmdParser.getOptions().m_bBorderHeight)
+        {
+            outMap.borderHeight(cmdParser.getOptions().m_BorderHeight);
+            printf(" border heights set to: %d\n", cmdParser.getOptions().m_BorderHeight);
+        }
+
 
         if (!cmdParser.getOptions().m_mapName.empty())
         {

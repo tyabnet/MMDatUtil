@@ -117,6 +117,14 @@ public:
     int          m_scol = 0;    // rect start col
     int          m_erow = 0;    // rect end row
     int          m_ecol = 0;    // rect end col
+    int          m_flathighval = 0;  // flatten high height to check
+    int          m_flathighnewheight = 0;  // flatten high new height
+    int          m_flatlowval = 0;  // flatten low height to check
+    int          m_flatlownewheight = 0;  // flatten low new height
+    int          m_flatBetweenLow = 0;  // flatten between low height to check
+    int          m_flatBetweenHigh = 0;  // flatten between high height to check
+    int          m_flatBetweenVal = 0;   // flatten between new height
+    int          m_BorderHeight = 0;    // set all borders heights to this value
 
     bool         m_bMergeHeight   = false;
     bool         m_bMergeCrystal  = false;
@@ -129,6 +137,10 @@ public:
     bool         m_bScrFixSpace   = false;  // automatic fix spaces where not allowed
     bool         m_bScrNoComments = false;  // remove all non #. comments
     bool         m_bMergeRect     = false;  // if true merge src is a subregion
+    bool         m_bFlattenHigh = false;
+    bool         m_bFlattenLow    = false;
+    bool         m_bFlattenBetween= false;
+    bool         m_bBorderHeight  = false;
 };
 
 
@@ -751,6 +763,7 @@ public:
         }
 
         // used for tiles to ensure we have the proper borders
+        // used to force border heights to default value
         void setBorders(int defValue)
         {
             for (std::size_t col = 0; col < m_width; col++)
@@ -761,10 +774,52 @@ public:
 
             for (std::size_t row = 0; row < m_height; row++)
             {
-                m_data[(std::size_t)row * m_width ] = defValue;              // left column
-                m_data[(std::size_t)row * m_width + m_width-1] = defValue;   // right column
+                m_data[row * m_width ] = defValue;              // left column
+                m_data[row * m_width + m_width-1] = defValue;   // right column
             }
         }
+
+        void flattenHigh(int testVal, int newValue)  // change all values above this to given value
+        {
+            for (std::size_t row = 0; row < m_height; row++)
+            {
+                for (std::size_t col = 0; col < m_width; col++)
+                {
+                    std::size_t index = (row * m_width) + col;
+                    if (m_data[index] > testVal)
+                        m_data[index] = newValue;
+                }
+            }
+        }
+
+        void flattenLow(int testVal, int newValue)  // change all values below this to given value
+        {
+            for (std::size_t row = 0; row < m_height; row++)
+            {
+                for (std::size_t col = 0; col < m_width; col++)
+                {
+                    std::size_t index = (row * m_width) + col;
+                    if (m_data[index] < testVal)
+                        m_data[index] = newValue;
+                }
+            }
+        }
+
+        void flattenBetween(int testLow, int testHigh, int newValue)  // change all values testLow <= value <=testHigh to newValue
+        {
+            for (std::size_t row = 0; row < m_height; row++)
+            {
+                for (std::size_t col = 0; col < m_width; col++)
+                {
+                    std::size_t index = (row * m_width) + col;
+                    int val = m_data[index];
+                    if ((val >= testLow) && (val <= testHigh))
+                        m_data[index] = newValue;
+                }
+            }
+        }
+
+
 
     protected:
         std::vector<int> m_data;
@@ -956,7 +1011,7 @@ class RRMap
         m_ore.merge(src.m_ore, srow, scol, erow, ecol, rowOffset, colOffset);
     }
 
-    // resize to given height and width. If 0, use existing value. Modify tiles, height, crystals, ore and map size in info section
+        // resize to given height and width. If 0, use existing value. Modify tiles, height, crystals, ore and map size in info section
     void resize(int rowSize, int colSize, int defTile, int defHeight, int defCrystal, int defOre )
     {
         if (!rowSize)
@@ -975,6 +1030,26 @@ class RRMap
         m_Width  = colSize;
         m_infoSection.setKeyValue(scolcount, std::to_string(colSize));
         m_infoSection.setKeyValue(srowcount, std::to_string(rowSize));
+    }
+
+    void flattenHeightHigh(int highval, int val)
+    {
+        m_heightSection.flattenHigh(highval, val);
+    }
+    
+    void flattenHeightLow(int lowval, int val)
+    {
+        m_heightSection.flattenLow(lowval, val);
+    }
+    
+    void flattenHeightBetween(int low, int high, int val)
+    {
+        m_heightSection.flattenBetween(low, high, val);
+    }
+    
+    void borderHeight(int val)
+    {
+        m_heightSection.setBorders(val);
     }
 
     void setMapName(const std::string& name)

@@ -432,7 +432,7 @@ void ScriptProcessor::ScriptProcessLine::rawParse()
                 bool bFloat = false;
                 if (ch == '.')                  // floats can being with a .
                 {
-                    if (isdigit(input[epos]))  // next is a number so treat as a float
+                    if ((epos < commentpos) && isdigit(input[epos]))  // next is a number so treat as a float
                         bFloat = true;
                     else                       // just a dot char, so add to tokens as a dot
                     {

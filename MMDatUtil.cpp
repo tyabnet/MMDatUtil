@@ -6,513 +6,37 @@
 #include <vector>
 #include <unordered_set>
 #include <filesystem>
+#include <tchar.h>
+
 #include "MMDatUtil.h"
 #include "MMScript.h"
 
 
 void header()
 {
-    printf("Tyab's Manic Miners .DAT utility v%s\n", __DATE__);
+    wprintf(L"Tyab's Manic Miners .DAT utility v%s\n", Unicode::utf8_to_wstring(DATE_ISO).c_str());
 }
-
-
-bool fExists(const std::string& FileName)
-{
-    std::error_code ec;
-    return std::filesystem::exists(std::filesystem::path(FileName), ec);
-}
-
-// utility that will search a list of paths and ; separated paths and an array of already found paths for given file
-// file may have a relative path already or may be just a name.
-std::string searchPaths(const std::string& filename, const std::string& incDirs, const std::vector<std::filesystem::path>& paths)
-{
-    std::error_code ec;
-    const std::filesystem::path fileName = filename;
-    if (std::filesystem::exists(fileName, ec))
-        return filename;
-
-    std::filesystem::path fileNameOnly = fileName.filename();           // get just the filename
-    std::filesystem::path filePathOnly = fileName;
-    filePathOnly.remove_filename();    // get just the path
-
-    std::filesystem::path temp;
-
-    // first search the paths already found
-    for (std::size_t i = 0; i < paths.size(); i++)
-    {
-        temp = paths[i] / fileNameOnly;
-        if (std::filesystem::exists(temp, ec))
-            return temp.string();
-        if (!filePathOnly.empty())
-        {
-            temp = paths[i] / fileName;
-            if (std::filesystem::exists(temp, ec))
-                return temp.string();
-        }
-    }
-
-    // if that fails, now we try each of the paths in incDirs
-    std::size_t spos = 0;
-    std::size_t epos = 0;
-    std::string_view dirs = incDirs;
-    for (; spos < dirs.size(); )
-    {
-        epos = dirs.find(';', spos);
-        std::string_view sub;
-        if (epos != std::string_view::npos)
-            sub = dirs.substr(spos, epos - spos);
-        else
-            sub = dirs.substr(spos);
-        if (!sub.empty())
-        {
-            temp = sub / fileNameOnly;
-            if (std::filesystem::exists(temp, ec))
-                return temp.string();
-            if (!filePathOnly.empty())
-            {
-                temp = sub / fileName;
-                if (std::filesystem::exists(temp, ec))
-                    return temp.string();
-            }
-        }
-        if (epos == std::string_view::npos)
-            break;
-        spos = epos + 1;
-    }
-    return std::string();   // unable to find
-}
-
-
-
-// returns string that has the short form of the git commit for the given path.
-// nullstr returned if any error - no git, file not under git control, etc.
-std::string getGitCommit(std::string_view path)
-{
-    class saveRestoreCWD
-    {
-    public:
-        saveRestoreCWD()
-        {
-            std::error_code ec;
-            m_cwd = std::filesystem::current_path(ec);    // get current working directory
-        }
-        ~saveRestoreCWD()
-        {
-            std::error_code ec;
-            std::filesystem::current_path(m_cwd, ec);   // restore current working directory
-        }
-    protected:
-        std::filesystem::path m_cwd;
-    };
-
-    std::string retS;
-    saveRestoreCWD cwd;     // auto save and restore the current working directory
-
-    std::error_code ec;
-
-    std::filesystem::path fpath = path;             // get the full filename path
-    std::filesystem::path fname = fpath.filename(); // get just the filename
-    fpath.remove_filename();                        // just the path
-
-    std::filesystem::current_path(fpath, ec); // change current dir so git will be in the correct directory
-
-    FILE* fp = _popen(("git log --no-color -1 --abbrev-commit " + fname.string()).c_str(), "r");
-    if (fp)
-    {
-        char buffer[128] = { 0 };
-        fgets(buffer, sizeof(buffer) - 1, fp);      // first string will be commit shorthash
-        _pclose(fp);
-        retS = buffer;
-        std::size_t pos = retS.find("commit ");
-        if (pos == 0)   // it found it
-        {
-            pos += 7;   // should be start of commit
-            std::size_t epos = pos;
-            for (; epos < retS.size(); epos++)
-            {
-                int ch = tolower(retS[epos]);
-                if ((ch >= '0') && (ch <= '9'))     // make sure in range
-                    continue;
-                if ((ch >= 'a') && (ch <= 'f'))     // make sure in range
-                    continue;
-                break;
-            }
-            if ((pos < retS.size()) && (epos >= pos + 4)) // min short hash is 4 chars
-            {
-                retS = retS.substr(pos, epos - pos);  // short hash
-            }
-        }
-    }
-
-    return retS;
-}
-
-// returns string specified by format for the last modified time of the given path
-// null string if any error
-// format chars are Y is year, M is month, D is day, H is hour, N is minute, S is second. G is git commit support
-// years is 4 digits always. month, day, hour, minute, second are 2 digit 0 filled
-// git commit is the short form as determined by git
-// all other chars are copied as is to output preserving case.
-std::string getDateStr(std::string_view path, std::string_view format)
-{
-    std::string sdate;
-    std::filesystem::path fp = path;
-    std::error_code ec;
-    std::filesystem::file_time_type lwt = std::filesystem::last_write_time(path, ec);
-    if (ec.value() == 0)
-    {
-        time_t tfile = std::chrono::system_clock::to_time_t(std::chrono::clock_cast<std::chrono::system_clock>(lwt));
-        struct tm tlf;
-        localtime_s(&tlf, &tfile);
-        char buffer[128] = { 0 };
-        for (std::size_t pos = 0; pos < format.size(); pos++)
-        {
-            buffer[0] = 0;
-            switch (tolower(format[pos]))
-            {
-            case 'y':   // year
-                sprintf_s(buffer, "%04d", tlf.tm_year + 1900);
-                sdate += buffer;
-                break;
-
-            case 'm':   // month
-                sprintf_s(buffer, "%02d", tlf.tm_mon+1);
-                sdate += buffer;
-                break;
-
-            case 'd':   // day
-                sprintf_s(buffer, "%02d", tlf.tm_mday);
-                sdate += buffer;
-                break;
-
-            case 'h':   // hour
-                sprintf_s(buffer, "%02d", tlf.tm_hour);
-                sdate += buffer;
-                break;
-
-            case 'n':   // minute
-                sprintf_s(buffer, "%02d", tlf.tm_min);
-                sdate += buffer;
-                break;
-
-            case 's':   // sec
-                sprintf_s(buffer, "%02d", tlf.tm_sec);
-                sdate += buffer;
-                break;
-
-            case 'g':   // git commit
-                sdate += getGitCommit(path);
-                break;
-
-            default:
-                sdate += format[pos];
-                break;
-            }
-        }
-    }
-    return sdate;
-}
-
-
-bool isEmptyStr(std::string_view str)
-{
-    // skip leading space
-    std::size_t pos;
-    std::size_t len = str.length();
-    for (pos = 0; (pos < len) && (str[pos] <= ' '); pos++); // skip leading space
-    return (pos == len) || (str[pos] == 0);
-}
-
-// must return a new string
-std::string toLower(std::string str)
-{
-    std::string ret;
-    std::size_t len = str.length();
-    ret.reserve(len + 1);
-
-    for (int i = 0; i < (int)len; i++)
-    {
-        ret += (char)tolower(str[i]);
-    }
-    return ret;
-}
-
-// must return a new string
-std::string toLower(std::string_view str)
-{
-    std::string ret;
-    std::size_t len = str.length();
-    ret.reserve(len + 1);
-
-    for (int i = 0; i < (int)len; i++)
-    {
-        ret += (char)tolower(str[i]);
-    }
-    return ret;
-}
-
-std::string_view removeLeadingWhite(std::string_view str)
-{
-    std::size_t pos;
-    std::size_t len = str.length();
-    for (pos = 0; (pos < len) && (str[pos] <= ' '); pos++); // skip leading space
-    return str.substr(pos);
-}
-
-// first char must be alpha, followed by only alpha or digits. No leading/trailing spaces allowed
-// this is not for script, but for keys in other sections
-bool isValidVarName(std::string_view name)
-{
-    int len = (int)name.length();
-    bool valid = (len > 0) && isalpha(name[0]);
-    for (int i = 1; i < len && valid; i++)
-    {
-        valid = (isalpha(name[i]) || isdigit(name[i]));
-    }
-    return valid;
-}
-
-// must have at least a single digit with nothing but digits and an optional leading -sign.
-bool isInteger(std::string_view val, bool bAllowNeg)
-{
-    bool valid = false; // ensures we must have at least a single digit
-    std::size_t i = 0;
-    if (val[0] == '-')
-    {
-        if (!bAllowNeg)
-            return false;
-        i++;
-    }
-    std::size_t len = val.length();
-    for (; i < len; i++)
-    {
-        valid = isdigit(val[i]);
-        if (!valid)
-            break;
-    }
-    return valid;
-}
-
-// must have as last a single digit with nothing but digits and an optiona leading - sign and up to a single decimal point.
-bool isFloat(std::string_view val, bool bAllowNeg)
-{
-    bool valid = false; // start off false ensures we must have at least a single digit
-    std::size_t i = 0;
-    if (val[0] == '-')
-    {
-        if (!bAllowNeg)
-            return false;
-        i++;
-    }
-    bool bDecimalpoint = false;
-    std::size_t len = val.length();
-    for (; i < len; i++)
-    {
-        if (val[i] == '.')
-        {
-            if (!bDecimalpoint)
-                bDecimalpoint = true;
-            else
-                return false;  // cant have more than 1 decimal point
-        }
-        else
-        {
-            valid = isdigit(val[i]);
-            if (!valid)
-                break;
-        }
-    }
-    return valid;
-}
-
-
-// standard does not provide a stoi for string_view, so here is one
-int stoi(std::string_view val)
-{
-    int sum = 0;
-    if (val.length() > 0)
-    {
-        int sign = 1;
-        std::size_t i = 0;
-        if (val[0] == '-')
-        {
-            sign = -1;
-            i++;
-        }
-        for (; (i < val.length()) && isdigit(val[i]); i++)
-        {
-            sum = (sum * 10) + val[i] - '0';
-        }
-        sum *= sign;
-    }
-    return sum;
-}
-
-// returns string
-std::string readLineUTF8(FILE* fp)  // read from a multibyte source, return std::string
-{
-    std::string line;
-    line.reserve(8192);	// so += is fast
-    for (; !feof(fp);)
-    {
-        int ch = fgetc(fp);
-        if (ch == EOF)
-            break;
-        ch &= 0xff;
-        if (ch == 0)
-            break;
-        if (ch == '\r')         // ignore carriage returns, only care about line feeds.
-            continue;
-        if (ch == '\n')
-            break;
-        if (ch == 26)  // CTRL-Z
-            break;
-        line += (uint8_t)ch;
-    }
-    line.shrink_to_fit();
-    return line;
-}
-
-
-// note that we are passing in strings - not string_views - conversion needs null term string
-std::wstring utf8_to_wstring(const std::string& str)
-{
-    std::wstring ret;
-    if (!str.empty())
-    {
-#if (_MSVC_LANG >= 201703L) || (__cplusplus >= 201703L)  // c++17 and greater no longer support, so we just use windows
-        std::size_t size = str.length() * 10;    // way more than worst case avoids having to first query.
-        wchar_t* utf16 = (wchar_t*)calloc(size, 1);
-        if (utf16)
-        {
-            MultiByteToWideChar(CP_UTF8, 0, str.c_str(), -1, utf16, (int)((size / 2) - 1));
-            ret = utf16;
-            free(utf16);
-        }
-#else
-        std::wstring_convert<std::codecvt_utf8<wchar_t>> myconv;
-        ret = myconv.from_bytes(str);
-#endif
-    }
-    return ret;
-}
-
-// note that we are passing in strings - not string_view - conversion needs null term string
-std::string wstring_to_utf8(const std::wstring& str)
-{
-    std::string ret;
-    if (!str.empty())
-    {
-#if (_MSVC_LANG >= 201703L) || (__cplusplus >= 201703L)  // c++17 and greater no longer support, so we just use windows
-        std::size_t size = str.length() * 8;    // way more than worst case avoids having to first query.
-        char* utf8 = (char*)calloc(size, 1);
-        if (utf8)
-        {
-            WideCharToMultiByte(CP_UTF8, 0, str.c_str(), -1, utf8, (int)(size - 1), NULL, NULL);
-            ret = utf8;
-            free(utf8);
-        }
-#else
-        std::wstring_convert<std::codecvt_utf8<wchar_t>> myconv;
-        ret = myconv.to_bytes(str);
-#endif
-    }
-    return ret;
-}
-
-std::string readLineUTF16(FILE* fp, bool lbf)  // read from unicode save into utf8 in std::string.
-{
-    std::wstring wline;
-    wline.reserve(8192);	// so += is fast
-    for (; !feof(fp);)
-    {
-        int ch = fgetc(fp);
-        if ((ch == EOF) || feof(fp))
-            break;
-        int ch1 = fgetc(fp);
-        if (ch == EOF)
-            break;
-        ch &= 0xff;
-        ch1 &= 0xff;
-        if (lbf)
-            ch |= ch1 << 8;
-        else
-            ch = (ch << 8) | ch1;
-        if (ch == 0)
-            break;
-        if (ch == '\r')         // ignore carriage returns, only care about line feeds.
-            continue;
-        if (ch == 26)     // CTRL-Z
-            break;
-        if (ch == '\n')
-            break;
-        wline += (wchar_t)ch;
-    }
-
-    // now convert to UTF8
-    return wstring_to_utf8(wline);
-}
-
-void getFileEncoding(FILE* fp, bool& bUTF8BOM, bool& bUTF16LE, bool& bUnicode)  // get encoding flags
-{
-    // maps can have UTF-8 encoding Byte Order Mark (BOM) which is 3 bytes or they can be unicode which has a 2 byte BOM
-    if (feof(fp))
-        return;   // nothing to read
-    int ch1 = fgetc(fp);
-    if (feof(fp))
-        return;   // nothing to read
-    int ch2 = fgetc(fp);
-    if (feof(fp))
-        return;   // nothing to read
-    int ch3 = fgetc(fp);
-    if (feof(fp))
-        return;   // nothing to read
-
-    bUTF8BOM = false;
-    bUTF16LE = false;
-    bUnicode = false;
-
-    if ((ch1 == 0xff) && (ch2 == 0xfe))  // low byte first unicode
-        bUTF16LE = bUnicode = true;
-    if ((ch1 == 0xfe) && (ch2 == 0xff))  // high byte first unicode
-        bUnicode = true;
-    if (bUnicode)
-    {
-        fseek(fp, 0, 0);
-        fseek(fp, 2, 0);
-    }
-    else  // check for UTF-8 mark
-    {
-        if ((ch1 == 0xEF) && (ch2 == 0xBB) && (ch3 == 0xBF))  // we have 3 byte BOM, so just ignore it.
-            bUTF8BOM = true;
-        else
-            fseek(fp, 0, 0);  // none of the above, so reset back to beginning
-    }
-}
-
-
-
 
 class CommandLineParser
 {
   public:
-      CommandLineParser() {}
-      ~CommandLineParser() {}
+    CommandLineParser() = default;
+    ~CommandLineParser() = default;
 
     // options start with -  --  /  any work. spaces separate options unless they are in ""
     // options are converted to lower case, parameters are left unchanged but "" are removed
-    void Tokenize(std::string_view cmdline)
+    void Tokenize(std::wstring_view cmdline)
     {
         m_tokens.clear();   // make sure no tokens
 
-        std::string::size_type pos = 0;
-        std::string::size_type len = cmdline.size();
-        std::string token;
+        std::wstring::size_type pos = 0;
+        std::wstring::size_type len = cmdline.size();
+        std::wstring token;
         token.reserve(len+1);
 
         for (; pos < len; pos++)
         {
-            if (std::isspace(cmdline[pos]))   // skip leading space
+            if (std::iswspace(cmdline[pos]))   // skip leading space
                 continue;
             
             // have non-space char
@@ -522,18 +46,17 @@ class CommandLineParser
                 pos++;
                 if ((pos < len) && cmdline[pos] == '-')  // we allow -- and even /- as option
                     pos++;
-                if (pos >= len)   // TODO return empty option error
+                if (pos >= len) 
                 {
                     m_bValid = false;
-                    m_error = "empty option at end of line";
+                    m_error = L"empty option at end of line";
                     return;
                 }
                 // beginning of options. get chars until space
-                token.clear();
-                token += '-';   // pretend it started with a single -
-                for (; pos < len && !std::isspace(cmdline[pos]); pos++)
+                token = '-';    // pretend it started with a single -
+                for (; pos < len && !std::iswspace(cmdline[pos]); pos++)
                     token += cmdline[pos];
-                m_tokens.push_back(toLower(token));     // save lower case of token
+                m_tokens.push_back(MMUtil::toLower(token));     // save lower case of token
             }
             else if (cmdline[pos] == '"')
             {
@@ -544,8 +67,8 @@ class CommandLineParser
                 {
                     if (cmdline[pos] == '"')
                     {
-                        if ((token.length() > 0) && (token[token.length() - 1] == '\\'))  // check for \"
-                            token[token.length() - 1] = '"';
+                        if (!token.empty() && (token.back() == '\\'))  // check for \"
+                            token[token.length() - 1] = '"';    // replace / char with "
                         else
                         {
                             bEndQuote = true;
@@ -554,10 +77,10 @@ class CommandLineParser
                     }
                     token += cmdline[pos];
                 }
-                if (!bEndQuote)  // TODO error string did not have final closing "
+                if (!bEndQuote)  // missing ending "
                 {
                     m_bValid = false;
-                    m_error = "missing ending \"";
+                    m_error = L"missing ending \"";
                     return;
                 }
                 else
@@ -565,7 +88,7 @@ class CommandLineParser
             }
             else  // parameter just copy everything until next white space or ,
             {
-                for (token = cmdline[pos++]; (pos < len) && !isspace(cmdline[pos]) && (cmdline[pos] != ','); pos++)
+                for (token = cmdline[pos++]; (pos < len) && !iswspace(cmdline[pos]) && (cmdline[pos] != ','); pos++)
                     token += cmdline[pos];
                 m_tokens.push_back(token);
             }
@@ -585,7 +108,7 @@ class CommandLineParser
                 if (it == m_options.cend())
                 {
                     m_bValid = false;
-                    m_error = "Unknown option: " + m_tokens[i];
+                    m_error = L"Unknown option: " + m_tokens[i];
                     return;   // error unknown option
                 }
 
@@ -597,15 +120,17 @@ class CommandLineParser
                     break;
 
                 case 1: // srcmap  filename parameter
-                    m_cmdOptions.m_srcmap = getStringParm(++i);
+                {
+                    m_cmdOptions.m_srcmap = removeQuotes(getStringParm(++i));
                     break;
+                }
 
                 case 2: // outmap  filename parameter
-                    m_cmdOptions.m_outmap = getStringParm(++i);
+                    m_cmdOptions.m_outmap = removeQuotes(getStringParm(++i));
                     break;
 
                 case 3: // script  filename parameter
-                    m_cmdOptions.m_srcscript = getStringParm(++i);
+                    m_cmdOptions.m_srcscript = removeQuotes(getStringParm(++i));
                     break;
 
                 case 4:  // mergeheight no parameter
@@ -654,7 +179,7 @@ class CommandLineParser
                     if (m_bValid && ((m_cmdOptions.m_nDefTileID <= 0) || (m_cmdOptions.m_nDefTileID > 175)))
                     {
                         m_bValid = false;
-                        m_error = "Invalid " + m_tokens[i - 1] + " TileID: " + std::to_string(m_cmdOptions.m_nDefTileID);
+                        m_error = L"Invalid " + m_tokens[i - 1] + L" TileID: " + std::to_wstring(m_cmdOptions.m_nDefTileID);
                         break;
                     }
                     break;
@@ -672,20 +197,37 @@ class CommandLineParser
                     break;
 
                 case 18: // mapname  name of map parameter
-                    m_cmdOptions.m_mapName = getStringParm(++i);
+                    m_cmdOptions.m_mapName = Unicode::wstring_to_utf8(getStringParm(++i));
                     break;
-
                 case 19: // creator
-                    m_cmdOptions.m_creator = getStringParm(++i);
+                    m_cmdOptions.m_creator = Unicode::wstring_to_utf8(getStringParm(++i));
                     break;
 
                 case 20:  // fix  no parameter
                     m_cmdOptions.m_bFix = true;
                     break;
 
-                case 21:  // sincdirs  string parameter
-                    m_cmdOptions.m_sincdirs = getStringParm(++i);
+                case 21:  // sincdirs  string parameter. Build an array of paths from the string
+                {
+                    std::wstring_view token(getStringParm(++i));   // entire token
+                    std::size_t ts = 0;     // start of token
+                    for (std::size_t te; (ts < token.size()) && (te = token.find(';',ts)) != token.npos; ts = te + 1)
+                    {
+                        if (te > ts) // not empty range
+                        {
+                            std::wstring singledir = removeQuotes(token.substr(ts, te - ts));
+                            if (!singledir.empty())
+                                m_cmdOptions.m_sincdirs.push_back(singledir);
+                        }
+                    }
+                    if (ts < token.size())
+                    {
+                        std::wstring singledir = removeQuotes(token.substr(ts));
+                        if (!singledir.empty())
+                            m_cmdOptions.m_sincdirs.push_back(singledir);
+                    }
                     break;
+                }
 
                 case 22:  // sfixspace  no parameter
                     m_cmdOptions.m_bScrFixSpace = true;
@@ -700,39 +242,38 @@ class CommandLineParser
                     if (++i >= m_tokens.size())
                     {
                         m_bValid = false;
-                        m_error = "missing name=value for option " + m_tokens[i - 1];
+                        m_error = L"missing name=value for option " + m_tokens[i - 1];
                         break;
                     }
                     std::size_t epos = m_tokens[i].find('=');
-                    if ((epos == std::string::npos) || (epos < 1) || ((epos+1) >= m_tokens[i].size()))
+                    if ((epos == std::wstring::npos) || (epos < 1) || ((epos+1) >= m_tokens[i].size()))
                     {
                         m_bValid = false;
-                        m_error = "missing name=value for option " + m_tokens[i - 1];
+                        m_error = L"missing name=value for option " + m_tokens[i - 1];
                         break;
                     }
-                    std::string_view key = std::string_view(m_tokens[i]).substr(0, epos);
-                    std::string_view value = std::string_view(m_tokens[i]).substr(epos+1);
+                    std::wstring_view key = std::wstring_view(m_tokens[i]).substr(0, epos);
+                    std::wstring_view value = std::wstring_view(m_tokens[i]).substr(epos+1);
                     if (key.empty() || value.empty())
                     {
                         m_bValid = false;
-                        m_error = "missing name=value for option " + m_tokens[i - 1];
+                        m_error = L"missing name=value for option " + m_tokens[i - 1];
                         break;
                     }
-                    if (value[0] == '"')    // value starts with a string, it needs to end with one
+                    std::string keys = Unicode::wstring_to_utf8(removeQuotes(key));
+                    if (!MMUtil::isAlphaNumericName(keys))
                     {
-                        if (value[value.size()-1] != '"')
-                        {
-                            m_bValid = false;
-                            m_error = "missing or invalid position of closing \" for option " + m_tokens[i - 1];
-                            break;
-                        }
+                        m_bValid = false;
+                        m_error = L"invalid macro name for option " + m_tokens[i - 1];
+                        break;
                     }
+                    std::string values = Unicode::wstring_to_utf8(removeQuotes(value));
 
-                    m_cmdOptions.addKeyValue(key, value);
+                    m_cmdOptions.addKeyValue(keys, values);
                     break;
                 }
                 case 25:  // sdatefmd  string parameter - we automatically add double quotes to it.
-                    m_cmdOptions.m_datestr = '"' + std::string(getStringParm(++i)) + '"';
+                    m_cmdOptions.m_datestr = '"' + Unicode::wstring_to_utf8(getStringParm(++i)) + '"';
                     break;
 
                 case 26:  // mergerect
@@ -751,7 +292,7 @@ class CommandLineParser
                         else
                         {
                             m_bValid = false;
-                            m_error = "invalid -mergerect values";
+                            m_error = L"invalid -mergerect values";
                         }
                     }
                     break;
@@ -789,7 +330,25 @@ class CommandLineParser
                     break;
                 }
 
+                case 31: // unicode
+                {
+                    m_cmdOptions.m_bUnicode = true;
+                    break;
                 }
+
+                case 32: // Byte Order Marker
+                {
+                    m_cmdOptions.m_bBOM = true;
+                    break;
+                }
+
+                case 33: // 8 byte input with no BOM assume ANSI
+                {
+                    m_cmdOptions.m_bReadANSI = true;
+                }
+
+
+                } // switch 
             }
         }
     }
@@ -798,9 +357,9 @@ class CommandLineParser
     class optionNameID
     {
       public:
-          optionNameID() {}
-          optionNameID(std::string_view name, int id) : m_name(name), m_id(id) {}
-          ~optionNameID() {}
+          optionNameID() = default;
+          optionNameID(std::wstring_view name, int id) : m_name(name), m_id(id) {}
+          ~optionNameID() = default;
 
           // comparision operator for hash. Only on the name
           bool operator() (const optionNameID& lhs, const optionNameID& rhs) const
@@ -811,19 +370,19 @@ class CommandLineParser
           // hash operator for hash - only on the name field
           std::size_t operator()(const optionNameID& s)const noexcept
           {
-              return std::hash<std::string_view>{}(s.m_name);
+              return std::hash<std::wstring_view>{}(s.m_name);
           }
 
           int getId() const { return m_id; }
-          std::string_view getName() const { return m_name; }
+          std::wstring_view getName() const { return m_name; }
 
     protected:
-        std::string_view m_name;
-        int              m_id = 0;
+        std::wstring_view m_name;
+        int               m_id = 0;
     };
 
     bool isValid() const { return m_bValid; }
-    const std::string& getError() const { return m_error; }
+    const std::wstring& getError() const { return m_error; }
 
 
     const CommandLineOptions& getOptions() const { return m_cmdOptions; }
@@ -833,120 +392,133 @@ class CommandLineParser
 
   protected:
 
-    std::vector<std::string> m_tokens;  // parsed tokens
+      // remove leading/trailing quotes. look for \" to escape a quote and replace with a quote
+    std::wstring removeQuotes(std::wstring_view str)
+    {
+        std::wstring rets(str);
+
+        if ((rets.size() > 1) && (rets.front() == '\"') && (rets.back() == '\"'))
+        {
+            std::size_t spos = 1;
+            std::size_t epos = rets.size() - 2;
+            rets = removeQuotes(str.substr(spos, epos - spos));
+        }
+
+        // now replace any \" with "
+        for (std::size_t spos; (spos = rets.find(L"\\\"")) != rets.npos; rets = rets.replace(spos, spos+1, L"\"") );
+        return rets;
+    }
+
+    std::wstring removeQuotes(const std::wstring & str)
+    {
+        return removeQuotes(std::wstring_view(str));
+    }
+
+
+
+
+    std::deque<std::wstring> m_tokens;  // we are parsing wstring input data
 
     const std::unordered_set<optionNameID,optionNameID,optionNameID> m_options =  // predefined command line options
     {
-        { "-help",            0 },
-        { "-srcmap",          1 },
-        { "-outmap",          2 },
-        { "-script",          3 },
-        { "-mergeheight",     4 },
-        { "-mergecrystal",    5 },
-        { "-mergeore",        6 },
-        { "-mergetile",       7 },
-        { "-offsetrow",       8 },
-        { "-offsetcol",       9 },
-        { "-overwrite",      10 },
-        { "-resizerow",      11 },
-        { "-resizecol",      12 },
-        { "-copysrc",        13 },
-        { "-deftile",        14 },
-        { "-defheight",      15 },
-        { "-defcrystal",     16 },
-        { "-defore",         17 },
-        { "-mapname",        18 },
-        { "-creator",        19 },
-        { "-fix",            20 },
-        { "-sincdirs",       21 },
-        { "-sfixspace",      22 },
-        { "-snocomment",     23 },
-        { "-sdefine",        24 },
-        { "-sdatefmt",       25 },
-        { "-mergerect",      26 },
-        { "-flattenabove",   27 },
-        { "-flattenbelow",   28 },
-        { "-flattenbetween", 29 },
-        { "-borderheight",   30 }
+        { L"-help",            0 },
+        { L"-srcmap",          1 },
+        { L"-outmap",          2 },
+        { L"-script",          3 },
+        { L"-mergeheight",     4 },
+        { L"-mergecrystal",    5 },
+        { L"-mergeore",        6 },
+        { L"-mergetile",       7 },
+        { L"-offsetrow",       8 },
+        { L"-offsetcol",       9 },
+        { L"-overwrite",      10 },
+        { L"-resizerow",      11 },
+        { L"-resizecol",      12 },
+        { L"-copysrc",        13 },
+        { L"-deftile",        14 },
+        { L"-defheight",      15 },
+        { L"-defcrystal",     16 },
+        { L"-defore",         17 },
+        { L"-mapname",        18 },
+        { L"-creator",        19 },
+        { L"-fix",            20 },
+        { L"-sincdirs",       21 },
+        { L"-sfixspace",      22 },
+        { L"-snocomment",     23 },
+        { L"-sdefine",        24 },
+        { L"-sdatefmt",       25 },
+        { L"-mergerect",      26 },
+        { L"-flattenabove",   27 },
+        { L"-flattenbelow",   28 },
+        { L"-flattenbetween", 29 },
+        { L"-borderheight",   30 },
+        { L"-unicode",        31 },     // request unicode output
+        { L"-bom",            32 },     // request BOM market
+        { L"-srcansi",        33 },     // assume ansi code page input if 8 byte without BOM
     };
 
-    std::string_view getStringParm(std::size_t i)
+    std::wstring_view getStringParm(std::size_t i)
     {
         if (i < m_tokens.size())
             return m_tokens[i];
 
         m_bValid = false;
-        m_error = "missing string for option: ";
+        m_error = L"missing string for option: ";
         m_error += m_tokens[i - 1];
-        return std::string_view();
+        return std::wstring_view();
     }
 
-    int getIntParm(std::size_t i, bool bAllowNeg, std::string_view option)
+    int getIntParm(std::size_t i, bool bAllowNeg, std::wstring_view option)
     {
         if (i < m_tokens.size())
             return getInteger(m_tokens[i], bAllowNeg, option);
         m_bValid = false;
-        m_error = "missing integer for option: ";
+        m_error = L"missing integer for option: ";
         m_error += option;
         return 0;
     }
 
-
-
-    int getInteger(std::string_view str, bool bAllowNeg, std::string_view option)
+    int getInteger(std::wstring_view wstr, bool bAllowNeg, std::wstring_view option)
     {
-        if (isInteger(str, bAllowNeg))
-            return stoi(str);
+        std::string str = Unicode::wstring_to_utf8(wstr);
+        if (MMUtil::isInteger(str, bAllowNeg))
+            return MMUtil::stoi(str);
         m_bValid = false;
-        m_error = "Invalid integer value: ";
-        m_error += str;
-        m_error += " for option: ";
+        m_error = L"Invalid integer value: ";
+        m_error += wstr;
+        m_error += L" for option: ";
         m_error += option;
         return 0;
     }
 
-    CommandLineOptions  m_cmdOptions;
-    std::string         m_error;
-    bool                m_bValid = false;
-
-
+    CommandLineOptions   m_cmdOptions;
+    std::wstring         m_error;           // using wstring since it will be displayed
+    bool                 m_bValid = false;
 };
 
 
 
 // if null string returned, we already displayed the error message
-std::string getTempFile()
+std::filesystem::path getTempFile()
 {
-    std::string retS;
+    std::filesystem::path   retS;
 
-    char apiPathbuff[MAX_PATH + 16] = { 0 };
-    if ((GetTempPathA((DWORD)sizeof(apiPathbuff), apiPathbuff) > 0) && (apiPathbuff[0] != 0))
+    std::error_code ec;
+    std::filesystem::path tempPath = std::filesystem::temp_directory_path( ec );
+
+    wchar_t apiTFile[MAX_PATH + 16] = { 0 };
+    if (!tempPath.empty())
     {
-        char apiTFile[MAX_PATH + 16] = { 0 };
-        if ((GetTempFileNameA(apiPathbuff, "TMU", 0, apiTFile) > 0) && (apiTFile[0] != 0))
+        UINT retval = GetTempFileNameW(tempPath.wstring().c_str(), L"TDU", 0, apiTFile);    // will create a unique empty file starting with TDU
+        if (retval > 0 && apiTFile[0])
         {
-            // make sure it works
-            HANDLE han = CreateFileA(apiTFile, GENERIC_READ | GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-            if (han != INVALID_HANDLE_VALUE)
-            {
-                CloseHandle(han);
-                retS = apiTFile;
-            }
-            else
-            {
-                printf("  ERROR unable to use temp file - TMP or TEMP environment vars may be invalid\n");
-                printf("  File: %s\n", apiTFile);
-            }
-        }
-        else
-        {
-            printf("  ERROR unable to use temp file - TMP or TEMP environment vars may be invalid\n");
-            printf("  Dir:: %s\n", apiPathbuff);
+            retS = apiTFile; // API returns full path
         }
     }
-    else
+    if (retS.empty())
     {
-        printf("  ERROR unable to get temporary path - TMP or TEMP environment vars may be invalid\n");
+        wprintf(L"  ERROR unable to obtain a temporary file - TMP or TEMP environment vars may be invalid\n");
+        wprintf(L"  Temp Path: %s\n", tempPath.wstring().c_str());
     }
     return retS;
 }
@@ -956,98 +528,101 @@ class tempFileCleanup
 {
   public:
     tempFileCleanup() = default;
-    tempFileCleanup(const std::string& str)
+    tempFileCleanup(const std::filesystem::path& str)
     {
-        m_str = str;
+        m_path = str;
     }
     ~tempFileCleanup()
     {
-        remove(m_str.c_str());  // cleanup temp file.
+        std::filesystem::remove(m_path);  // cleanup temp file.
     }
 
-    const std::string& get() const { return m_str; }
+    const std::filesystem::path & get() const { return m_path; }
 
 protected:
-    std::string m_str;
+    std::filesystem::path m_path;
 };
 
 
 
 void help()
 {
-    printf("\n");
-    printf("  Usage:  <option> <parameter>\n");
-    printf("    options begin with - or -- or / and end with a space\n");
-    printf("    parameters are until the next space unless it is double quoted.\n");
-    printf("    strings may have a \\\" in them to embed a quote.\n");
-    printf("    Option:\n");
-    printf("      -help           display this help\n");
-    printf("      -srcmap         file name of a source merge .DAT\n");
-    printf("      -outmap         file name of a destination .DAT\n");
-    printf("      -overwrite      allow changing existing outmap\n");
-    printf("      -copysrc        outmap is recreated from srcmap, implies -overwrite\n");
-    printf("      -mergeheight    merge height values from srcmap into outmap\n");
-    printf("      -mergecrystal   merge crystals values from srcmap into outmap\n");
-    printf("      -mergeore       merge ore values from srcmap into outmap\n");
-    printf("      -mergetile      merge tile values from srcmap into outmap\n");
-    printf("      -mergerect      startrow,startcol,endrow,endcol for merge\n");
-    printf("      -offsetrow      add row offset when merging/copying srcmap into outmap\n");
-    printf("      -offsetcol      add col offset when merging/copying srcmap into outmap\n");
-    printf("      -resizerow      resize outmap rows for tiles,height,resources\n");
-    printf("      -resizecol      resize outmap cols for tiles,height,resources\n");
-    printf("      -deftile        value for invalid tiles or resize, default 1\n");
-    printf("      -defheight      value for invalid heights or resize, default 0\n");
-    printf("      -defcrystal     value for invalid crystals or resize, default 0\n");
-    printf("      -defore         value for invalid ore or resize, default 0\n");
-    printf("      -mapname        levelname: value saved in outmap info section\n");
-    printf("      -creator        creator: value saved in outmap info section\n");
-    printf("      -fix            fix invalid/missing tile, height, crystal, ore values\n");
-    printf("      -script         filename of script file to replace outmap's script\n");
-    printf("      -sincdirs       ; separated list of paths to search for script includes\n");
-    printf("      -sfixspace      automatically remove spaces where not allowed in scripts\n");
-    printf("      -snocomment     remove all comments in script except #.\n");
-    printf("      -sdefine        name=value   define script subsitution\n");
-    printf("      -sdatefmt       format for TyabScript{Inc}Date, default \"y.m.d\"");
-    printf("      -flattenabove   height, newheight. Heights above height are set to newheight\n");
-    printf("      -flattenbelow   height, newheight. Heights below height are set to newheight\n");
-    printf("      -flattenbetween low, high, value. low <= height <= hight are set to value\n");
-    printf("      -borderheight   force all borders to have this height value\n");
-    printf("\n");
-    printf("  -srcmap is used to provide merge data unless -copysrc is used\n");
-    printf("  -script will replace outmap's script with the contents of that file.\n");
-    printf("  -copysrc may be combined with resize and offsets\n");
-    printf("\n");
-    printf(" see TyabMMDatUtil.pdf for more details and examples\n");
+    //               10|       20|       30|       40|       50|       60|       70|       80| 
+    //        12345678901234567890123456789012345678901234567890123456789012345678901234567890
+    wprintf(L"\n");
+    wprintf(L"  Usage:  <option> <parameter>\n");
+    wprintf(L"    options begin with - or -- or / and end with a space\n");
+    wprintf(L"    parameters are until the next space unless it is double quoted.\n");
+    wprintf(L"    strings may have a \\\" in them to embed a quote.\n");
+    wprintf(L"    Option:\n");
+    wprintf(L"      -help           display this help\n");
+    wprintf(L"      -srcmap         file name of a source merge .DAT\n");
+    wprintf(L"      -outmap         file name of a destination .DAT\n");
+    wprintf(L"      -overwrite      allow changing existing outmap\n");
+    wprintf(L"      -copysrc        outmap is recreated from srcmap, implies -overwrite\n");
+    wprintf(L"      -mergeheight    merge height values from srcmap into outmap\n");
+    wprintf(L"      -mergecrystal   merge crystals values from srcmap into outmap\n");
+    wprintf(L"      -mergeore       merge ore values from srcmap into outmap\n");
+    wprintf(L"      -mergetile      merge tile values from srcmap into outmap\n");
+    wprintf(L"      -mergerect      startrow,startcol,endrow,endcol for merge\n");
+    wprintf(L"      -offsetrow      add row offset when merging/copying srcmap into outmap\n");
+    wprintf(L"      -offsetcol      add col offset when merging/copying srcmap into outmap\n");
+    wprintf(L"      -resizerow      resize outmap rows for tiles,height,resources\n");
+    wprintf(L"      -resizecol      resize outmap cols for tiles,height,resources\n");
+    wprintf(L"      -deftile        value for invalid tiles or resize, default 1\n");
+    wprintf(L"      -defheight      value for invalid heights or resize, default 0\n");
+    wprintf(L"      -defcrystal     value for invalid crystals or resize, default 0\n");
+    wprintf(L"      -defore         value for invalid ore or resize, default 0\n");
+    wprintf(L"      -mapname        levelname: value saved in outmap info section\n");
+    wprintf(L"      -creator        creator: value saved in outmap info section\n");
+    wprintf(L"      -fix            fix invalid/missing tile, height, crystal, ore values\n");
+    wprintf(L"      -script         filename of script file to replace outmap's script\n");
+    wprintf(L"      -sincdirs       ; separated list of paths to search for script includes\n");
+    wprintf(L"      -sfixspace      automatically remove spaces where not allowed in scripts\n");
+    wprintf(L"      -snocomment     remove all comments in script except #.\n");
+    wprintf(L"      -sdefine        name=value   define script subsitution\n");
+    wprintf(L"      -sdatefmt       format for TyabScript{Inc}Date, default \"y.m.d\"");
+    wprintf(L"      -flattenabove   height, newheight. Heights > height set to newheight\n");
+    wprintf(L"      -flattenbelow   height, newheight. Heights < height set to newheight\n");
+    wprintf(L"      -flattenbetween low, high, value. low <= Heights <= high set to value\n");
+    wprintf(L"      -borderheight   force height borders to this value\n");
+    wprintf(L"      -unicode        output .dat is UTF16LE format (default UTF8)\n");
+    wprintf(L"      -bom            output .dat has BOM Byte Order Marker (default none)\n");
+    wprintf(L"      -srcansi        UTF8 input files without BOM assume ANSI codepage\n");
+
+    wprintf(L"\n");
+    wprintf(L"  -srcmap is used to provide merge data unless -copysrc is used\n");
+    wprintf(L"  -script will replace outmap's script with the contents of that file.\n");
+    wprintf(L"  -copysrc may be combined with resize and offsets\n");
+    wprintf(L"\n");
+    wprintf(L" see TyabMMDatUtil.pdf for more details and examples\n");
 }
 
 
 void showHelpOption()
 {
-    printf(" For available options, use -help\n");
+    wprintf(L" For available options, use -help\n");
 }
 
 
-int main(int , char* )
+int wmain(int , wchar_t ** )   // ignore all passed in parameters
 {
     header();
     
-    std::string commandLine;
-    LPSTR pCmdLine = GetCommandLineA();
-    if (pCmdLine)
-        commandLine = pCmdLine;
+    std::wstring commandLine = GetCommandLineW();
 
     CommandLineParser cmdParser;
     cmdParser.Tokenize(commandLine);
     if (!cmdParser.isValid())
     {
-        printf(" ERROR: %s\n",cmdParser.getError().c_str());
+        wprintf(L" ERROR: %s\n",cmdParser.getError().c_str());
         showHelpOption();
         return 1;
     }
     cmdParser.buildOptions();
     if (!cmdParser.isValid())
     {
-        printf(" ERROR: %s\n", cmdParser.getError().c_str());
+        wprintf(L" ERROR: %s\n", cmdParser.getError().c_str());
         showHelpOption();
         return 1;
     }
@@ -1062,38 +637,38 @@ int main(int , char* )
     // in order to merge, we must have a source map.
     if (cmdParser.getOptions().m_srcmap.empty())
     {
-        if (cmdParser.getOptions().m_bMergeCrystal ||
-            cmdParser.getOptions().m_bMergeHeight ||
-            cmdParser.getOptions().m_bMergeOre ||
-            cmdParser.getOptions().m_bMergeTiles ||
-            cmdParser.getOptions().m_bEraseOutMap ||
-            cmdParser.getOptions().m_bMergeRect ||
-            cmdParser.getOptions().m_nOffsetCol ||
-            cmdParser.getOptions().m_nOffsetRow ||
-            cmdParser.getOptions().m_outmap.empty()     // both srcmap and outmap cannot be empty
+        if (   cmdParser.getOptions().m_bMergeCrystal
+            || cmdParser.getOptions().m_bMergeHeight
+            || cmdParser.getOptions().m_bMergeOre
+            || cmdParser.getOptions().m_bMergeTiles
+            || cmdParser.getOptions().m_bEraseOutMap
+            || cmdParser.getOptions().m_bMergeRect
+            || cmdParser.getOptions().m_nOffsetCol
+            || cmdParser.getOptions().m_nOffsetRow
+            || cmdParser.getOptions().m_outmap.empty()     // both srcmap and outmap cannot be empty
             )
         {
-            printf(" ERROR: options require a srcmap\n");
+            wprintf(L" ERROR: options require a srcmap\n");
             showHelpOption();
             return 1;
         }
     }
     else
     {
-        std::size_t npos = toLower(cmdParser.getOptions().m_srcmap).rfind(".dat");
-        if (npos == std::string::npos)
+        std::size_t npos = MMUtil::toLower(cmdParser.getOptions().m_srcmap.filename().wstring()).rfind(L".dat");
+        if (npos == std::wstring::npos)
         {
-            printf(" ERROR: Source map: %s must have a .dat extension\n", cmdParser.getOptions().m_srcmap.c_str());
+            wprintf(L" ERROR: Source map: %s must have a .dat extension\n", cmdParser.getOptions().m_srcmap.c_str());
             showHelpOption();
             return 1;
         }
     }
     if (!cmdParser.getOptions().m_outmap.empty())
     {
-        std::size_t npos = toLower(cmdParser.getOptions().m_outmap).rfind(".dat");
+        std::size_t npos = MMUtil::toLower(cmdParser.getOptions().m_outmap.filename().wstring()).rfind(L".dat");
         if (npos == std::string::npos)
         {
-            printf(" ERROR: outmap: %s must have a .dat extension\n", cmdParser.getOptions().m_outmap.c_str());
+            wprintf(L" ERROR: outmap: %s must have a .dat extension\n", cmdParser.getOptions().m_outmap.wstring().c_str());
             showHelpOption();
             return 1;
         }
@@ -1107,47 +682,56 @@ int main(int , char* )
             cmdParser.getOptions().m_bMergeTiles
             )
         {
-            printf(" ERROR: merging options have no meaning when using -eraseoutmap\n");
+            wprintf(L" ERROR: merging options have no meaning when using -eraseoutmap\n");
             return 1;
         }
     }
 
-    RRMap srcMap;
-    RRMap outMap;
-    ScriptFile scriptFile;
-    ScriptProcessor sfProcess;  // used to process scripts
+    MMMap srcMap;
+    MMMap outMap;
+
+    //ScriptFile scriptFile;
+    //ScriptProcessor sfProcess;  // used to process scripts
 
     // get srcmap if we want one
     if (!cmdParser.getOptions().m_srcmap.empty())
     {
-        FILE* fp = nullptr;
-        errno_t error = fopen_s(&fp, cmdParser.getOptions().m_srcmap.c_str(), "rb");
-        if (error || !fp)
+        srcMap.setFileName(cmdParser.getOptions().m_srcmap);
+        if (!srcMap.readMap(cmdParser.getOptions().m_bReadANSI))
         {
-            printf("ERROR: Unable to open for read\n");
-            printf("  %s\n", cmdParser.getOptions().m_srcmap.c_str());
-            showHelpOption();
+            srcMap.getErrors().printErrors();
             return 1;
         }
-        printf("  Reading srcmap: %s\n", cmdParser.getOptions().m_srcmap.c_str());
-        srcMap.getEncoding(fp);
-        if (srcMap.getUnicode())
+
+        wprintf((L"  Reading srcmap: " + cmdParser.getOptions().m_srcmap.wstring() + L"\n").c_str());
+        FileIO::FileEncoding encoding;
+        bool hasBOM;
+        std::wstring const &encodingstr = Unicode::utf8_to_wstring(srcMap.getEncoding( encoding, hasBOM ));
+        wprintf((L"  Encoding: " + encodingstr + (hasBOM ? L" BOM" : L" No BOM") + L"\n").c_str());
+
+        if (!srcMap.serializeInSections())
         {
-            printf("  Unicode file: %s format.\n", srcMap.getUnicodeLE() ? "LE" : "BE");
-        }
-        else if (srcMap.getUTF8BOM())
-        {
-            printf("  UTF-8 file with BOM\n");
+            srcMap.getErrors().printErrors();
+            return 1;
         }
 
-        srcMap.readMap(fp, cmdParser.getOptions());
-        fclose(fp);
+        if (!srcMap.processSections(cmdParser.getOptions().m_bFix, cmdParser.getOptions().m_nDefTileID, cmdParser.getOptions().m_nDefHeight, cmdParser.getOptions().m_nDefCrystal, cmdParser.getOptions().m_nDefOre) )
+        {
+            srcMap.getErrors().printErrors();
+            return 1;
+        }
+        if (!srcMap.getErrors().emptyWarnings())
+        {
+            srcMap.getErrors().printWarnings();
+        }
+
+        wprintf(L"  Rows: %d  Columns: %d  Total lines: %d\n", srcMap.getHeight(), srcMap.getWidth(), srcMap.getNumLinesRead());
 
         if (cmdParser.getOptions().m_bMergeRect)
         {
-            if (cmdParser.getOptions().m_erow >= srcMap.height() || cmdParser.getOptions().m_ecol >= srcMap.width())
+            if (cmdParser.getOptions().m_erow >= srcMap.getHeight() || cmdParser.getOptions().m_ecol >= srcMap.getWidth())
             {
-                printf(" Error: -mergerect values are outside srcmap");
+                wprintf(L" Error: -mergerect values are outside srcmap");
                 return 1;
             }
         }
@@ -1155,51 +739,33 @@ int main(int , char* )
         {      // if not using subregion, set region to entire source
             cmdParser.getOptions().m_srow = 0;
             cmdParser.getOptions().m_scol = 0;
-            cmdParser.getOptions().m_erow = srcMap.height() - 1;
-            cmdParser.getOptions().m_ecol = srcMap.width() - 1;
+            cmdParser.getOptions().m_erow = srcMap.getHeight() - 1;
+            cmdParser.getOptions().m_ecol = srcMap.getWidth() - 1;
         }
+        srcMap.getErrors().printWarnings();     // display any warnings
 
-        // display any warnings found
-        for (int i = 0; i < srcMap.getError().getWarnings().size(); i++)
-        {
-            printf("  Warning: %s\n", srcMap.getError().getWarnings()[i].c_str());
-            printf("     line: %d : %s\n", srcMap.getError().getWarnLines()[i].getLineNum(), std::string(srcMap.getError().getWarnLines()[i].getLine()).c_str());
-        }
-
-        if (!srcMap.valid())
-        {
-            for (int i = 0; i < srcMap.getError().getErrors().size(); i++)
-            {
-                printf("  Error: %s\n", srcMap.getError().getErrors()[i].c_str());
-                printf("   line: %d : %s\n", srcMap.getError().getErrLines()[i].getLineNum(), std::string(srcMap.getError().getErrLines()[i].getLine()).c_str());
-            }
-            return 1;   // errors cannot be fixed
-        }
-        else   // normal processing
-        {
-            printf("  Rows: %d  Columns: %d  Total lines: %d\n", srcMap.height(), srcMap.width(), srcMap.lines());
-        }
-        ScriptProcessor sp;
-        sp.setScriptFile(srcMap.getScript());  // copies the script, does raw parsing
+        //ScriptProcessor sp;
+        //sp.setScriptFile(srcMap.getScript());  // copies the script, does raw parsing
     }
 
     // have an output map
     if (!cmdParser.getOptions().m_outmap.empty())
     {
-        bool bExists = fExists(cmdParser.getOptions().m_outmap);
+        outMap.setFileName(cmdParser.getOptions().m_outmap);
+        bool bExists = outMap.fexists();
         if (bExists)
         {
             if (!cmdParser.getOptions().m_bEraseOutMap && !cmdParser.getOptions().m_bOverwrite)
             {
-                printf(" ERROR: to overwrite existing outmap use -overwrite or -eraseoutmap options\n");
+                wprintf(L" ERROR: to overwrite existing outmap use -overwrite or -eraseoutmap options\n");
                 return 1;
             }
         }
         else // outmap file does not exist
         {
-            if (!srcMap.valid() || !cmdParser.getOptions().m_bEraseOutMap)
+            if (cmdParser.getOptions().m_srcmap.empty() || !cmdParser.getOptions().m_bEraseOutMap)
             {
-                printf(" ERROR: non-existent outmap requires a srcmap and -copysrc option\n");
+                wprintf(L" ERROR: non-existent outmap requires a srcmap and -copysrc option\n");
                 return 1;
             }
         }
@@ -1216,228 +782,191 @@ int main(int , char* )
         // otherwise, if we have an existing outmap then copy it.
         if (cmdParser.getOptions().m_bEraseOutMap)
         {
-            BOOL retval = CopyFileA(cmdParser.getOptions().m_srcmap.c_str(), tempOut.get().c_str(), false);      // copy src to temp - this ensures we have disk space
+            BOOL retval = CopyFileW(cmdParser.getOptions().m_srcmap.c_str(), tempOut.get().c_str(), false);      // copy src to temp - this ensures we have disk space
             if (retval == 0)
             {
-                printf(" ERROR %d unable to copy:\n \"%s\" to \"%s\"\n", GetLastError(), cmdParser.getOptions().m_srcmap.c_str(), tempOut.get().c_str());
+                wprintf(L" ERROR %d unable to copy:\n \"%s\" to \"%s\"\n", GetLastError(), cmdParser.getOptions().m_srcmap.c_str(), tempOut.get().c_str());
                 return 1;
             }
         }
         else if (bExists)
         {
-            BOOL retval = CopyFileA(cmdParser.getOptions().m_outmap.c_str(), tempOut.get().c_str(), false);      // copy dest to temp - this ensures we have disk space
+            BOOL retval = CopyFileW(cmdParser.getOptions().m_outmap.c_str(), tempOut.get().c_str(), false);      // copy dest to temp - this ensures we have disk space
             if (retval == 0)
             {
-                printf(" ERROR %d unable to copy:\n \"%s\" to \"%s\"\n", GetLastError(), cmdParser.getOptions().m_srcmap.c_str(), tempOut.get().c_str());
+                wprintf(L" ERROR %d unable to copy:\n \"%s\" to \"%s\"\n", GetLastError(), cmdParser.getOptions().m_srcmap.c_str(), tempOut.get().c_str());
                 return 1;
             }
         }
 
         if (cmdParser.getOptions().m_bEraseOutMap)
+        {
             outMap.copyFrom(srcMap, cmdParser.getOptions());     // outmap is now a copy of srcmap but using options like resize, offsets
-
+        }
         else if (bExists)
         {
-            FILE* fp = nullptr;
-            errno_t error = fopen_s(&fp, cmdParser.getOptions().m_outmap.c_str(), "rb");
-            if (error || !fp)
+            outMap.setFileName(cmdParser.getOptions().m_outmap);
+            if (!outMap.readMap(cmdParser.getOptions().m_bReadANSI))
             {
-                printf("ERROR: Unable to open for read\n");
-                printf("  %s\n", cmdParser.getOptions().m_outmap.c_str());
+                outMap.getErrors().printErrors();
                 return 1;
             }
-            printf("  Reading outmap: %s\n", cmdParser.getOptions().m_outmap.c_str());
-            outMap.getEncoding(fp);
-            if (outMap.getUnicode())
+
+            wprintf((L"  Reading outmap: " + cmdParser.getOptions().m_outmap.wstring() + L"\n").c_str());
+            FileIO::FileEncoding encoding;
+            bool hasBOM;
+            std::wstring const &encodingstr = Unicode::utf8_to_wstring(outMap.getEncoding( encoding, hasBOM ));
+            wprintf((L"  Encoding: " + encodingstr + (hasBOM ? L" BOM" : L" No BOM") + L"\n").c_str());
+
+            if (!outMap.serializeInSections())
             {
-                printf("  Unicode file: %s format.\n", outMap.getUnicodeLE() ? "LE" : "BE");
-            }
-            else if (outMap.getUTF8BOM())
-            {
-                printf("  UTF-8 file with BOM\n");
+                outMap.getErrors().printErrors();
+                return 1;
             }
 
-            outMap.readMap(fp, cmdParser.getOptions());
-            fclose(fp);
-
-            // display any warnings found
-            for (int i = 0; i < outMap.getError().getWarnings().size(); i++)
+            if (!outMap.processSections(cmdParser.getOptions().m_bFix, cmdParser.getOptions().m_nDefTileID, cmdParser.getOptions().m_nDefHeight, cmdParser.getOptions().m_nDefCrystal, cmdParser.getOptions().m_nDefOre) )
             {
-                printf("  Warning: %s\n", outMap.getError().getWarnings()[i].c_str());
-                printf("     line: %d : %s\n", outMap.getError().getWarnLines()[i].getLineNum(), std::string(outMap.getError().getWarnLines()[i].getLine()).c_str());
+                outMap.getErrors().printErrors();
+                return 1;
             }
 
-            if (!outMap.valid())
+            if (!outMap.getErrors().emptyWarnings())
             {
-                for (int i = 0; i < outMap.getError().getErrors().size(); i++)
-                {
-                    printf("  Error: %s\n", outMap.getError().getErrors()[i].c_str());
-                    printf("   line: %d : %s\n", outMap.getError().getErrLines()[i].getLineNum(), std::string(outMap.getError().getErrLines()[i].getLine()).c_str());
-                }
-                return 1;   // errors cannot be fixed
+                outMap.getErrors().printWarnings();
             }
-            else   // normal processing
-            {
-                printf("  Rows: %d  Columns: %d  Total lines: %d\n", outMap.height(), outMap.width(), outMap.lines());
-            }
+
+            wprintf(L"  Rows: %d  Columns: %d  Total lines: %d\n", outMap.getHeight(), outMap.getWidth(), outMap.getNumLinesRead());
         }
 
         // see if resizing
         if (cmdParser.getOptions().m_nRowResize || cmdParser.getOptions().m_nColResize)
         {
             outMap.resize(cmdParser.getOptions().m_nRowResize, cmdParser.getOptions().m_nColResize, cmdParser.getOptions().m_nDefTileID, cmdParser.getOptions().m_nDefHeight, cmdParser.getOptions().m_nDefCrystal, cmdParser.getOptions().m_nDefOre);
-            printf(" Resizing outmap to Rows: %d, Columns: %d\n", outMap.height(), outMap.width());
+            wprintf(L" Resizing outmap to Rows: %d, Columns: %d\n", outMap.getHeight(), outMap.getWidth());
         }
 
         // see if using subregion
         if (cmdParser.getOptions().m_bMergeRect)
         {
-            printf(" Using srcmap subregion: [%d,%d] to [%d,%d]\n", cmdParser.getOptions().m_srow, cmdParser.getOptions().m_scol, cmdParser.getOptions().m_erow, cmdParser.getOptions().m_ecol);
+            wprintf(L" Using srcmap subregion: [%d,%d] to [%d,%d]\n", cmdParser.getOptions().m_srow, cmdParser.getOptions().m_scol, cmdParser.getOptions().m_erow, cmdParser.getOptions().m_ecol);
         }
-        // see if merging
+
+        outMap.merging(srcMap, cmdParser.getOptions().m_srow, cmdParser.getOptions().m_scol, cmdParser.getOptions().m_erow, cmdParser.getOptions().m_ecol, cmdParser.getOptions().m_nOffsetRow, cmdParser.getOptions().m_nOffsetCol,
+                       cmdParser.getOptions().m_bMergeTiles, cmdParser.getOptions().m_bMergeHeight, cmdParser.getOptions().m_bMergeCrystal, cmdParser.getOptions().m_bMergeOre );
+
+        // display merging performed
         if (cmdParser.getOptions().m_bMergeTiles)
         {
-            outMap.mergeTiles(srcMap, cmdParser.getOptions().m_srow, cmdParser.getOptions().m_scol, cmdParser.getOptions().m_erow, cmdParser.getOptions().m_ecol, cmdParser.getOptions().m_nOffsetRow, cmdParser.getOptions().m_nOffsetCol);
-            printf(" Merging srcmap tiles into outmap using offsets row: %d, columns: %d\n", cmdParser.getOptions().m_nOffsetRow, cmdParser.getOptions().m_nOffsetCol);
+            wprintf(L" Merging srcmap tiles into outmap using offsets row: %d, columns: %d\n", cmdParser.getOptions().m_nOffsetRow, cmdParser.getOptions().m_nOffsetCol);
         }
-        if (cmdParser.getOptions().m_bMergeHeight )
+        if (cmdParser.getOptions().m_bMergeHeight)
         {
-            outMap.mergeHeight(srcMap, cmdParser.getOptions().m_srow, cmdParser.getOptions().m_scol, cmdParser.getOptions().m_erow, cmdParser.getOptions().m_ecol, cmdParser.getOptions().m_nOffsetRow, cmdParser.getOptions().m_nOffsetCol);
-            printf(" Merging srcmap Heights into outmap using offsets row: %d, columns: %d\n", cmdParser.getOptions().m_nOffsetRow, cmdParser.getOptions().m_nOffsetCol);
+            wprintf(L" Merging srcmap Heights into outmap using offsets row: %d, columns: %d\n", cmdParser.getOptions().m_nOffsetRow, cmdParser.getOptions().m_nOffsetCol);
         }
         if (cmdParser.getOptions().m_bMergeCrystal)
         {
-            outMap.mergeCrystal(srcMap, cmdParser.getOptions().m_srow, cmdParser.getOptions().m_scol, cmdParser.getOptions().m_erow, cmdParser.getOptions().m_ecol, cmdParser.getOptions().m_nOffsetRow, cmdParser.getOptions().m_nOffsetCol);
-            printf(" Merging srcmap crystals into outmap using offsets row: %d, columns: %d\n", cmdParser.getOptions().m_nOffsetRow, cmdParser.getOptions().m_nOffsetCol);
+            wprintf(L" Merging srcmap crystals into outmap using offsets row: %d, columns: %d\n", cmdParser.getOptions().m_nOffsetRow, cmdParser.getOptions().m_nOffsetCol);
         }
         if (cmdParser.getOptions().m_bMergeOre)
         {
-            outMap.mergeOre(srcMap, cmdParser.getOptions().m_srow, cmdParser.getOptions().m_scol, cmdParser.getOptions().m_erow, cmdParser.getOptions().m_ecol, cmdParser.getOptions().m_nOffsetRow, cmdParser.getOptions().m_nOffsetCol);
-            printf(" Merging srcmap ore into outmap using offsets row: %d, columns: %d\n", cmdParser.getOptions().m_nOffsetRow, cmdParser.getOptions().m_nOffsetCol);
+            wprintf(L" Merging srcmap ore into outmap using offsets row: %d, columns: %d\n", cmdParser.getOptions().m_nOffsetRow, cmdParser.getOptions().m_nOffsetCol);
         }
 
         // process any height changes
         if (cmdParser.getOptions().m_bFlattenHigh)
         {
             outMap.flattenHeightHigh(cmdParser.getOptions().m_flathighval, cmdParser.getOptions().m_flathighnewheight);
-            printf(" Heights over %d set to %d\n", cmdParser.getOptions().m_flathighval, cmdParser.getOptions().m_flathighnewheight);
+            wprintf(L" Heights over %d set to %d\n", cmdParser.getOptions().m_flathighval, cmdParser.getOptions().m_flathighnewheight);
         }
         if (cmdParser.getOptions().m_bFlattenLow)
         {
             outMap.flattenHeightLow(cmdParser.getOptions().m_flatlowval, cmdParser.getOptions().m_flatlownewheight);
-            printf(" Heights below %d set to %d\n", cmdParser.getOptions().m_flatlowval, cmdParser.getOptions().m_flatlownewheight);
+            wprintf(L" Heights below %d set to %d\n", cmdParser.getOptions().m_flatlowval, cmdParser.getOptions().m_flatlownewheight);
         }
         if (cmdParser.getOptions().m_bFlattenBetween)
         {
             outMap.flattenHeightBetween(cmdParser.getOptions().m_flatBetweenLow, cmdParser.getOptions().m_flatBetweenHigh, cmdParser.getOptions().m_flatBetweenVal);
-            printf(" Heights: [%d,%d] set to %d\n", cmdParser.getOptions().m_flatBetweenLow, cmdParser.getOptions().m_flatBetweenHigh, cmdParser.getOptions().m_flatBetweenVal);
+            wprintf(L" Heights: [%d,%d] set to %d\n", cmdParser.getOptions().m_flatBetweenLow, cmdParser.getOptions().m_flatBetweenHigh, cmdParser.getOptions().m_flatBetweenVal);
         }
 
         if (cmdParser.getOptions().m_bBorderHeight)
         {
             outMap.borderHeight(cmdParser.getOptions().m_BorderHeight);
-            printf(" border heights set to: %d\n", cmdParser.getOptions().m_BorderHeight);
+            wprintf(L" border heights set to: %d\n", cmdParser.getOptions().m_BorderHeight);
         }
-
 
         if (!cmdParser.getOptions().m_mapName.empty())
         {
             outMap.setMapName(cmdParser.getOptions().m_mapName);
-            printf(" Setting levelname to: %s\n", cmdParser.getOptions().m_mapName.c_str());
+            wprintf(L" Setting levelname to: %s\n", Unicode::utf8_to_wstring(cmdParser.getOptions().m_mapName).c_str());
         }
 
         if (!cmdParser.getOptions().m_creator.empty())
         {
             outMap.setMapCreator(cmdParser.getOptions().m_creator);
-            printf(" Setting creator to: %s\n", cmdParser.getOptions().m_creator.c_str());
+            wprintf(L" Setting creator to: %s\n", Unicode::utf8_to_wstring(cmdParser.getOptions().m_creator).c_str());
         }
 
+        ScriptEngine scrEngine;     // script processing engine
+        scrEngine.setFileName( cmdParser.getOptions().m_srcscript );    // set script filename or empty
+        scrEngine.addCmdDefines(cmdParser.getOptions(), outMap.getHeight(), outMap.getWidth(), outMap.getMapName() );
+        scrEngine.loadScript( outMap.getScriptLines(), cmdParser.getOptions().m_sincdirs, cmdParser.getOptions().m_bReadANSI );
 
-        // now process any scriptfile 
-        if (!cmdParser.getOptions().m_srcscript.empty())
+        if (!scrEngine.getErrors().emptyErrors())
         {
-            int err = scriptFile.readFile(cmdParser.getOptions().m_srcscript, cmdParser.getOptions().m_sincdirs, cmdParser.getOptions().m_outmap);
-
-            for (int i = 0; i < scriptFile.getError().getWarnings().size(); i++)
-            {
-                printf("  Warning: %s\n", scriptFile.getError().getWarnings()[i].c_str());
-                printf("     line: %d: %s\n", scriptFile.getError().getWarnLines()[i].getLineNum(), std::string(scriptFile.getError().getWarnLines()[i].getLine()).c_str());
-            }
-
-            if (err)
-            {
-                for (int i = 0; i < scriptFile.getError().getErrors().size(); i++)
-                {
-                    printf("  Error: %s\n", scriptFile.getError().getErrors()[i].c_str());
-                    if (scriptFile.getError().getErrLines()[i].getLineNum() > 0)
-                        printf("    line: %d: %s\n", scriptFile.getError().getErrLines()[i].getLineNum(), std::string(scriptFile.getError().getErrLines()[i].getLine()).c_str());
-                }
-                return 1;
-            }
-
-            sfProcess.setScriptFile(scriptFile);  // copies the script, does raw parsing
-            err = sfProcess.addCmdDefines(cmdParser.getOptions(), outMap);  // process any -sdefine options
-            if (!err)
-                err = sfProcess.ProcessScript(cmdParser.getOptions());
-
-            for (int i = 0; i < sfProcess.getError().getWarnings().size(); i++)
-            {
-                printf("  Warning: %s\n", sfProcess.getError().getWarnings()[i].c_str());
-                printf("     line: %d: %s\n", sfProcess.getError().getWarnLines()[i].getLineNum(), std::string(sfProcess.getError().getWarnLines()[i].getLine()).c_str());
-            }
-
-            if (err)
-            {
-                for (int i = 0; i < sfProcess.getError().getErrors().size(); i++)
-                {
-                    printf("  Error: %s\n", sfProcess.getError().getErrors()[i].c_str());
-                    if (sfProcess.getError().getErrLines()[i].getLineNum() > 0)
-                        printf("    line: %d: %s\n", sfProcess.getError().getErrLines()[i].getLineNum(), std::string(sfProcess.getError().getErrLines()[i].getLine()).c_str());
-                }
-                return 1;
-
-            }
-
-
-            // TODO check/display errors/warnings, etc.
-
-            scriptFile = sfProcess.getScriptFile();
-
-            // no errors reading script. Lets put it into outmap now.
-            outMap.replaceScript(scriptFile);
-            printf(" Replacing outmap script. Read in %d lines total\n", scriptFile.size());
-        }
-
-        // all outmap modifications done. Time to save it.
-        FILE* fp = nullptr;
-        errno_t error = fopen_s(&fp, tempOut.get().c_str(), "wt");  // we will use text mode on write
-        if (error || !fp)
-        {
-            printf("ERROR: Unable to open for write\n");
-            printf("  %s\n", tempOut.get().c_str());
+            scrEngine.getErrors().printErrors();
             return 1;
         }
 
-        int err = outMap.writeMap(fp);
-        fclose(fp);
-        if (err)
+        if (!scrEngine.getErrors().emptyWarnings())
         {
-            printf("ERROR: failed to write\n");
-            printf("  %s\n", tempOut.get().c_str());
+            scrEngine.getErrors().printWarnings();
+        }
+
+        int outscriptlen = outMap.setScriptLines(scrEngine.processInputLines( cmdParser.getOptions().m_bFix ));
+
+        if (!scrEngine.getErrors().emptyErrors())
+        {
+            scrEngine.getErrors().printErrors();
             return 1;
         }
+
+        if (!scrEngine.getErrors().emptyWarnings())
+        {
+            scrEngine.getErrors().printWarnings();
+        }
+        wprintf(L" Replacing outmap script. %d lines total\n", outscriptlen);
+
+        // all outmap modifications done, save to temp file, then copy to real file
+        outMap.serializeOutSections();
+        outMap.setFileName( tempOut.get() );
+
+        FileIO::FileEncoding encoding = FileIO::FileEncoding::UTF8;     // default to UTF8 output
+        if (cmdParser.getOptions().m_bUnicode)
+            encoding = FileIO::FileEncoding::UTF16LE;
+
+        if (!outMap.writeMap(encoding, cmdParser.getOptions().m_bBOM))
+        {
+            outMap.getErrors().printErrors();
+            return 1;
+        }
+        if (!outMap.getErrors().emptyWarnings())
+            outMap.getErrors().printWarnings();
+
+        wprintf(L"  %d lines written for map file\n",outMap.getNumLinesWrite());
 
         // temp file has completed. Now copy to real destination
-        BOOL retVal = CopyFileA(tempOut.get().c_str(), cmdParser.getOptions().m_outmap.c_str(), 0);
+        BOOL retVal = CopyFileW(tempOut.get().c_str(), cmdParser.getOptions().m_outmap.c_str(), 0);
         if (retVal == 0)
         {
-            printf(" ERROR %d: unable to copy \"%s\" to \"%s\"", GetLastError(), tempOut.get().c_str(), cmdParser.getOptions().m_outmap.c_str());
+            wprintf(L" ERROR %d: unable to copy \"%s\" to \"%s\"", GetLastError(), tempOut.get().c_str(), cmdParser.getOptions().m_outmap.c_str());
             return 1;
         }
-        printf(" \"%s\" written. All done.\n", cmdParser.getOptions().m_outmap.c_str());
+        wprintf(L" \"%s\" written. All done.\n", cmdParser.getOptions().m_outmap.c_str());
+
     }
 
-    printf("\n");
+    wprintf(L"\n");
     return 0;
 }
 

@@ -6,69 +6,273 @@
 #ifndef MMDatUtil_H
 #define MMDatUtil_H
 
+#include <cstdint>
 #include <stdio.h>
+#include <cwctype>
 #include <string>
-#include <vector>
-#include <codecvt>
+#include <string_view>
 #include <unordered_set>
+#include <unordered_map>
+#include <array>
+#include <deque>
 #include <filesystem>
+#include <chrono>
 
-#if _MSVC_LANG >= 201703L  // detect for utf16-utf8 conversions
-#include <Windows.h>
+#include <windows.h>
+
+#include "mmunicode.h"
+
+#pragma push_macro("min")
+#pragma push_macro("max")
+#undef min
+#undef max
+
+#if !defined(UNICODE) or !defined(_UNICODE)
+#error define unicode in project settings to catch incorrect API usage
 #endif
 
-bool fExists(const std::string& FileName); // code in MMDatUtil.cpp
 
-// utility that will search a list of paths and ; separated paths and an array of already found paths for given file
-// file may have a relative path already or may be just a name.
-std::string searchPaths(const std::string& filename, const std::string& incDirs, const std::vector<std::filesystem::path>& paths); // code in MMDatUtil.cpp
+constexpr char getDateIso(const char *input, size_t index )
+{
+    const unsigned int compileYear = (input[7] - '0') * 1000 + (input[8] - '0') * 100 + (input[9] - '0') * 10 + (input[10] - '0');
+    const unsigned int compileDay = (input[4] == ' ') ? (input[5] - '0') : (input[4] - '0') * 10 + (input[5] - '0');
+
+    auto getcompileMonth = [](const char *input) -> unsigned int
+    {
+        auto monval = [](const char *month) -> unsigned int { return ((unsigned int)month[2] << 16) | ((unsigned int)month[1] << 8) | ((unsigned int)month[0]); };
+
+        unsigned int month;
+        switch (monval(input))
+        {
+            case monval("Jan"): { month = 1; break; }
+            case monval("Feb"): { month = 2; break; }
+            case monval("Mar"): { month = 3; break; }
+            case monval("Apr"): { month = 4; break; }
+            case monval("May"): { month = 5; break; }
+            case monval("Jun"): { month = 6; break; }
+            case monval("Jul"): { month = 7; break; }
+            case monval("Aug"): { month = 8; break; }
+            case monval("Sep"): { month = 9; break; }
+            case monval("Oct"): { month = 10; break; }
+            case monval("Nov"): { month = 11; break; }
+            case monval("Dec"): { month = 12; break; }
+            default: { month = 0; break; }
+        };
+        return month;
+    };
+
+    auto toch = []( unsigned int ch ) -> char { return (char)ch + '0'; };
+    char output[11] =
+    {
+        toch(compileYear / 1000), toch((compileYear % 1000) / 100), toch((compileYear % 100) / 10), toch(compileYear % 10),
+        '-',
+        toch(getcompileMonth(input) / 10), toch(getcompileMonth(input) % 10),
+        '-',
+        toch(compileDay / 10), toch(compileDay % 10),
+        0
+    };
+
+    return output[index];
+    
+};
 
 
-// returns string that has the short form of the git commit for the given path.
-// nullstr returned if any error - no git, file not under git control, etc.
-std::string getGitCommit(std::string_view path);    // code in MMDatUtil.cpp
+// compile time, like __DATE__ but has in ISO format   yyyy-mm-dd
+static constexpr char DATE_ISO[11] =
+{
+    getDateIso(__DATE__,0),     // y
+    getDateIso(__DATE__,1),     // y
+    getDateIso(__DATE__,2),     // y
+    getDateIso(__DATE__,3),     // y
+    getDateIso(__DATE__,4),     // -
+    getDateIso(__DATE__,5),     // m
+    getDateIso(__DATE__,6),     // m
+    getDateIso(__DATE__,7),     // -
+    getDateIso(__DATE__,8),     // d
+    getDateIso(__DATE__,9),     // d
+    getDateIso(__DATE__,10)     // 0
+};
 
 
-// returns string specified by format for the last modified time of the given path
-// null string if any error
-// format chars are Y is year, M is month, D is day, H is hour, N is minute, S is second. G is git commit support
-// years is 4 digits always. month, day, hour, minute, second are 2 digit 0 filled
-// git commit is the short form as determined by git
-// all other chars are copied as is to output preserving case.
-std::string getDateStr(std::string_view path, std::string_view format);   // code in MMDatUtil.cpp
+// MAP files are converted to UTF8 for processing.
+// MAP Input format map be ANSI, UTF8, UTF16, UTF32, MSB/LSB formats supported, optional BOM formats supported
+// output format by default is UTF8 but can be overriden to other formats
+// command line is processed in unicode format
+// all command line output is unicode format
 
-bool isEmptyStr(std::string_view str);
 
-// must return a new string
-std::string toLower(std::string str);
 
-// must return a new string
-std::string toLower(std::string_view str);
+namespace MMUtil
+{
 
-std::string_view removeLeadingWhite(std::string_view str);
+    // remove leading blank chars from string view, return new view
+    static inline std::string_view removeLeadingWhite(std::string_view str)
+    {
+        std::size_t pos;
+        std::size_t len = str.length();
+        for (pos = 0; (pos < len) && std::isblank((unsigned char)str[pos]); pos++); // skip leading space
+        return str.substr(pos);
+    }
 
-// first char must be alpha, followed by only alpha or digits. No leading/trailing spaces allowed
-// this is not for script, but for keys in other sections
-bool isValidVarName(std::string_view name);
+    // remove training blank chars from string view, return new view
+    static inline std::string_view removeTrailingWhite(std::string_view str)
+    {
+        std::size_t len = str.length();
+        if (len)
+        {
+            for (std::size_t pos = len - 1;; pos--)
+            {
+                if (!std::isblank((unsigned char)str[pos]))
+                {
+                    return str.substr(0, pos + 1);
+                }
+                if (pos == 0)   // entire string is blank
+                    break;
+            }
+        }
+        return std::string_view();     // return empty
+    }
 
-bool isInteger(std::string_view val, bool bAllowNeg);
-bool isFloat(std::string_view val, bool bAllowNeg);
+    // remove both leading and trailing blank chars from string view, return new view
+    static inline std::string_view removeLeadingAndTrailingWhite(std::string_view str)
+    {
+        return removeLeadingWhite(removeTrailingWhite(str));
+    }
 
-// standard does not provide a stoi for string_view, so here is one
-int stoi(std::string_view val);
+    // convert view to lower case returning a new string
+    static inline std::string toLower(std::string_view str)
+    {
+        std::string ret;
+        std::size_t len = str.length();
+        ret.reserve(len + 1);
 
-// returns string
-std::string readLineUTF8(FILE* fp);  // read from a multibyte source, return std::string
+        for (int i = 0; i < (int)len; i++)
+        {
+            ret += (char)std::tolower((unsigned char)str[i]);
+        }
+        return ret;
+    }
 
-// note that we are passing in strings - not string_views - conversion needs null term string
-std::wstring utf8_to_wstring(const std::string& str);
+    // convert wide view to lower case, returning a new wide string. Used for command line processing
+    static inline std::wstring toLower(std::wstring_view str)
+    {
+        std::wstring ret;
+        std::size_t len = str.length();
+        ret.reserve(len);
 
-// note that we are passing in strings - not string_view - conversion needs null term string
-std::string wstring_to_utf8(const std::wstring& str);
+        for (int i = 0; i < (int)len; i++)
+        {
+            ret += (wchar_t)std::towlower(str[i]);
+        }
+        return ret;
+    }
 
-std::string readLineUTF16(FILE* fp, bool lbf = true);  // read from unicode save into utf8 in std::string.
+    //  return true if view is en empty string after removing all leading blanks
+    static inline bool isEmptyStr(std::string_view str)
+    {
+        return removeLeadingWhite(str).empty();
+    }
 
-void getFileEncoding(FILE* fp, bool& bUTF8BOM, bool& bUTF16LE, bool& bUnicode);  // get encoding flags
+    // check that string starts with alpha and only contains alpha/digits
+    static inline bool isAlphaNumericName(std::string_view str)
+    {
+        if ((str.size() > 0) && std::isalpha((unsigned char)str[0]))
+        {
+            for (std::size_t i = 1; i < str.size(); i++)
+            {
+                if (!std::isalnum((unsigned char)str[i]))
+                    return false;
+            }
+            return true;
+        }
+        return false;
+    }
+
+    // standard does not provide a stoi for string_view, so here is one
+    static inline int stoi(std::string_view val)
+    {
+        int sum = 0;
+        if (val.length() > 0)
+        {
+            int sign = 1;
+            std::size_t i = 0;
+            if (val[0] == '-')
+            {
+                sign = -1;
+                i++;
+            }
+            for (; (i < val.length()) && std::isdigit((unsigned char)val[i]); i++)
+            {
+                sum = (sum * 10) + val[i] - '0';
+            }
+            sum *= sign;
+        }
+        return sum;
+    }
+
+
+    // return true if view is an integer number. must have at least a single digit with nothing but digits and an optional leading -sign.
+    // leading/training blank space must have already been removed
+    static inline bool isInteger(std::string_view val, bool bAllowNeg)
+    {
+        bool valid = false; // ensures we must have at least a single digit
+        if (!val.empty())
+        {
+            std::size_t i = 0;
+            if (val[0] == '-')
+            {
+                if (!bAllowNeg)
+                    return false;
+                i++;
+            }
+            std::size_t len = val.length();
+            for (; i < len; i++)
+            {
+                valid = std::isdigit((unsigned char)val[i]);
+                if (!valid)
+                    break;
+            }
+        }
+        return valid;
+    }
+
+    // return true if view is a float (or integer). must have as last a single digit with nothing but digits and an optional leading - sign and up to a single decimal point.
+    // leading/training blank space must have already been removed
+    static inline bool isFloat(std::string_view val, bool bAllowNeg)
+    {
+        bool valid = false; // start off false ensures we must have at least a single digit
+        if (!val.empty())
+        {
+            std::size_t i = 0;
+            if (val[0] == '-')
+            {
+                if (!bAllowNeg)
+                    return false;
+                i++;
+            }
+            bool bDecimalpoint = false;
+            std::size_t len = val.length();
+            for (; i < len; i++)
+            {
+                if (val[i] == '.')
+                {
+                    if (!bDecimalpoint)
+                        bDecimalpoint = true;
+                    else
+                        return false;  // cant have more than 1 decimal point
+                }
+                else
+                {
+                    valid = std::isdigit((unsigned char)val[i]);
+                    if (!valid)
+                        break;
+                }
+            }
+        }
+        return valid;
+    }
+
+};  // namespace MMUtil
 
 
 // options we pass
@@ -80,29 +284,37 @@ public:
     public:
         keyValue() = default;
         keyValue(std::string_view key, std::string_view value) : m_key(key), m_value(value) {}
+        keyValue(const std::string & key, const std::string & value) : m_key(key), m_value(value) {}
         ~keyValue() = default;
 
-        const std::string& key()   const { return m_key; }
-        const std::string& value() const { return m_value; }
+        const std::string & key()   const { return m_key; }
+        const std::string & value() const { return m_value; }
 
     protected:
         std::string m_key;
         std::string m_value;
-    };
+    }; // class keyValue
+
     void addKeyValue(std::string_view key, std::string_view value)
     {
-        m_defines.push_back(keyValue(key, value));
+        m_defines.emplace_back(key, value);
+    }
+    void addKeyValue(const std::string & key, const std::string &value)
+    {
+        m_defines.emplace_back(key, value);
     }
 
-    std::string  m_srcmap;
-    std::string  m_outmap;
-    std::string  m_srcscript;
-    std::string  m_mapName;             // override map name in info section
-    std::string  m_creator;             // override curator name in info section
-    std::string  m_sincdirs;            // list of paths to search for script includes
-    std::string  m_datestr = "\"y.m.d\""; // TyabScriptDate and TyabScriptIncDate format
 
-    std::vector<keyValue> m_defines;
+    // all the options    
+    std::filesystem::path             m_srcmap;              // input source map
+    std::filesystem::path             m_outmap;              // output source map (can also be input)
+    std::filesystem::path             m_srcscript;           // input script file to override script section
+    std::string                       m_mapName;             // override map name in info section
+    std::string                       m_creator;             // override curator name in info section
+    std::deque<std::filesystem::path> m_sincdirs;            // list of paths to search for script includes
+    std::string                       m_datestr = "\"y.m.d\""; // TyabScriptDate and TyabScriptIncDate format
+
+    std::deque<keyValue> m_defines;     // collection of key=value pairs
 
     int          m_nOffsetRow  = 0;
     int          m_nOffsetCol  = 0;
@@ -117,14 +329,14 @@ public:
     int          m_scol = 0;    // rect start col
     int          m_erow = 0;    // rect end row
     int          m_ecol = 0;    // rect end col
-    int          m_flathighval = 0;  // flatten high height to check
+    int          m_flathighval       = 0;  // flatten high height to check
     int          m_flathighnewheight = 0;  // flatten high new height
-    int          m_flatlowval = 0;  // flatten low height to check
-    int          m_flatlownewheight = 0;  // flatten low new height
-    int          m_flatBetweenLow = 0;  // flatten between low height to check
-    int          m_flatBetweenHigh = 0;  // flatten between high height to check
-    int          m_flatBetweenVal = 0;   // flatten between new height
-    int          m_BorderHeight = 0;    // set all borders heights to this value
+    int          m_flatlowval        = 0;  // flatten low height to check
+    int          m_flatlownewheight  = 0;  // flatten low new height
+    int          m_flatBetweenLow    = 0;  // flatten between low height to check
+    int          m_flatBetweenHigh   = 0;  // flatten between high height to check
+    int          m_flatBetweenVal    = 0;  // flatten between new height
+    int          m_BorderHeight      = 0;  // set all borders heights to this value
 
     bool         m_bMergeHeight   = false;
     bool         m_bMergeCrystal  = false;
@@ -137,78 +349,58 @@ public:
     bool         m_bScrFixSpace   = false;  // automatic fix spaces where not allowed
     bool         m_bScrNoComments = false;  // remove all non #. comments
     bool         m_bMergeRect     = false;  // if true merge src is a subregion
-    bool         m_bFlattenHigh = false;
+    bool         m_bFlattenHigh   = false;
     bool         m_bFlattenLow    = false;
     bool         m_bFlattenBetween= false;
     bool         m_bBorderHeight  = false;
-};
+    bool         m_bUnicode       = false;  // if set output UTF16LE format
+    bool         m_bBOM           = false;  // if set, output will have Byte Order Marker
+    bool         m_bReadANSI      = false;  // if set, assume 8 byte input with no BOM is ANSI
+}; // class CommandLineOptions
 
 
-// every line read in has the line and the line number.
-// either store a real string or we store a view to it.
+// every line read in has the line and the line number and optional filename
+// filename is only used for error reporting and must have been converted to utf8 prior
+// complete strings are stored, no references avoiding ownership issues.
 class InputLine
 {
   public:
     InputLine() = default;
-    InputLine(const std::string    & line, int linenum) { setLine(line, linenum); }  // store string copy
-    InputLine(      std::string_view line, int linenum) { setLine(line, linenum); }  // store view into existing string
-    InputLine(const InputLine& src)  // must have copy constructor since we store string_view into ourself
-    {
-        copy(src);
-    }
-
+    InputLine(std::string const& line, int linenum) : m_string(line), m_linenum(linenum) {}
+    InputLine(std::string const& line, int linenum, const std::string &filename) : m_string(line), m_linenum(linenum), m_filename(filename) {}
     ~InputLine() = default;
 
-    InputLine& operator = (const InputLine& rhs)
-    {
-        return copy(rhs);
-    }
+    std::string const &getLine()    const { return m_string; } 
+    int                getLineNum() const { return m_linenum; }
+    std::string const &getFileName()const { return m_filename; } 
 
-    void clear()
-    {
-        m_string.clear();
-        m_strview = m_string;
-        m_linenum = 0;
-    }
-
-    std::string_view getLine()    const { return m_strview; }  // views are read only
-    int              getLineNum() const { return m_linenum; }
+    bool empty() const { return m_filename.empty() && m_string.empty(); }
 
     // used to store the real string
-    void setLine(const std::string & line, int linenum)
+    void setLine(std::string const & line, int linenum)
     {
         m_string  = line;
-        m_strview = m_string;  // view to this line we are storing
         m_linenum = linenum;
     }
-
-    // storing a view to already existing string
-    void setLine(std::string_view line, int linenum)
+    void setLine(const std::string & line, int linenum, const std::string & filename)
     {
-        m_string.clear();       // only storing view
-        m_strview = line;       // save view into existing line owned by someone else
+        m_string  = line;
         m_linenum = linenum;
+        m_filename = filename;
     }
-
 
 protected:
-    InputLine& copy(const InputLine& rhs)
-    {
-        m_string  = rhs.m_string;
-        m_strview = rhs.m_strview;
-        m_linenum = rhs.m_linenum;
-        if (!m_string.empty())      // if copying a string
-            m_strview = m_string;   // we must reset the strview
-        return *this;
-    }
-
-
-    std::string      m_string;      // can be used to store either a raw string
-    std::string_view m_strview;     // or we store a string view, depends on constructor or setLine used
-    int              m_linenum = 0;
+    std::string      m_string;      // copy of input line
+    std::string      m_filename;    // copy of optional filename
+    int              m_linenum = 0; // line number for input line
 };
 
-// stores errors and warnings
+// stores errors and warnings.
+// all strings are utf8.  Every error/warning also has a copy of its InputLine
+// this is a collection class, can store unlimited errors/warnings.
+// Other error/warnings can be appended with +=
+// setError / setWarning will add a single error/warning
+// printing of errors/warnings is in unicode to console.
 class ErrorWarning
 {
   public:
@@ -257,1374 +449,1864 @@ class ErrorWarning
         }
     }
 
-    const std::vector<InputLine>&   getErrLines() const { return m_errlines; }
-    const std::vector<std::string>& getErrors()   const { return m_errors; }
-    const std::vector<InputLine>&   getWarnLines() const { return m_warnlines; }
-    const std::vector<std::string>& getWarnings()  const { return m_warnings; }
+    void printErrors() const
+    {
+        for (std::size_t index = 0; index < m_errors.size(); index++)
+        {
+            if (!m_errors[index].empty() || !m_errlines[index].empty())
+            {
+                wprintf((L"Error: " + Unicode::utf8_to_wstring(m_errors[index]) + L"\n").c_str());
+                if (!m_errlines[index].getFileName().empty())
+                {
+                    wprintf((L" File: " + Unicode::utf8_to_wstring(m_errlines[index].getFileName()) + L"\n").c_str());
+                }
+                if (m_errlines[index].getLineNum())
+                {
+                    wprintf((L" Line: " + std::to_wstring(m_errlines[index].getLineNum()) + L": " + Unicode::utf8_to_wstring(m_errlines[index].getLine()) + L"\n").c_str());
+                }
+            }
 
+        }
+    }
+
+    void printWarnings() const
+    {
+        for (std::size_t index = 0; index < m_warnings.size(); index++)
+        {
+            if (!m_warnings[index].empty() || !m_warnlines[index].empty())
+            {
+                wprintf((L"Warning: " + Unicode::utf8_to_wstring(m_warnings[index]) + L"\n").c_str());
+                if (!m_warnlines[index].getFileName().empty())
+                {
+                    wprintf((L" File: " + Unicode::utf8_to_wstring(m_warnlines[index].getFileName()) + L"\n").c_str());
+                }
+                if (m_warnlines[index].getLineNum())
+                {
+                    wprintf((L" Line: " + std::to_wstring(m_warnlines[index].getLineNum()) + L": " + Unicode::utf8_to_wstring(m_warnlines[index].getLine()) + L"\n").c_str());
+                }
+            }
+
+        }
+    }
+
+    bool emptyErrors() const { return m_errors.empty(); }
+    bool emptyWarnings() const { return m_warnings.empty(); }
+
+    const std::deque<InputLine>&   getErrLines()  const { return m_errlines; }
+    const std::deque<std::string>& getErrors()    const { return m_errors; }
+    const std::deque<InputLine>&   getWarnLines() const { return m_warnlines; }
+    const std::deque<std::string>& getWarnings()  const { return m_warnings; }
 
   protected:
-    std::vector<InputLine>   m_errlines;
-    std::vector<std::string> m_errors;
-    std::vector<InputLine>   m_warnlines;
-    std::vector<std::string> m_warnings;
+    std::deque<InputLine>   m_errlines;
+    std::deque<std::string> m_errors;
+
+    std::deque<InputLine>   m_warnlines;
+    std::deque<std::string> m_warnings;
 };
 
 
-// script file holds a complete script file with all embedded includes
-class ScriptFile
+
+// everything related to file i/o for maps. Deals with UTF8/UTF16/UTF32 and BOM's
+// we use the wide versions of the open functions to ensure unicode paths are supported
+// all paths are std::filesystem::paths
+// Be careful. Under windows, assigning an std::string to filesystem::path will assume ANSI and
+// use the system code page - it does not assume UTF8.
+// Under windows it is best to assign wstring to path.
+// Another cross platform way is to assign u8string to path, that will assume utf8
+class FileIO
 {
-public:
-    class ScriptLine
+  public:
+    FileIO() = default;
+    ~FileIO() = default;
+
+    void setFileName( const std::filesystem::path & filename ) { m_filename = filename; }
+    const std::filesystem::path & getFileName() const { return m_filename; }
+    bool exists() const
     {
-    public:
-        ScriptLine() = default;
-        ScriptLine(const InputLine& line) : m_line(line) {}
-        ScriptLine(const InputLine& line, std::string_view fileName) : m_line(line), m_fileName(fileName) {}
+        std::error_code ec;
+        return std::filesystem::exists(m_filename, ec);
+    }
 
-        ~ScriptLine() = default;
 
-        void setLine(const InputLine& line) { m_line = line; }
-        void setFileName(std::string_view fileName) { m_fileName = fileName; }
-
-        const InputLine& getInputLine() const { return m_line; }
-        std::string_view getFileName() const { return m_fileName; }
-
-    protected:
-        InputLine        m_line;
-        std::string_view m_fileName;        // filename associated with this line
+    // files without a BOM will be scanned to see if what appears to be unicode chars are used. If so, it will assume UnicodeLE
+    // Always write UTF8 without a BOM unless forced to unicode where a UnicodeLE BOM is written.
+    enum FileEncoding
+    {               // 4 byte auto detection from JSON Try both 32's, then 16, then default to UTF8
+        ANSI = 0,   // multibyte via ANSI system code page
+        UTF8,       // UTF8 (BOM is EF BB BF)           xx xx xx xx
+        UTF16LE,    // FF FE                            xx 00 xx 00
+        UTF16BE,    // FE FF                            00 xx 00 xx
+        UTF32LE,    // FF FE 00 00                      xx 00 00 00
+        UTF32BE,    // 00 00 FE FF                      00 00 00 xx
     };
 
-    ScriptFile() = default;
-    ~ScriptFile() = default;
-
-    ScriptFile& operator = (const ScriptFile& rhs)   // need custom = since the string views point into the strings saved in the set
+    bool hasBOM() const { return m_BOMsize > 0; }
+    FileEncoding getEncoding() const { return m_encoding; }
+    void setAnsi( bool bAnsi ) { m_bAnsi = bAnsi; }
+    
+    const std::string & getEncodingStr() const
     {
-        // we have to change every string_view to point into our copy of the set
-        m_fileNames = rhs.m_fileNames;   // copy the string storage
-        m_lines = rhs.m_lines;
-
-        // now we have to fix the string views in ScriptLine to point into our set and not the rhs set
-        for (auto it = m_lines.begin(); it != m_lines.end(); it++)
-        {
-            auto itt = m_fileNames.find(std::string((*it).getFileName()));
-            (*it).setFileName(std::string_view(*itt));        // make new string view pointing into our set
-        }
-        return *this;
-    }
-    int size() const { return (int)m_lines.size(); }
-
-    const ErrorWarning& getError() const { return m_errors; }
-    const std::vector<ScriptLine> & getLines() const { return m_lines; }
-
-    void addLine(const InputLine& line, const std::string& fileName)
-    {
-        auto it = m_fileNames.find(fileName);
-        if (it == m_fileNames.cend())
-        {
-            auto p = m_fileNames.insert(fileName);
-            it = p.first;
-        }
-        m_lines.push_back(ScriptLine(line, std::string_view(*it)));
+        static const std::string encodings[] = { "ANSI", "UTF8", "UTF16LE", "UTF16BE", "UTF32LE", "UTF32BE" };
+        return encodings[m_encoding];
     }
 
-    // used for writing back to map, get all of the input lines.
-    std::vector<std::string> getWriteLines() const
+    // set bAnsi to true if you want 8 bit input format without BOM to assume ANSI code page
+    // read every line from the file, returning a collection of InputLines.
+    std::deque<InputLine> readFile(ErrorWarning &errors)
     {
-        std::vector<std::string> retLines;
-        retLines.reserve(m_lines.size());       // estimated size if no embedded ones
-        for (auto it = m_lines.cbegin(); it != m_lines.cend(); it++)
+        std::deque<InputLine> ilines;
+        std::string filename = Unicode::wstring_to_utf8(m_filename.wstring());
+
+        FILE *fp = nullptr;
+        errno_t err = _wfopen_s( &fp, m_filename.wstring().c_str(), L"rb");
+        if (err || fp == nullptr)
         {
-            retLines.push_back(std::string((*it).getInputLine().getLine()));
+            errors.setError(InputLine(),"Unable to open: " + filename);
+            return ilines;
         }
-        return retLines;
-    }
+        determineEncoding(fp);         // check for BOM's determine type of encoding used by file.
+        fseek(fp,m_BOMsize,SEEK_SET);  // reset back to beginning or skip from start the BOM 
 
-    // return 0 for no error, otherwise m_errors is filled in
-    int readFile(const std::string& fileName, const std::string& incdirs, const std::string& outmap )
-    {
-        std::vector<std::filesystem::path> paths;
-        std::unordered_set<std::string>    duplicates;  // we try and prevent same include multiple times.
+        int linenum = 0;
 
-        // look at the destination map. If it has a path, use that as the first path to try to resolve scripts
-        if (!outmap.empty())
+        std::string errmsg;
+
+        while (!feof(fp))
         {
-            std::filesystem::path outpath = outmap;
-            outpath.remove_filename();
-            if (!outpath.empty())
-                paths.push_back(outpath);
-        }
-        return ireadFile(fileName, incdirs, paths, InputLine(), 1, duplicates);
-    }
-
-protected:
-
-    // this may be called recursively as we process #pragma include comments to include other script files
-    int ireadFile(const std::string& fileName, const std::string& incdirs, std::vector<std::filesystem::path>& paths, const InputLine & ilineerr, int indent, std::unordered_set<std::string> &duplicates)
-    {
-        static const std::string_view sinclude = "#pragma include ";
-
-        // find the file via our search system
-        std::string fname = searchPaths(fileName, incdirs, paths);
-        if (fname.empty())
-        {
-            m_errors.setError(ilineerr, "Unable to find script: " + fileName);
-            return 1;
-        }
-        // if we have already included fname, don't do it again to prevent circular or duplicate reference. Log it as a warning
-        // we only look at filename part and only use lower case for this check
-        std::string nameonly = toLower(std::filesystem::path(fname).filename().string());
-        if (duplicates.find(nameonly) != duplicates.cend())
-        {
-            m_errors.setWarning(ilineerr, "Duplicate or circular include ignored: " + nameonly);
-            return 0;   // ignore it, but no error
-        }
-        duplicates.insert(nameonly);
-
-        std::filesystem::path fpath = fname;
-        fpath.remove_filename();
-        if (!fpath.empty())       // only add if it is unique
-        {
-            bool bFound = false;
-            for (std::size_t i = 0; i < paths.size(); i++)
+            std::string line;
+            switch (m_encoding)
             {
-                if (paths[i] == fpath)
+                case ANSI:
+                case UTF8:
+                    line = readLineUTF8(fp, errmsg);
+                    break;
+                case UTF16LE:
+                case UTF16BE:
+                    line = readLineUTF16(fp, errmsg);
+                    break;
+                case UTF32LE:
+                case UTF32BE:
+                    line = readLineUTF32(fp,errmsg);
+                    break;
+            }
+            linenum++;
+            if (line.size() || !feof(fp))   // read something or not at end of file
+                ilines.emplace_back(line,linenum,filename);
+            if (!errmsg.empty())
+            {
+                errors.setError(ilines.back(),errmsg);
+                break;
+            }
+        }
+        fclose(fp);
+        return ilines;
+    }
+
+    // write the array of lines to output, using provided encoding and BOM override.
+    // return true if ok, false if error
+    bool writeFile(const std::deque<std::string>& lines, ErrorWarning & errors, FileEncoding encoding, bool forceBOM)
+    {
+        std::string filename = Unicode::wstring_to_utf8(m_filename.wstring());
+        FILE *fp = nullptr;
+        errno_t err = _wfopen_s( &fp, m_filename.wstring().c_str(), L"wb");
+        if (err || fp == nullptr)
+        {
+            errors.setError(InputLine(),"Unable to create: " + filename);
+            return false;
+        }
+
+        bool retval = true;     // assume it will write completely
+
+        if (forceBOM)
+        {
+            uint8_t bom[4];   // up to 4 bytes for BOM
+            int bomsize = 0;
+            switch (encoding)
+            {
+                case UTF8:
+                    bom[0] = 0xef; bom[1] = 0xbb; bom[2] = 0xbf;
+                    bomsize = 3;
+                    break;
+                case UTF16LE:
+                    bom[0] = 0xff; bom[1] = 0xfe;
+                    bomsize = 2;
+                    break;
+                case UTF16BE:
+                    bom[0] = 0xfe; bom[1] = 0xff;
+                    bomsize = 2;
+                    break;
+                case UTF32LE:
+                    bom[0] = 0xff; bom[1] = 0xfe; bom[2] = 0x00; bom[3] = 0x00;
+                    bomsize = 4;
+                    break;
+                case UTF32BE:
+                    bom[0] = 0x00; bom[1] = 0x00; bom[2] = 0xfe; bom[3] = 0xff;
+                    bomsize = 4;
+                    break;
+            }
+            if (fwrite(bom, bomsize, 1, fp) != 1)
+            {
+                retval = false;     // stop processing
+                errors.setError(InputLine(), "Error writing: " + filename);
+            }
+        }
+        if (retval)
+        {
+            for (auto it : lines)
+            {
+                const std::string & strref = it;
+                retval = false;
+                switch (encoding)
                 {
-                    bFound = true;
+                    case UTF8:
+                        retval = writeLineUTF8(fp,strref);
+                        break;
+                    case UTF16LE:
+                        retval = writeLineUTF16(fp,strref,false);
+                        break;
+                    case UTF16BE:
+                        retval = writeLineUTF16(fp,strref,true);
+                        break;
+                    case UTF32LE:
+                        retval = writeLineUTF32(fp,strref,false);
+                        break;
+                    case UTF32BE:
+                        retval = writeLineUTF32(fp,strref,true);
+                        break;
+                }
+                if (!retval)
+                {
+                    errors.setError(InputLine(), "Error writing: " + filename);
                     break;
                 }
             }
-            if (!bFound)
-                paths.push_back(fpath);   // add to list of paths found
-        }
-        FILE* fp = nullptr;
-        errno_t error = fopen_s(&fp, fname.c_str(), "rt");
-        if (error || !fp)
-        {
-            m_errors.setError(ilineerr, "error " + std::to_string(error) + " opening script: " + fname);
-            return 1;
-        }
-        for (int i = 0; i < indent; i++) printf("  ");
-        printf("Reading script file: %s\n", fname.c_str());
-
-        bool bUTF8BOM = false;
-        bool bUTF16LE = false;
-        bool bUnicode = false;
-        getFileEncoding(fp, bUTF8BOM, bUTF16LE, bUnicode);
-
-        int linenum = 0;
-        InputLine iline;
-        std::string line;
-        std::string includeFname;
-        for (; !feof(fp) && !error;)
-        {
-            linenum++;
-            if (bUnicode)
-                line = readLineUTF16(fp, bUTF16LE);
-            else
-                line = readLineUTF8(fp);
-
-            iline.setLine(line, linenum);
-            // here we need to check for #pragma include. if we find it, change it to be ##pragma include so it does not get processed again.
-            // and then take the value after the include, treat it as a string and spawn this recursivly
-            if (!line.empty())
-            {
-                std::string_view stline = line;
-                if (sinclude == toLower(stline.substr(0, sinclude.size())))  // we have the pragma to include another script
-                {
-                    std::size_t spos = sinclude.size();
-                    for (; spos < stline.size() && isspace(stline[spos]); spos++);  // skip leading space
-                    if (spos < stline.size())
-                    {
-                        std::size_t epos = spos + 1;
-                        if (stline[spos] == '"')
-                        {
-                            spos = epos;
-                            for (; (epos < stline.size()) && (stline[epos] != '"'); epos++);
-                            if (epos >= stline.size())
-                                spos = epos;   // prevent any string - missing ending "
-                        }
-                        else
-                        {
-                            for (; (epos < stline.size()) && !isspace(stline[epos]); epos++);
-                        }
-                        if (spos < stline.size())
-                            includeFname = stline.substr(spos, epos - spos);
-                    }
-                    if (includeFname.empty())
-                    {
-                        m_errors.setError(iline, "\"" + fname + "\": Invalid pragma include, missing or invalid filename");
-                        error = 1;
-                    }
-                    else
-                    {
-                        addLine(InputLine('#' + line, linenum), fname);
-                        error = ireadFile(includeFname, incdirs, paths, iline, indent+1, duplicates);
-                    }
-                    continue;
-                }
-            }
-            addLine(iline, fname);
         }
         fclose(fp);
-        if (!error)
-        {
-            for (int i = 0; i < indent; i++) printf("  ");
-            printf("Read %d lines from: %s\n", linenum, fname.c_str());
-        }
-        return error;
+        return retval;
     }
 
-    std::unordered_set<std::string> m_fileNames;   // storage for all embedded file names since lines hold string_views. These are the names used to open the file.
-    std::vector<ScriptLine>         m_lines;       // all the lines it holds, every line holds a str_view to the filename it is associated with.
-    ErrorWarning                    m_errors;
+    // utility that will search a list of paths and an array of already found paths for given file
+    // file may have a relative path already or may be just a name.
+    // caller needs to determine if the found file is allowed to be used (script circular references).
+    static std::filesystem::path searchPaths(const std::filesystem::path &filename, const std::deque<std::filesystem::path> &incdirs, const std::deque<std::filesystem::path>& paths)
+    {
+        std::error_code ec;
+        if (std::filesystem::exists(filename, ec))
+            return filename;
+
+        std::filesystem::path fileName = filename;
+        std::filesystem::path fileNameOnly = fileName.filename();           // get just the filename
+        std::filesystem::path filePathOnly = fileName;
+        filePathOnly.remove_filename();    // get just the path
+
+        std::filesystem::path temp;
+
+        // first search the paths already found
+        for (auto it : paths)
+        {
+            temp = it;
+            if (!temp.empty())      // should never be empty but just in case
+            {
+                temp.replace_filename( fileNameOnly );
+                if (std::filesystem::exists(temp, ec))
+                    return temp;        // return path found
+
+                // try adding on the provided name to an existing found one
+                temp = it;
+                temp.replace_filename( filename );      // try using this 
+                if (std::filesystem::exists(temp, ec))
+                    return temp;
+            }
+        }
+
+        // still not found, try all the paths in inc dirs
+        for (auto it : incdirs )
+        {
+            temp = it / fileNameOnly;
+            if (std::filesystem::exists(temp, ec))
+                return temp;
+
+            temp = it;
+            temp.replace_filename( filename );
+            if (std::filesystem::exists(temp, ec))
+               return temp;
+        }
+        return std::filesystem::path();   // unable to find, return empty
+    }
+
+    // returns string that has the short form of the git commit for the given path.
+    // emptystr returned if any error - no git, file not under git control, etc.
+    static std::string getGitCommit(const std::filesystem::path & path)
+    {
+        class saveRestoreCWD
+        {
+        public:
+            saveRestoreCWD()
+            {
+                std::error_code ec;
+                m_cwd = std::filesystem::current_path(ec);    // get current working directory
+            }
+            ~saveRestoreCWD()
+            {
+                std::error_code ec;
+                std::filesystem::current_path(m_cwd, ec);   // restore current working directory
+            }
+        protected:
+            std::filesystem::path m_cwd;
+        };
+
+        std::string retS;
+        saveRestoreCWD cwd;     // auto save and restore the current working directory
+
+        std::error_code ec;
+
+        std::filesystem::path fpath = path;             // get the full filename path
+        std::filesystem::path fname = fpath.filename(); // get just the filename
+        fpath.remove_filename();                        // just the path
+
+        std::filesystem::current_path(fpath, ec); // change current dir so git will be in the correct directory
+
+        // using windows wide version - piped output will be unicode and needs to be converted back to utf8
+        FILE* fp = _wpopen((L"git log --no-color -1 --abbrev-commit " + fname.wstring()).c_str(), L"r");
+        if (fp)
+        {
+            wchar_t buffer[512] = { 0 };
+            fgetws(buffer, sizeof(buffer) - 1, fp);      // first string will be commit shorthash
+            _pclose(fp);
+            retS = Unicode::wstring_to_utf8(buffer);
+
+            std::size_t pos = retS.find("commit ");
+            if (pos == 0)   // it found it
+            {
+                pos += 7;   // should be start of commit
+                std::size_t epos = pos;
+                for (; epos < retS.size(); epos++)
+                {
+                    int ch = std::tolower((unsigned char)retS[epos]);
+                    if ((ch >= '0') && (ch <= '9'))     // make sure in range
+                        continue;
+                    if ((ch >= 'a') && (ch <= 'f'))     // make sure in range
+                        continue;
+                    break;
+                }
+                if ((pos < retS.size()) && (epos >= pos + 4)) // min short hash is 4 chars
+                {
+                    retS = retS.substr(pos, epos - pos);  // short hash
+                }
+            }
+        }
+        return retS;
+    }
+
+    // returns string specified by format for the last modified time of the given path
+    // null string if any error
+    // format chars are Y is year, M is month, D is day, H is hour, N is minute, S is second. G is git commit support
+    // years is 4 digits always. month, day, hour, minute, second are 2 digit 0 filled
+    // git commit is the short form as determined by git
+    // all other chars are copied as is to output preserving case.
+    static std::string getDateStr(const std::filesystem::path & path, std::string_view format)
+    {
+        std::string sdate;
+        std::filesystem::path fp = path;
+        std::error_code ec;
+        std::filesystem::file_time_type lwt = std::filesystem::last_write_time(path, ec);
+        if (ec.value() == 0)
+        {
+            time_t tfile = std::chrono::system_clock::to_time_t(std::chrono::clock_cast<std::chrono::system_clock>(lwt));
+            struct tm tlf;
+            localtime_s(&tlf, &tfile);
+            char buffer[128] = { 0 };
+            for (std::size_t pos = 0; pos < format.size(); pos++)
+            {
+                buffer[0] = 0;
+                switch (tolower(format[pos]))
+                {
+                case 'y':   // year
+                    sprintf_s(buffer, "%04d", tlf.tm_year + 1900);
+                    sdate += buffer;
+                    break;
+
+                case 'm':   // month
+                    sprintf_s(buffer, "%02d", tlf.tm_mon+1);
+                    sdate += buffer;
+                    break;
+
+                case 'd':   // day
+                    sprintf_s(buffer, "%02d", tlf.tm_mday);
+                    sdate += buffer;
+                    break;
+
+                case 'h':   // hour
+                    sprintf_s(buffer, "%02d", tlf.tm_hour);
+                    sdate += buffer;
+                    break;
+
+                case 'n':   // minute
+                    sprintf_s(buffer, "%02d", tlf.tm_min);
+                    sdate += buffer;
+                    break;
+
+                case 's':   // sec
+                    sprintf_s(buffer, "%02d", tlf.tm_sec);
+                    sdate += buffer;
+                    break;
+
+                case 'g':   // git commit
+                    sdate += getGitCommit(path);
+                    break;
+
+                default:
+                    sdate += format[pos];
+                    break;
+                }
+            }
+        }
+        return sdate;
+    }
+
+  protected:
+
+    // callers need to reset back to beginning then then skip the returned number of bytes
+    // if bomSize is 0, there was no detected BOM
+    void determineEncoding(FILE* fp)
+    {
+        m_BOMsize = 0;      // assume no bom
+        m_encoding = UTF8;  // asssuming utf8
+        m_hbf = false;      // asssum low byte first
+
+        // work with all known text formats. Start by looking for BOM's
+        // if we have an error reading first 4 bytes, just default to UTF8 with no BOM.
+        int byte1 = fgetc(fp);
+        if (byte1 == EOF)
+            return;
+        int byte2 = fgetc(fp);
+        if (byte2 == EOF)
+            return;
+        int byte3 = fgetc(fp);
+        if (byte3 == EOF)
+            return;
+        int byte4 = fgetc(fp);
+        if (byte4 == EOF)
+            return;
+
+        if ((byte1 == 0xef) && (byte2 == 0xbb) && (byte3 == 0xbf))  // check for 3 byte legacy UTF8 BOM
+        {
+            m_BOMsize = 3;
+        }
+        else if ((byte1 == 0x00) && (byte2 == 0x00) && (byte3 == 0xfe) && (byte4 == 0xff))
+        {
+            m_BOMsize = 4;
+            m_encoding = UTF32BE;
+            m_hbf = true;
+        }
+        else if ((byte1 == 0xff) && (byte2 == 0xfe) && (byte3 == 0x00) && (byte4 == 0x00))
+        {
+            m_BOMsize = 4;
+            m_encoding = UTF32LE;
+        }
+        else if ((byte1 == 0xff) && (byte2 == 0xfe))
+        {
+            m_BOMsize = 2;
+            m_encoding = UTF16LE;
+        }
+        else if ((byte1 == 0xfe) && (byte2 == 0xff))
+        {
+            m_BOMsize = 2;
+            m_encoding = UTF16BE;
+            m_hbf = true;
+        }
+        else if ((byte1 == 0x00) && (byte2 == 0x00) && (byte3 == 0x00) && (byte4 != 0x00))       // no BOM, check the same way JSON does.
+        {
+            m_encoding = UTF32BE;
+            m_hbf = true;
+        }
+        else if ((byte1 != 0x00) && (byte2 == 0x00) && (byte3 == 0x00) && (byte4 == 0x00))
+        {
+            m_encoding = UTF32LE;
+        }
+        else if ((byte1 == 0x00) && (byte2 != 0x00) && (byte3 == 0x00) && (byte4 != 0x00))
+        {
+            m_encoding = UTF16BE;
+            m_hbf = true;
+        }
+        else if ((byte1 != 0x00) && (byte2 == 0x00) && (byte3 != 0x00) && (byte4 == 0x00))
+        {
+            m_encoding = UTF16LE;
+        }
+        else if (m_bAnsi)  // not UTF32, not UTF16, no bom, callers want to assume ANSI
+            m_encoding = ANSI;
+    }
+
+    // returns string
+    std::string readLineUTF8(FILE* fp,std::string &errmsg)  // read from a multibyte source, return wide string
+    {
+        std::string line;   // reading utf8!
+        line.reserve(4096);	// so += is fast
+        for (; !feof(fp);)
+        {
+            int ch = fgetc(fp);
+            if (ch == EOF)
+                break;
+            ch &= 0xff;
+            if (ch == 0)
+            {
+                errmsg = "Unexpected 0 byte - possibly mismatched UTF8/UTF16 encoding";
+                break;
+            }
+            if (ch == '\r')         // ignore carriage returns, only care about line feeds.
+                continue;
+            if (ch == '\n')
+                break;
+            if (ch == 26)  // CTRL-Z
+                break;
+            line += (uint8_t)ch;
+        }
+        // if callers wants to use ANSI format, have to convert ANSI to UTF8.
+        if (m_encoding == ANSI)
+        {
+            return Unicode::wstring_to_utf8(Unicode::ansi_to_wstring( line )); // convert ansi to wide, then back to utf8
+        }
+        else
+        {
+            line.shrink_to_fit();
+            return line;
+        }
+    }
+
+    // this supports both utf16 formats so it reads a byte at a time
+    std::string readLineUTF16(FILE* fp, std::string &)  // read from unicode save into wstring
+    {
+        std::u16string line;
+        line.reserve(4096);	// so += is fast
+        for (; !feof(fp);)
+        {
+            int ch1 = fgetc(fp);
+            if (ch1 == EOF)
+                break;
+            int ch2 = fgetc(fp);
+            if (ch1 == EOF)
+                break;
+            ch1 &= 0xff;
+            ch2 &= 0xff;
+            int ch;
+            if (m_hbf)
+                ch = (ch1 << 8) | ch2;
+            else
+                ch = (ch2 << 8) | ch1;
+            if (ch == 0)
+                break;
+            if (ch == '\r')   // ignore carriage returns, only care about line feeds.
+                continue;
+            if (ch == 26)     // CTRL-Z is treated as end of line in this context
+                break;
+            if (ch == '\n')
+                break;
+            line += (char16_t)ch;
+        }
+        return Unicode::utf16_to_utf8( line );
+    }
+
+    // this supports both utf32 formats so it reads a byte at a time
+    std::string readLineUTF32(FILE* fp, std::string &)  // read from unicode save into wstring
+    {
+        std::u32string u32line;
+        u32line.reserve(4096);	// so += is fast
+        for (; !feof(fp);)
+        {
+            int ch1 = fgetc(fp);
+            if (ch1 == EOF)
+                break;
+            int ch2 = fgetc(fp);
+            if (ch1 == EOF)
+                break;
+            int ch3 = fgetc(fp);
+            if (ch3 == EOF)
+                break;
+            int ch4 = fgetc(fp);
+            if (ch4 == EOF)
+                break;
+            ch1 &= 0xff;
+            ch2 &= 0xff;
+            ch3 &= 0xff;
+            ch4 &= 0xff;
+            uint32_t ch;
+            if (m_hbf)
+                ch = (ch1 << 24) | (ch2 < 16) | (ch3 < 8) | ch4;
+            else
+                ch = (ch4 << 24) | (ch3 < 16) | (ch2 < 8) | ch1;
+            if (ch == 0)
+                break;
+            if (ch == '\r')   // ignore carriage returns, only care about line feeds.
+                continue;
+            if (ch == 26)     // CTRL-Z is treated as end of line in this context
+                break;
+            if (ch == '\n')
+                break;
+            u32line += ch;
+        }
+        return Unicode::utf32_to_utf8( u32line );
+    }
+
+    bool writeLineUTF8(FILE* fp, const std::string &line )  // write utf line
+    {
+        std::size_t retval = 1;
+        if (line.size())    // as long as not a null string
+            retval = fwrite(line.c_str(), line.size(), 1, fp);  // write the line and it should return 1
+        if (retval == 1)
+        {
+            char crlf[] = "\r\n";
+            retval = fwrite(crlf,2,1,fp);
+        }
+        return retval == 1;
+    }
+
+    bool writeLineUTF16(FILE* fp, const std::string &line, bool hbf )  // write utf line
+    {
+        std::u16string u16line = Unicode::utf8_to_utf16( line );
+        u16line += '\r';
+        u16line += '\n';
+
+        for (auto it : u16line)
+        {
+            uint32_t ch = it;
+            uint8_t  out[2];
+            if (hbf)
+            {
+                out[1] = ch & 0xff;
+                out[0] = (ch >> 8) & 0xff;
+            }
+            else
+            {
+                out[0] = ch & 0xff;
+                out[1] = (ch >> 8) & 0xff;
+            }
+            if (fwrite(out,2,1,fp) != 1)
+                return false;
+        }
+        return true;
+    }
+
+    bool writeLineUTF32(FILE* fp, const std::string &line, bool hbf )  // write utf line
+    {
+        std::u32string u32line = Unicode::utf8_to_utf32(line);
+        u32line += '\r';
+        u32line += '\n';
+
+        for (auto it : u32line)
+        {
+            uint32_t ch = it;
+            uint8_t  out[4];
+            if (hbf)
+            {
+                out[3] = ch & 0xff;
+                out[2] = (ch >> 8) & 0xff;
+                out[1] = (ch >> 16) & 0xff;
+                out[0] = (ch >> 24) & 0xff;
+            }
+            else
+            {
+                out[0] = ch & 0xff;
+                out[1] = (ch >> 8) & 0xff;
+                out[2] = (ch >> 16) & 0xff;
+                out[3] = (ch >> 24) & 0xff;
+            }
+            if (fwrite(out,4,1,fp) != 1)
+                return false;
+        }
+        return true;
+    }
+
+
+    std::filesystem::path m_filename;   // filename for this file.
+
+    int          m_BOMsize  = 0;
+    FileEncoding m_encoding = UTF8;
+    bool         m_hbf      = false;  // true if utf16/utf32 is high byte first storage format during read
+    bool         m_bAnsi    = false;  // true means 8 bit input with no BOM is assumed to use ANSI code page.
 };
 
 
-
-// section contains the name and all of the strings that make up the section.
-// strings are copies of the ones in the map since we have the ability to modify them
+// base class of all map sections, sections with unique processing derive from this.
+// contains basic operations for all sections.
+// 
 class MapSection
 {
 public:
-    // for info section, we break it into key:value pairs
-    class infoSection
+    MapSection()  = default;
+    virtual ~MapSection() = default;
+    //MapSection( const MapSection &ref ) = default;
+
+    virtual MapSection* clone()
+    {
+        return new MapSection( *this );
+    }
+
+    void                 setSectionName(const std::string & name) { m_name = name; }
+    const std::string & getSectionName() const { return m_name; }
+
+    bool operator == (MapSection const& rhs) const  // for collections, we only use the section name
+    {
+        return m_name == rhs.m_name;
+    }
+
+    bool operator < (MapSection const& rhs) const  // for collections, we only use the section name
+    {
+        return m_name < rhs.m_name;
+    }
+
+    // return true if no error
+    virtual bool serializeInLine(InputLine const& line, ErrorWarning & )  // caller does this for every line it has determined is part of the section
+    {
+        m_lines.push_back(line);
+        return true;
+    }
+
+    // return reference to list of lines to write. Does not include section name begin/end, caller will do that.
+    virtual const std::deque<std::string> & serializeOut()
+    {
+        // build the output lines
+        m_outputLines.clear();
+        for (auto it = m_lines.cbegin(); it != m_lines.cend(); ++it)
+        {
+            m_outputLines.emplace_back((*it).getLine());
+        }
+
+        // return copy of lines to write to file. Does not include the section name and begin/end markers. Caller does that.
+        return m_outputLines;
+    }
+
+    const std::deque<InputLine>& getLines() const
+    {
+        return m_lines;
+    }
+
+    void setLines(const std::deque<InputLine>& lines)
+    {
+        m_lines = lines;
+    }
+
+    // methods that are section dependent, default they do nothing
+    virtual std::string          getValue([[maybe_unused]] const std::string & key) const { return std::string(); }
+    virtual void                 AddorModifyItem([[maybe_unused]] const std::string& key, [[maybe_unused]] const std::string& value) {}
+    virtual void                 resize([[maybe_unused]] int width, [[maybe_unused]] int height, [[maybe_unused]] int defvalue1, [[maybe_unused]] int defvalue2) {}
+    virtual void                 setBorders([[maybe_unused]] int defValue) {}
+    virtual void                 flattenHigh([[maybe_unused]] int testVal, [[maybe_unused]] int newValue) {}  // change all values above this to given value
+    virtual void                 flattenLow([[maybe_unused]] int testVal, [[maybe_unused]] int newValue) {}  // change all values above this to given value
+    virtual void                 flattenBetween([[maybe_unused]] int testLow, [[maybe_unused]] int testHigh, [[maybe_unused]] int newValue) {}  // change all values testLow <= value <=testHigh to newValue
+    virtual bool                 verifyBounds([[maybe_unused]] int rows, [[maybe_unused]] int cols, [[maybe_unused]] bool bFix, [[maybe_unused]] const InputLine& iline, [[maybe_unused]] ErrorWarning& errorWarning, [[maybe_unused]] const std::string& errwarnpre) { return true; }
+    virtual void                 merge([[maybe_unused]] const MapSection* src, [[maybe_unused]] int srow, [[maybe_unused]] int scol, [[maybe_unused]] int erow, [[maybe_unused]] int ecol, [[maybe_unused]] int rowOffset, [[maybe_unused]] int colOffset, [[maybe_unused]] bool bAllow1, [[maybe_unused]] bool bAllow2 ) {}  // merge in values from src that are in range
+    virtual void                 setTo([[maybe_unused]] int defValue1, [[maybe_unused]] int defValue2) {}  // change all arrays to this value
+
+protected:
+    std::string                  m_name;           // name of section
+    std::deque<InputLine>        m_lines;          // lines read in for that section
+    std::deque<std::string>      m_outputLines;    // lines ready to write
+};
+
+class KeyValueSection : public MapSection
+{
+  protected:
+      // key:value storage  Used for info. We own the strings we store
+    class keyValue
     {
     public:
+        keyValue() = default;
+        keyValue(const std::string& key, const std::string& value) : m_key(key), m_value(value), m_lckey(MMUtil::toLower(key)) {}
+        ~keyValue() = default;
 
-        infoSection() = default;
-        ~infoSection() = default;
-
-        // call this for every line in section. if they are key:value pairs, it gets added
-        void addLine(const InputLine & line, ErrorWarning & errWarning)
+        void setKeyValue(const std::string & key, const std::string & value)
         {
-            std::string::size_type pos = line.getLine().find_first_of(':');
-            if (pos != std::string::npos)
-            {
-                std::string key = toLower(line.getLine().substr(0, pos));  // own copy of lower case name
-                std::string_view value;   
-                if (pos < (line.getLine().size() - 1))
-                    value = line.getLine().substr(pos + 1);
-                if (isValidVarName(key))
-                {
-                    m_options.push_back(keyValue(key, value, line));
-                }
-                else
-                    errWarning.setError(line, "info section. Invalid key name: " + key);
-            }
-            else
-                errWarning.setError(line, "info section. Missing colon");
+            m_key   = key;        
+            m_lckey = MMUtil::toLower( key );
+            m_value = value;
         }
 
-        // return strings for all keys to write
-        std::vector<std::string> makeLines() const
+        void setValue(const std::string & value) { m_value = value; }
+
+        const std::string & getKey()   const { return m_key; }
+        const std::string & getlcKey() const { return m_lckey; }  // key used in map
+        const std::string & getValue() const { return m_value; } 
+
+        bool operator == (const keyValue & rhs) const    // for collections
         {
-            std::vector<std::string> output;
-            for (std::size_t i = 0; i < m_options.size(); i++)
-            {
-                std::string retLine;
-                retLine.reserve(m_options[i].getKey().size() + m_options[i].getValue().size() + 2);
-                retLine = m_options[i].getKey();
-                retLine += ":";
-                retLine += m_options[i].getValue();
-                output.push_back(retLine);
-            }
-            return output;
+            return m_lckey == rhs.m_lckey;
+        }
+        bool operator < (const keyValue & rhs) const    // for collections
+        {
+            return m_lckey < rhs.m_lckey;
         }
 
-        // if key does not exist you get a null string
-        std::string_view getValue(std::string_view key) const
+        // first char must be alpha, followed by only alpha or digits. No leading/trailing spaces allowed
+        static bool isValidKeyName(std::string_view name)
         {
-            for (std::size_t i = 0; i < m_options.size(); i++)
+            int len = (int)name.length();
+            bool valid = (len > 0) && iswalpha(name[0]);
+            for (int i = 1; (i < len) && valid; i++)
             {
-                if (key == m_options[i].getKey())
-                {
-                    return m_options[i].getValue();
-                }
+                valid = (iswalpha(name[i]) || iswdigit(name[i]));
             }
-            return std::string_view();
-        }
-
-        // change the value for the key, or add a new keyvalue 
-        void setKeyValue(std::string_view key, std::string_view value)
-        {
-            for (std::size_t i = 0; i < m_options.size(); i++)
-            {
-                if (key == m_options[i].getKey())
-                {
-                    m_options[i].setValue(value);
-                    return;
-                }
-            }
-            // add a new key/value pair. There is no source input line associated with it.
-            m_options.push_back(keyValue(key, value, InputLine()));
-        }
-
-        InputLine getInputLine(std::string_view key) const
-        {
-            for (std::size_t i = 0; i < m_options.size(); i++)
-            {
-                if (key == m_options[i].getKey())
-                {
-
-                    return m_options[i].getLine();
-                }
-            }
-            return InputLine();  // key not found, return empty
+            return valid;
         }
 
 
-    protected:
-
-        // key:value storage  Used for info. We own the strings we store
-        class keyValue
+        // build line for this key/value pair. MM format is key:value
+        std::string serializeOut() const
         {
-        public:
-            keyValue() = default;
-            keyValue(std::string_view key, std::string_view value, const InputLine & line) { setKeyValue(key, value, line); }
-            ~keyValue() = default;
+            std::string rets;
+            rets.reserve(m_key.length()+m_value.length()+1);
+            rets = m_key;
+            rets += L':';
+            rets += m_value;
+            return rets;
+        }
 
-            void setKeyValue(std::string_view key, std::string_view value, const InputLine & line)
-            {
-                m_key   = key;        // make full copy of strings
-                m_value = value;
-                m_line  = line;
-            }
-            void setValue(std::string_view value) { m_value = value; }  // make full copy
-            std::string_view getKey()   const { return m_key; }
-            std::string_view getValue() const { return m_value; } 
-            const InputLine &getLine()  const { return m_line; }      // used in case of some sort of value error so we can show incorrect line that generated it.
-        protected:
-            std::string m_key;      // own the key string
-            std::string m_value;    // own the value string
-            InputLine   m_line;     // input line so we can display correct error messages
-        };
-
-        std::vector<keyValue>    m_options;    // parsed key/value pairs
+      protected:
+        std::string     m_key;       // key name
+        std::string     m_lckey;     // converted to lower case - used for comparisions
+        std::string     m_value;     // value string
     };
 
-    // used for tiles, height, and resources
-    class arrayItem
+  public:
+    KeyValueSection()
     {
-    public:
-        arrayItem() = default;
-        arrayItem(int width, int height) { setSize(width, height); }
-        ~arrayItem() = default;
+        m_optmap.reserve( 32 );
+    }
+    virtual ~KeyValueSection() = default;
 
-        bool isValid() const
+    virtual MapSection* clone() override
+    {
+        return new KeyValueSection( *this );
+    }
+
+    // return empty string if key does not exist
+    virtual std::string getValue(const std::string & key) const override
+    {
+        std::string keylc = MMUtil::toLower(key);
+        std::string retval;
+
+        auto it = m_optmap.find(keylc);
+        if (it != m_optmap.cend())
         {
-            return ((std::size_t)m_width * m_height) == m_data.size();
+            std::size_t index = (*it).second;       // index in the queue
+            retval = m_options[index].getValue();
+        }
+        return retval;
+    }
+
+    // add the given key,value or modify existing one with this new value
+    virtual void AddorModifyItem(const std::string & key, const std::string & value ) override
+    {
+        keyValue item( key, value );
+
+        auto it = m_optmap.find(item.getlcKey());
+        if (it == m_optmap.end())      // adding a new key
+        {
+            std::size_t index = m_options.size();
+            m_options.push_back( item );
+            m_optmap.emplace( item.getlcKey(), index );
+        }
+        else  // already exists, get index from map, and modify value
+        {
+            std::size_t index = (*it).second;
+            m_options[index].setValue( value );
+        }
+    }
+
+      // return reference to list of lines to write. Does not include section name begin/end, caller will do that.
+    virtual std::deque<std::string> const & serializeOut() override
+    {
+        // build the output lines
+        m_outputLines.clear();
+        for (auto it = m_options.cbegin(); it != m_options.cend(); ++it) // process every key/value pair
+        {
+            m_outputLines.push_back((*it).serializeOut());
         }
 
-        void setSize(int width, int height)
-        {
-            m_height = height;
-            m_width = width;
-            m_data.clear();
-            m_data.reserve((std::size_t)width * height);
-        }
+        // return copy of lines to write to file. Does not include the section name and begin/end markers. Caller does that.
+        return m_outputLines;
+    }
 
-        void resize(int width, int height, int defvalue)  // resize to use this new width/height.
+    // no need to save input lines, we save key:value pair
+    virtual bool serializeInLine(InputLine const& line, ErrorWarning &error) override  // caller does this for every line it has determined is part of the section
+    {
+        if (!line.getLine().empty())    // ignore blank lines
         {
-            std::vector<int> data;      // new data
-            data.reserve((std::size_t)width * height);
-            for (std::size_t row = 0; row < height; row++)
+            std::string_view key;
+            std::string_view value;
+
+            // format for lines are key:value. 
+            bool retval = getKeyValueFromLine( key, value, line.getLine() );
+            if (!retval)
             {
-                for (std::size_t col = 0; col < width; col++)
+                error.setError(line, m_name + " section. Missing colon");
+                return false;
+            }
+            // make sure keys are valid
+            if (!keyValue::isValidKeyName(key))
+            {
+                error.setError(line, m_name + " section. Invalid key name: " + std::string(key));
+                return false;
+            }
+            if (value.empty())  // we will treat empty values as warnings. They may be errors later
+            {
+                error.setWarning(line, m_name + " section. Empty value for key: " + std::string(key));
+            }
+            keyValue kv;
+            kv.setKeyValue(std::string(key), std::string(value) );
+
+            auto it = m_optmap.find( kv.getlcKey() ); // check map
+            if (it != m_optmap.cend())                // already exists
+            {
+                error.setError(line, m_name + " section. Duplicate key: " + std::string(key));
+                return false;
+            }
+            std::size_t index = m_options.size();
+            m_options.push_back(kv);
+            m_optmap.emplace( kv.getlcKey(), index );
+        }
+        return true;
+    }
+
+  protected:
+
+      // generic parse key:value from line. Return false on error
+    bool getKeyValueFromLine(std::string_view& key, std::string_view& value, std::string_view line) const
+    {
+        std::size_t pos = line.find(':');
+        if (pos == std::string_view::npos)
+            return false;   // todo error code
+        key = line.substr(0,pos);
+        value = line.substr(pos+1);
+        key = MMUtil::removeLeadingAndTrailingWhite(key);     // remove leading and trailing white spaces
+        value = MMUtil::removeLeadingWhite(value);
+        return true;
+    }
+
+    std::deque<keyValue>                         m_options;     // parsed key/value pairs
+    std::unordered_map<std::string, std::size_t> m_optmap;      // lc key, index in m_options
+};
+
+// used to store an array of values, resources will have two of these, one for crystals and one for ore
+class IntArraySection : public MapSection
+{
+  public:
+    IntArraySection() = default;
+    virtual ~IntArraySection() = default;
+
+    virtual MapSection* clone() override
+    {
+        return new IntArraySection( *this );
+    }
+
+
+    virtual bool serializeInLine(InputLine const& line, ErrorWarning& error) override  // caller does this for every line it has determined is part of the section
+    {
+        std::deque<int> row = processLine(line,error);
+        if (row.empty())
+            return false;   // no data was returned, error
+        m_data.push_back(row);
+        m_lines.push_back(line); // save line in case we have size warning/error later when verifing bounds
+        return true;
+    }
+
+    virtual const std::deque<std::string> & serializeOut() override
+    {
+        m_outputLines.clear();
+        std::string row;
+        row.reserve(m_data[0].size()*5);            // guess of max row size (4 chars + , per int)
+
+        for (auto itr = m_data.cbegin(); itr != m_data.cend(); itr++)
+        {
+            row.clear();
+            const std::deque<int> & rowvec = *itr;
+            for (auto itc = rowvec.cbegin(); itc != rowvec.cend(); itc++)
+            {
+                row += std::to_string(*itc);
+                row += ',';
+            }
+            m_outputLines.push_back(row);
+        }
+        return m_outputLines;
+    }
+
+    virtual void resize(int width, int height, int defvalue, [[maybe_unused]] int defvalue2) override  // resize to use this new width/height.
+    {
+        if (height != m_data.size())       // change in number of rows
+        {
+            if (height > m_data.size())    // growing.
+            {
+                std::deque<int> row;
+                for (std::size_t i = 0; i < width; row.push_back(defvalue), i++);   // make default row
+                for (std::size_t i = m_data.size(); i < height; m_data.push_back(row),i++); // add missing rows
+            }
+            else  // shrinking, remove entries from end
+            {
+                for (std::size_t i = m_data.size(); i > height; m_data.pop_back(), i--);
+            }
+        }
+        // fix columns. this handles non-consistant columns
+        for (std::size_t row = 0; row < height; row++)
+        {
+            std::deque<int> & rowvec = m_data[row];
+            if (width != rowvec.size())
+            {
+                if (width > rowvec.size())  // growing
                 {
-                    int val = ((row < m_height) && (col < m_width)) ?
-                        m_data[row * m_width + col] : defvalue;
-                    data.push_back(val);
+                    for (std::size_t i = rowvec.size(); i < width; rowvec.push_back(defvalue),i++);
+                }
+                else   // shrinking
+                {
+                    for (std::size_t i = rowvec.size(); i > width; rowvec.pop_back(), i--);
                 }
             }
-            m_data   = data;    // replace old with this new data for this new size
-            m_height = height;  // save the new array dimensions
-            m_width  = width;
+        }
+    }
+
+    // called after all lines are sent, generate warning/error if columns or rows are not correct.
+    // only a single warning/error is generated
+    // if bFix is set, then correct the array size
+    // input line usually points to the trailing } closing the section
+    virtual bool verifyBounds( int rows, int cols, bool bFix, const InputLine& iline, ErrorWarning& errorWarning,const std::string& errwarnpre ) override
+    {
+        if (m_data.size() > rows)   // too many rows
+        {
+            std::string msg = errwarnpre + " extra rows. Found: " + std::to_string( m_data.size()) + " Expecting: " + std::to_string(rows) + " -fix to correct";
+            errorWarning.setWarning(iline,msg);
+        }
+        else if (m_data.size() < rows)  // missing rows
+        {
+            std::string msg = errwarnpre + " missing rows. Found: " + std::to_string( m_data.size()) + " Expecting: " + std::to_string(rows) + " -fix to correct";
+            if (!bFix)
+            {
+                errorWarning.setError(iline,msg);
+                return false;
+            }
+            errorWarning.setWarning(iline,msg);
         }
 
-        // merge in data from src using the given offset, clipping to our boundary - it does not grow the data
-        // negative offsets will clip src
-        // be careful, offsets can be negative don't use std::size_t since its unsigned
-        void merge(arrayItem const &src, int srow, int scol, int erow, int ecol, int rowOffset, int colOffset )  // merge in values from src that are in range
+        bool bColWarning = false;
+        for (int i = 0; i < (int)m_data.size(); i++)
         {
+            std::deque<int> & rowvec = m_data[i];
+            if (rowvec.size() > cols)   // too much data
+            {
+                if (!bColWarning)   // only show warning once
+                {
+                    bColWarning = true;
+                    std::string msg = errwarnpre + " extra columns. Found: " + std::to_string(rowvec.size()) + " Expecting: " + std::to_string(cols) + " -fix to correct";
+                    errorWarning.setWarning(iline, msg);
+                }
+            }
+            else if (rowvec.size() < cols)  // not enough data
+            {
+                InputLine thisline = iline;
+                if (i < m_lines.size())
+                    thisline = m_lines[i];
+
+                std::string msg = errwarnpre + " missing columns. Found: " + std::to_string(rowvec.size()) + " Expecting: " + std::to_string(cols) + " -fix to correct";
+                if (!bFix)
+                {
+                    errorWarning.setError(thisline, msg);
+                    return false;
+                }
+                errorWarning.setWarning(thisline, msg);
+                break;
+            }
+        }
+
+        return true;
+    }
+
+    // merge in data from src using the given offset, clipping to our boundary - it does not grow the data
+    // negative offsets will clip src
+    // be careful, offsets can be negative don't use std::size_t since its unsigned
+    virtual void merge(const MapSection *srcp, int srow, int scol, int erow, int ecol, int rowOffset, int colOffset, bool bAllow1, [[maybe_unused]] bool bAllow2 ) override  // merge in values from src that are in range
+    {
+        if (bAllow1)
+        {
+            const IntArraySection * src = dynamic_cast<const IntArraySection *>(srcp);
             for (intmax_t row = srow; row <= erow; row++)
             {
                 for (intmax_t col = scol; col <= ecol; col++)
                 {
-                    if (((row + rowOffset) >= 0) && ((row + rowOffset) < m_height) && ((col + colOffset) >= 0) && ((col + colOffset) < m_width))
+                    if (((row + rowOffset) >= 0) && ((row + rowOffset) < getRows()) && ((col + colOffset) >= 0) && ((col + colOffset) < getCols()))
                     {
-                        int val = src.m_data[row * src.m_width + col];
-                        m_data[(row + rowOffset) * m_width + (col + colOffset)] = val;
+                        int val = src->m_data[row][col];
+                        m_data[row + rowOffset][col + colOffset] = val;
                     }
                 }
             }
         }
+    }
 
-        // if error, no longer abort. Instead log it and use default value
-        void addLine(const InputLine & iline, bool bAllowNeg, ErrorWarning & errorWarning, const std::string &errwarnpre, bool bFix, int defValue)
-        {
-            bool bInvalidInt = false;
-            std::vector<int> lineValues;
-            lineValues.reserve(m_width + 16);    // we need at least m_width but we see maps with 2 extra, so give us a bit of extra space for performance
-
-            std::size_t spos = 0;
-            std::size_t epos = 0;
-
-            // parse every int into lineValues for this line. If not enough, generate error. If to many, generate warning
-            for (; (epos = iline.getLine().find(',', spos)) != std::string::npos;)
-            {
-                std::string_view val = iline.getLine().substr(spos, epos - spos);
-                int ival = defValue;
-                if (val.empty() || !isInteger(val, bAllowNeg))
-                {
-                    if (!bInvalidInt)   // only log first one
-                    {
-                        bInvalidInt = true;
-                        std::string msg = errwarnpre + " column: " + std::to_string(spos) + " invalid integer: " + std::string(val) + " using: " + std::to_string(defValue);
-                        bFix ? errorWarning.setWarning(iline, msg) : errorWarning.setError(iline, msg);
-                    }
-                }
-                else
-                    ival = stoi(val);
-
-                lineValues.push_back(stoi(val));
-                spos = epos + 1;        // beginning of next value
-            }
-            if (m_data.size() < ((std::size_t)m_width * m_height))  // have room for more
-            {
-                if (lineValues.size() < m_width)
-                {
-                    std::string msg = errwarnpre + " not enough columns. Found " + std::to_string(lineValues.size()) + " expecting " + std::to_string(m_width) + " Filling with: " + std::to_string(defValue);
-                    bFix ? errorWarning.setWarning(iline, msg) : errorWarning.setError(iline, msg);
-                }
-                for (std::size_t i = 0; i < m_width; i++)
-                {
-                    int ival = (i < lineValues.size()) ? lineValues[i] : defValue;
-                    m_data.push_back(ival);
-                }
-                if ((lineValues.size() > m_width) && !m_bWarnCol) 
-                {
-                    errorWarning.setWarning(iline, errwarnpre + "too many columns. Found " + std::to_string(lineValues.size()) + " expecting " + std::to_string(m_width) + " ignoring extra");
-                    m_bWarnCol = true;
-                }
-            }
-            else if (!m_bWarnRow)  //
-            {
-                m_bWarnRow = true;
-                errorWarning.setWarning(iline, errwarnpre + "too many rows. Only expecting " + std::to_string(m_height) + " ignoring extra");
-            }
-        }
-
-        // called after all lines are sent, generate warning if not enough rows. We will fill in with default value
-        void enoughRows(const InputLine& iline, ErrorWarning& errorWarning, const std::string& errwarnpre, bool bFix, int defValue)
-        {
-            std::size_t arrSize = (std::size_t)m_width * m_height;
-            if (m_data.size() < arrSize)
-            {
-                std::string msg = errwarnpre + "not enough rows. Found " + std::to_string(m_data.size() / m_width) + " expecting " + std::to_string(m_height) + ". Filling with: " + std::to_string(defValue);
-                bFix ? errorWarning.setWarning(iline, msg) : errorWarning.setError(iline, msg);
-
-                for (std::size_t i = m_data.size(); i < arrSize; i++)
-                    m_data.push_back(defValue);
-            }
-        }
-
-        // returning back array of strings for output
-        std::vector<std::string> makeLines() const
-        {
-            std::vector<std::string> output;
-            std::string line;
-            line.reserve((std::size_t)m_width * 6);    // help prevent reallocations
-            for (std::size_t row = 0; row < m_height; row++)
-            {
-                line.clear();
-                for (std::size_t col = 0; col < m_width; col++)
-                {
-                    std::size_t index = (row * m_width) + col;
-                    line += std::to_string(m_data[index]);
-                    line += ",";
-                }
-                output.push_back(line);
-            }
-            return output;   // return array of lines for output
-        }
-
-        void clear(int defValue)
-        {
-            m_data.clear();     // erase everything
-            m_data.reserve((std::size_t)m_height * m_width);  // have enough room
-            for (std::size_t row = 0; row < m_height; row++)
-            {
-                for (std::size_t col = 0; col < m_width; col++)
-                {
-                    m_data.push_back(defValue);
-                }
-            }
-        }
-
-        // used for tiles to ensure we have the proper borders
-        // used to force border heights to default value
-        void setBorders(int defValue)
-        {
-            for (std::size_t col = 0; col < m_width; col++)
-            {
-                m_data[col] = defValue;                                         // top row
-                m_data[((std::size_t)m_height-1) * m_width + col] = defValue;   // bottom row
-            }
-
-            for (std::size_t row = 0; row < m_height; row++)
-            {
-                m_data[row * m_width ] = defValue;              // left column
-                m_data[row * m_width + m_width-1] = defValue;   // right column
-            }
-        }
-
-        void flattenHigh(int testVal, int newValue)  // change all values above this to given value
-        {
-            for (std::size_t row = 0; row < m_height; row++)
-            {
-                for (std::size_t col = 0; col < m_width; col++)
-                {
-                    std::size_t index = (row * m_width) + col;
-                    if (m_data[index] > testVal)
-                        m_data[index] = newValue;
-                }
-            }
-        }
-
-        void flattenLow(int testVal, int newValue)  // change all values below this to given value
-        {
-            for (std::size_t row = 0; row < m_height; row++)
-            {
-                for (std::size_t col = 0; col < m_width; col++)
-                {
-                    std::size_t index = (row * m_width) + col;
-                    if (m_data[index] < testVal)
-                        m_data[index] = newValue;
-                }
-            }
-        }
-
-        void flattenBetween(int testLow, int testHigh, int newValue)  // change all values testLow <= value <=testHigh to newValue
-        {
-            for (std::size_t row = 0; row < m_height; row++)
-            {
-                for (std::size_t col = 0; col < m_width; col++)
-                {
-                    std::size_t index = (row * m_width) + col;
-                    int val = m_data[index];
-                    if ((val >= testLow) && (val <= testHigh))
-                        m_data[index] = newValue;
-                }
-            }
-        }
-
-
-
-    protected:
-        std::vector<int> m_data;
-        int       m_height=0;
-        int       m_width=0;
-        bool      m_bWarnCol = false;
-        bool      m_bWarnRow = false;
-    };
-
-
-    MapSection() = default;
-    MapSection(std::string_view str) { m_name = str; }  // only reason for this is hash comparision
-    ~MapSection() = default;
-
-    std::string_view name() const { return m_name; }
-
-    // add until we have an error or a completed section. Ignore any starting blank lines,
-    // sections start with a name{ and end with a final }.
-    // Both start and end must be at beginning of line
-    void addLine(InputLine const& line)
+    virtual void setTo(int defValue1, [[maybe_unused]] int defValue2)    // change all value to this value. Used when clearing out a map ready to receive merge data
     {
-        if (m_state == eStateWaitingforName)   // skip any blank lines
+        for (auto rit : m_data)
         {
-            if (isEmptyStr(line.getLine()))
-                return;
-            std::size_t pos = line.getLine().find('{');
-            if (pos > 0 && pos != (std::string::npos))
+            std::deque<int> & row = rit;
+            for (auto cit = row.begin(); cit != row.end(); cit++)
             {
-                m_nameLine = line;  // save line for open {
-                m_name = toLower(line.getLine().substr(0, pos));  // save copy of the lower case name
-                if (isValidVarName(m_name))
-                {
-                    m_state = eStateHaveName;
-                }
-                else
-                {
-                    m_errWarn.setError(line, "invalid section name: " + m_name);
-                    m_state = eStateError;
-                }
-            }
-            else
-            {
-                m_errWarn.setError( line, "invalid section start, missing {");
-                m_state = eStateError;
-            }
-        }
-        else if (m_state == eStateHaveName)  // have the name, waiting for final }
-        {
-            if (!line.getLine().empty() && ('}' == line.getLine()[0]))
-            {
-                m_closeLine = line;
-                m_state = eStateEnd;        // all done
-            }
-            else
-            {
-                m_data.push_back(line);
+                *cit = defValue1;
             }
         }
     }
 
-    // verify that we had a final closing }
-    void verifyClosed()
+    int getRows() const { return (int)m_data.size(); }
+    int getCols() const { return (int)(m_data.empty() ? 0 : m_data[0].size()); }
+
+  protected:
+    void setNegAllowed( bool val ) { m_bAllowNeg = val; }   // used by height section
+
+
+    std::deque<int> processLine(const InputLine& line, ErrorWarning& error)
     {
-        if (m_state == eStateHaveName)
+        std::deque<int> output;
+        std::string_view token;
+        std::string_view sline = line.getLine();
+        std::size_t startpos = 0;
+        std::size_t endpos = sline.length();    // index after end
+
+        while (startpos < endpos)   // ensures something is left to process
         {
-            m_errWarn.setError(m_data.back(), "section: " + m_name + " missing closing }");
-            m_state = eStateError;
+            std::size_t pos = sline.find(',',startpos);  // look for next ,
+            if (pos == std::string_view::npos)          // did not find
+            {
+                pos = endpos;                       // set to past end of string
+                token = sline.substr(startpos);     // token is remaining line
+            }
+            else
+            {
+                token = sline.substr(startpos, pos - startpos); // everything up to but not including ,
+            }
+            token = MMUtil::removeLeadingAndTrailingWhite(token);
+            if (!MMUtil::isInteger(token, m_bAllowNeg))
+            {
+                error.setError(line,"Invalid integer");
+                output.clear();
+                break;
+            }
+            int val = MMUtil::stoi(token);
+            output.push_back(val);
+            startpos=pos+1;
         }
-    }
-
-    bool valid() const { return m_state == eStateEnd; }
-    bool done() const  { return (m_state == eStateEnd) || (m_state == eStateError); }
-    bool empty() const { return m_data.empty(); }
-    int length() const { return (int)m_data.size(); }
-    
-    const ErrorWarning &getError() const { return m_errWarn;  }
-
-    const InputLine &openLine() const { return m_nameLine; }     // line that started section
-    const InputLine &closeLine() const { return m_closeLine; }   // line that ended section
-
-    const std::vector<InputLine>& getLines() const { return m_data; }  // by default, we return what we stored.
-    const std::vector<std::string> getWriteLines() const
-    {
-        std::vector<std::string> output;
-        output.reserve(m_data.size());
-        for (int i = 0; i < m_data.size(); i++)
-            output.push_back(std::string(m_data[i].getLine()));
         return output;
     }
 
-    // std::unordered_set hash and comparision methods only
-    class compHash
+    std::deque<std::deque<int>> m_data;   // array of column vectors.
+    bool m_bAllowNeg = false;   // set to true if negative values allowed
+
+};
+
+// resource section contains two IntArraySections
+class ResourceSection : public MapSection
+{
+public:
+    ResourceSection() = default;
+    virtual ~ResourceSection() = default;
+
+    virtual MapSection* clone() override
     {
-    public:
-        // comparision operator for hash. Only on the name
-        bool operator() (const MapSection& lhs, const MapSection& rhs) const
+        return new ResourceSection( *this );
+    }
+
+    virtual bool serializeInLine(InputLine const& line, ErrorWarning& error) override  // caller does this for every line it has determined is part of the section
+    {
+        std::string_view sline = line.getLine();
+        sline = MMUtil::removeLeadingAndTrailingWhite(sline);
+        if (!sline.empty())
         {
-            return lhs.getName() == rhs.getName();
+            if (sline == scrystals)
+            {
+                if (m_bCrystals)
+                {
+                    error.setError(line, "Duplicate "+ std::string(scrystals));
+                    return false;
+                }
+                m_readstate = 1;
+                m_bCrystals = true;
+            }
+            else if (sline == sore)
+            {
+                if (m_bOre)
+                {
+                    error.setError(line, "Duplicate " + std::string(sore));
+                    return false;
+                }
+                m_readstate = 2;
+                m_bOre = true;
+            }
+            else
+            {
+                if (m_readstate == 0)
+                {
+                    error.setError(line, "Missing " + std::string(scrystals) + " or " + std::string(sore));
+                    return false;
+                }
+                bool retval = (m_readstate == 1) ?
+                    m_crystals.serializeInLine(line,error) :
+                    m_ore.serializeInLine(line,error);
+                if (!retval)
+                    return false;
+            }
         }
 
-        // hash operator - only on the name field
-        std::size_t operator()(const MapSection& s)const noexcept
-        {
-            return std::hash<std::string>{}(s.getName());
-        }
-    };
+        return true;
+    }
 
-    const std::string& getName() const { return m_name; }
+    virtual const std::deque<std::string> & serializeOut() override
+    {
+        m_outputLines.clear();
+
+        std::deque<std::string> crystaloutput = m_crystals.serializeOut();
+        std::deque<std::string> oreoutput     = m_ore.serializeOut();
+
+        m_outputLines.push_back( std::string(scrystals) );
+        m_outputLines.insert(m_outputLines.end(),crystaloutput.begin(),crystaloutput.end());
+        m_outputLines.push_back( std::string(sore) );
+        m_outputLines.insert(m_outputLines.end(),oreoutput.begin(),oreoutput.end());
+
+        return m_outputLines;
+    }
+
+    virtual void resize(int width, int height, int defcrystal, int defore) override  // resize to use this new width/height.
+    {
+        m_crystals.resize( width, height, defcrystal, defcrystal );
+        m_ore.resize( width, height, defore, defore );
+    }
+
+    virtual bool verifyBounds(int rows, int cols, bool bFix, const InputLine& iline, ErrorWarning& errorWarning, const std::string& errwarnpre) override
+    {
+        if (!m_crystals.verifyBounds( rows, cols, bFix, iline, errorWarning, errwarnpre + " " + std::string(scrystals)))
+            return false;
+        return m_ore.verifyBounds( rows, cols, bFix, iline, errorWarning, errwarnpre + " " + std::string(sore));
+    }
+
+    virtual void merge(const MapSection* srcp, int srow, int scol, int erow, int ecol, int rowOffset, int colOffset, bool bAllow1, bool bAllow2) override  // merge in values from src that are in range
+    {
+        const ResourceSection *src = dynamic_cast<const ResourceSection *>(srcp);
+        if (bAllow1)
+            m_crystals.merge( &src->m_crystals, srow, scol, erow, ecol, rowOffset, colOffset, true, false);
+        if (bAllow2)
+            m_ore.merge( &src->m_ore, srow, scol, erow, ecol, rowOffset, colOffset, true, false);
+    }
+
+    virtual void setTo(int defcrystals, int defore)    // change all value to this value. Used when clearing out a map ready to receive merge data
+    {
+        m_crystals.setTo(defcrystals,0);
+        m_ore.setTo(defore,0);
+    }
 
 
 protected:
+    IntArraySection  m_crystals;
+    IntArraySection  m_ore;
 
+    int m_readstate = 0;        // for tracking what we are adding to. 1 = crystals, 2 = ore
+    bool m_bCrystals = false;   // set once section hit
+    bool m_bOre = false;        // set one section hit
 
-    enum stateMachine
-    {
-        eStateWaitingforName = 0,  // init, have not seen name. Will stay here if empty initial lines.
-        eStateHaveName,            // we have name{ and waiting for ending }
-        eStateEnd,                 // we have ending } and are done.
-        eStateError,               // error processing. name without {
-    };
-    ErrorWarning            m_errWarn;
-    std::string             m_name;       // name converted to lower case
-    std::vector<InputLine>  m_data;	      // lines read in for interior of section
-    InputLine               m_nameLine;   // this is the line that contained the name and open {
-    InputLine               m_closeLine;  // this is the line that contained the closing }
-    stateMachine            m_state = eStateWaitingforName;
+    static constexpr char scrystals[] = "crystals:";
+    static constexpr char sore[]      = "ore:";
 };
 
-
-class RRMap
+class TileSection : public IntArraySection
 {
   public:
-    RRMap() = default;
-    ~RRMap() = default;
+    TileSection() = default;
+    virtual ~TileSection() = default;
 
-    void copyFrom(const RRMap& rhs, const CommandLineOptions& options)
+    virtual MapSection* clone() override
+    {
+        return new TileSection( *this );
+    }
+
+    // used for tiles to ensure we have the proper borders
+    // used to force border heights to default value
+    virtual void setBorders(int defValue) override
+    {
+        for (std::size_t col = 0; col < m_data[0].size(); col++)  // top/bottom column loop
+        {
+            m_data[0][col] = defValue;                     // top row
+            m_data[m_data.size()-1][col] = defValue;       // bottom
+        }
+
+        for (std::size_t row = 0; row < m_data.size(); row++)  // left/right row loop
+        {
+            m_data[row][0] = defValue;                      // left column
+            m_data[row][m_data[row].size()-1] = defValue;   // right column
+        }
+    }
+};
+
+class HeightSection : public IntArraySection  // heights are allowed to be negative
+{
+  public:
+    HeightSection() { setNegAllowed(true); }
+    virtual ~HeightSection() = default;
+
+    virtual MapSection* clone() override
+    {
+        return new HeightSection( *this );
+    }
+
+    virtual void flattenHigh(int testVal, int newValue) override  // change all values above this to given value
+    {
+        for (auto itr = m_data.begin(); itr != m_data.end(); itr++)
+        {
+            std::deque<int> & rowvec = *itr;
+            for (auto itc = rowvec.begin(); itc != rowvec.end(); itc++)
+            {
+                if ((*itc) > testVal)
+                    (*itc) = newValue;
+            }
+        }
+    }
+
+    virtual void flattenLow(int testVal, int newValue) override  // change all values above this to given value
+    {
+        for (auto itr = m_data.begin(); itr != m_data.end(); itr++)
+        {
+            std::deque<int> & rowvec = *itr;
+            for (auto itc = rowvec.begin(); itc != rowvec.end(); itc++)
+            {
+                if ((*itc) < testVal)
+                    (*itc) = newValue;
+            }
+        }
+    }
+
+    virtual void flattenBetween(int testLow, int testHigh, int newValue) override  // change all values testLow <= value <=testHigh to newValue
+    {
+        for (auto itr = m_data.begin(); itr != m_data.end(); itr++)
+        {
+            std::deque<int> & rowvec = *itr;
+            for (auto itc = rowvec.begin(); itc != rowvec.end(); itc++)
+            {
+                if (((*itc) >= testLow) && ((*itc) <= testHigh))
+                    (*itc) = newValue;
+            }
+        }
+    }
+
+    // heights have 1 more in row,cols since they are a cell and we have last cell corners.
+    virtual bool verifyBounds(int rows, int cols, bool bFix, const InputLine& iline, ErrorWarning& errorWarning, const std::string& errwarnpre) override
+    {
+        return IntArraySection::verifyBounds(rows+1, cols+1, bFix, iline, errorWarning, errwarnpre);
+    }
+
+    virtual void merge(const MapSection* srcp, int srow, int scol, int erow, int ecol, int rowOffset, int colOffset, bool bAllow1, [[maybe_unused]] bool bAllow2) override  // merge in values from src that are in range
+    {
+        if (bAllow1)
+        {
+            const HeightSection* src = dynamic_cast<const HeightSection*>(srcp);
+            IntArraySection::merge(src, srow, scol, erow + 1, ecol + 1, rowOffset, colOffset, true, false);
+        }
+    }
+
+};
+
+class MMMap
+{
+  public:
+    MMMap()
+    {
+        //m_sections.reserve(32); // really only need 17
+    }
+    ~MMMap()
+    {
+        deleteSections();
+    }
+
+    MMMap( const MMMap & rhs ) = delete;        // no copy constructor
+    MMMap( MMMap && rhs ) noexcept = delete;    // no move constructor
+
+    void setFileName(const std::filesystem::path& filename)
+    {
+        m_file.setFileName( filename );
+    }
+    bool fexists() const
+    {
+        return m_file.exists();
+    }
+
+    const ErrorWarning & getErrors() { return m_errors; }
+
+    // open and read in the map using the filename previously set
+    // return true = ok, false is an error
+    bool readMap( bool bReadANSI )
+    {
+        if (!m_file.exists())
+        {
+            std::string file = Unicode::wstring_to_utf8(m_file.getFileName().wstring());
+            m_errors.setError(InputLine(), "Unable to locate source: " + file);
+            return false;
+        }
+        m_file.setAnsi( bReadANSI );
+        m_inlines = m_file.readFile(m_errors);    // read in entire map.
+        return !m_inlines.empty() && m_errors.getErrors().empty(); // have somthing read and no errors
+    }
+
+    bool writeMap( FileIO::FileEncoding encoding, bool forceBOM )
+    {
+        return m_file.writeFile( m_outlines, m_errors, encoding, forceBOM);
+    }
+
+    const std::string & getEncoding(FileIO::FileEncoding& encoding, bool& hasBOM) const
+    {
+        encoding = m_file.getEncoding();
+        hasBOM = m_file.hasBOM();
+        return m_file.getEncodingStr();
+    }
+
+    int getNumLinesRead() const  { return (int)m_inlines.size(); }
+    int getNumLinesWrite() const { return (int)m_outlines.size(); }
+
+    int getHeight() const { return m_height; }
+    int getWidth()  const { return m_width; }
+
+    // build but do not extract or test data inside of sections
+    bool serializeInSections()
+    {
+        std::string sectionName;
+
+        MapSection *ms = nullptr;
+        for (auto it : m_inlines)
+        {
+            const InputLine & iline = it;                   // get ref to line
+            const std::string & linestr = iline.getLine(); // get ref to string data
+            std::string_view lineview = linestr;           // get view to string data
+            if (ms)     // already building a section - wait until ending }
+            {
+                std::size_t pos = lineview.find('}');
+                if (pos == 0)   // section is finished. It was already added to the map and it contains all if its info
+                {
+                    ms = nullptr;
+                }
+                else   // add to existing section
+                {
+                    if (!ms->serializeInLine(iline, m_errors))     // if an error returned
+                        return false;                           // exit out
+                }
+            }
+            else   // not yet building a section, skip empty lines wait for section start
+            {
+                if (MMUtil::isEmptyStr(lineview))  // skip empty lines
+                    continue;
+                std::size_t pos = lineview.find('{');
+                if (pos == std::string_view::npos)
+                {
+                    m_errors.setError(iline, "Missing section start {");
+                    return false;
+                }
+                std::string_view secname = lineview.substr(0, pos);
+                std::string lcsecname = MMUtil::toLower(secname);          // only work in lower case
+
+                // section name must be one of the allowed names
+                auto nit = m_mapLookup.find(lcsecname);
+                if (nit == m_mapLookup.end())
+                {
+                    m_errors.setError(iline, "Unknown section name: " + lcsecname);
+                    return false;
+                }
+                // we can only have a single instance of a section
+                if (m_sections.find(lcsecname) != m_sections.cend())  // its already in the map
+                {
+                    m_errors.setError(iline, "Duplicate section name: " + lcsecname);
+                    return false;
+                }
+
+                // its a known name. Make the correct class type
+                switch ((*nit).second)  // ones unknown will all be generic MapSection
+                {
+                    case 1:     // info
+                        ms = new KeyValueSection();
+                        break;
+                    case 2:     // tiles
+                        ms = new TileSection();
+                        break;
+                    case 3:     // height
+                        ms = new HeightSection();
+                        break;
+                    case 4:     // resources
+                        ms = new ResourceSection();
+                        break;
+
+                    default:
+                    case 0:     // comments
+                    case 5:     // objectives
+                    case 6:     // buildings
+                    case 7:     // landslidefequency
+                    case 8:     // lavaspread
+                    case 9:     // miners
+                    case 10:    // briefing
+                    case 11:    // briefingsuccess
+                    case 12:    // briefingfailure
+                    case 13:    // vehicles
+                    case 14:    // creatures
+                    case 15:    // blocks
+                    case 16:    // script
+                        ms = new MapSection();
+                        break;
+                } // switch
+                ms->setSectionName(lcsecname);
+
+                m_sections.emplace(lcsecname,ms);
+            }
+        }
+        return true;
+    }
+
+    // serialize out all the streams. Missing streams will have no data inside the section.
+    // we serialize out always in a fixed order, ignoring any input order.
+    void serializeOutSections()
+    {
+        m_outlines.clear();
+
+        std::string line;
+        line.reserve( (m_width+1) * 5 );    // estimate of worse case array output but it could be longer
+
+        for (auto it : m_mapOrder)
+        {
+            std::string secnamestr = it.getName();
+
+            line = secnamestr + '{';
+            m_outlines.push_back(line);
+
+            auto its = m_sections.find(secnamestr);
+            if (its != m_sections.cend())
+            {
+                MapSection* ms = (*its).second;
+
+                std::deque<std::string> strs = ms->serializeOut();
+                m_outlines.insert(m_outlines.end(),strs.cbegin(), strs.cend() );
+            }
+            line = '}';                // end of section
+            m_outlines.push_back(line);
+        }
+    }
+
+    // with the map read in, now process all of the sections. Make sure those that are required exist,
+    // extract out imporant info, and fix any array errors
+    bool processSections( bool bFix, int deftile, int defheight, int defcrystal, int defore)
+    {
+        // look at all sections and make sure the requires ones are there.
+        for (auto it : m_mapOrder)
+        {
+            bool  optional = it.getOptional();
+            if (!optional)
+            {
+                std::string name = it.getName();
+                MapSection *ms = findMapSection( name );
+                if (!ms)
+                {
+                    m_errors.setError(InputLine(),"Missing required section: " + name);
+                    return false;
+                }
+            }
+        }
+
+        int intval = 0;
+        // now get imporant info from info section
+        MapSection *ms = findMapSection( sinfo );
+        std::string value;
+        value = ms->getValue(std::string(scolcount));
+        intval = std::stoi(value);
+        if (value.empty() || !MMUtil::isInteger(value, false) || (intval < 3))
+        {
+            m_errors.setError(InputLine(),"info section. Missing or invalid: " + std::string(scolcount));
+            return false;
+        }
+        m_width = intval;
+        value = ms->getValue(std::string(srowcount));
+        intval = std::stoi(value);
+        if (value.empty() || !MMUtil::isInteger(value, false) || (intval < 3))
+        {
+            m_errors.setError(InputLine(),"Info section. Missing or invalid: " + std::string(srowcount));
+            return false;
+        }
+        m_height = intval;
+
+        // now need to make sure all the array sizes are valid.
+        ms = findMapSection( stiles );
+        if (!ms->verifyBounds( m_height, m_width, bFix, InputLine(), m_errors, ms->getSectionName()))
+            return false;
+        ms->resize( m_height, m_width, deftile, deftile);
+        //ms->setBorders( 38 );   // make sure borders are solid rock regular
+
+        ms = findMapSection( sheight );
+        if (!ms->verifyBounds( m_height, m_width, bFix, InputLine(), m_errors, ms->getSectionName()))
+            return false;
+        ms->resize( m_height, m_width, defheight, defheight);
+
+        ms = findMapSection( sresources );
+        if (!ms->verifyBounds( m_height, m_width, bFix, InputLine(), m_errors, ms->getSectionName()))
+            return false;
+        ms->resize( m_height, m_width, defcrystal, defore);
+
+        return true;
+    }
+
+    void copyFrom(const MMMap& rhs, const CommandLineOptions& options)
     {
         // first do a copy.
-        copy(rhs);      // complete copy
+        copy( rhs );    // copy input lines, sections, unicode settings
 
         // now process any resize on tiles, height, crystals, ore
         resize(options.m_nRowResize, options.m_nColResize, options.m_nDefTileID, options.m_nDefHeight, options.m_nDefCrystal, options.m_nDefOre);
 
-        // now clear out the tiles, height, crystals and ore. Doing this since we will merge below
-        m_tileSection.clear  (options.m_nDefTileID);
-        m_heightSection.clear(options.m_nDefHeight);
-        m_crystals.clear     (options.m_nDefCrystal);
-        m_ore.clear          (options.m_nDefOre);
+        // now clear out the tiles, height, crystals and ore.
+        // merge from source applying any offset
+        MapSection *ms = findMapSection( stiles );
+        ms->setTo( options.m_nDefTileID, 0 );
+        ms->merge(rhs.findMapSection( stiles ), options.m_srow, options.m_scol, options.m_erow, options.m_ecol, options.m_nOffsetCol, options.m_nOffsetRow, true, false);
 
-        // now merge from source applying any offset
-        m_tileSection.merge(rhs.m_tileSection, options.m_srow, options.m_scol, options.m_erow, options.m_ecol, options.m_nOffsetCol, options.m_nOffsetRow);
-        m_heightSection.merge(rhs.m_heightSection, options.m_srow, options.m_scol, options.m_erow, options.m_ecol, options.m_nOffsetCol, options.m_nOffsetRow);
-        m_crystals.merge(rhs.m_crystals, options.m_srow, options.m_scol, options.m_erow, options.m_ecol, options.m_nOffsetCol, options.m_nOffsetRow);
-        m_ore.merge(rhs.m_ore, options.m_srow, options.m_scol, options.m_erow, options.m_ecol, options.m_nOffsetCol, options.m_nOffsetRow);
+        ms = findMapSection( sheight );
+        ms->setTo( options.m_nDefHeight, 0 );
+        ms->merge(rhs.findMapSection( sheight ), options.m_srow, options.m_scol, options.m_erow, options.m_ecol, options.m_nOffsetCol, options.m_nOffsetRow, true, false);
 
+        ms = findMapSection( sresources );
+        ms->setTo( options.m_nDefCrystal, options.m_nDefOre );
+        ms->merge(rhs.findMapSection( sresources ), options.m_srow, options.m_scol, options.m_erow, options.m_ecol, options.m_nOffsetCol, options.m_nOffsetRow, true, true);
     }
 
-    bool valid() const { return m_bValid; }
-    const ErrorWarning & getError() const { return m_error; }
-
-    const ScriptFile& getScript() const { return m_script; }
-
-    int height() const { return m_Height; }
-    int width() const { return m_Width; }
-    int lines() const { return m_numLines; }
-
-    bool getUTF8BOM() const { return m_bUTF8BOM; }
-    bool getUnicodeLE() const { return m_bUTF16LE; }
-    bool getUnicode() const { return m_bUnicode; }
-
-    void mergeTiles(const RRMap& src, int srow, int scol, int erow, int ecol, int rowOffset, int colOffset)   // will copy tiles and height into map
+    // after reading source map, if output will be replaced with processed source, copy from the source to output
+    // inputlines, sections, width/height and unicode settings
+    MMMap& copy(const MMMap& rhs)
     {
-        m_tileSection.merge(src.m_tileSection, srow, scol, erow, ecol, rowOffset, colOffset);
-        m_tileSection.setBorders(38);    // make sure the border is properly defined  38 is solid rock regular
+        copySections( rhs.m_sections );
+
+        m_inlines       = rhs.m_inlines;
+
+        m_width    = rhs.m_width;
+        m_height   = rhs.m_height;
+
+        m_bUnicode = rhs.m_bUnicode;
+        m_bUTF16LE = rhs.m_bUTF16LE;
+        return *this;
     }
 
-    void mergeHeight(const RRMap& src, int srow, int scol, int erow, int ecol, int rowOffset, int colOffset)   // will copy tiles and height into map
-    {
-        m_heightSection.merge(src.m_heightSection, srow, scol, erow, ecol, rowOffset, colOffset);
-    }
-
-    void mergeCrystal(const RRMap& src, int srow, int scol, int erow, int ecol, int rowOffset, int colOffset)   // will copy tiles and height into map
-    {
-        m_crystals.merge(src.m_crystals, srow, scol, erow, ecol, rowOffset, colOffset);
-    }
-
-    void mergeOre(const RRMap & src, int srow, int scol, int erow, int ecol, int rowOffset, int colOffset)   // will copy tiles and height into map
-    {
-        m_ore.merge(src.m_ore, srow, scol, erow, ecol, rowOffset, colOffset);
-    }
-
-        // resize to given height and width. If 0, use existing value. Modify tiles, height, crystals, ore and map size in info section
+    // resize to given height and width. If 0, use existing value. Modify tiles, height, crystals, ore and map size in info section
     void resize(int rowSize, int colSize, int defTile, int defHeight, int defCrystal, int defOre )
     {
         if (!rowSize)
-            rowSize = m_Height;
+            rowSize = m_height;
         if (!colSize)
-            colSize = m_Width;
-        m_tileSection.resize(colSize, rowSize, defTile);
-        m_heightSection.resize(colSize+1, rowSize+1, defHeight);  // heights have corners so 1 extra
-        m_crystals.resize(colSize, rowSize, defCrystal);
-        m_ore.resize(colSize, rowSize, defOre);
+            colSize = m_width;
 
-        m_tileSection.setBorders(38);    // make sure the tile border is properly defined  38 is solid rock regular
+        MapSection *ms = findMapSection( stiles );
+        ms->resize(colSize, rowSize, defTile, 0);
+        ms->setBorders( 38 );                           // tile borders all set to solid rock regular
+
+        ms = findMapSection( sheight );
+        ms->resize( colSize, rowSize, defHeight, 0 );     // heigh section auto deals with extra row/col
+
+        ms = findMapSection( sresources );
+        ms->resize( colSize, rowSize, defCrystal, defOre );
+
+        m_height = colSize;
+        m_width = rowSize;
 
         // update map size in info
-        m_Height = rowSize;
-        m_Width  = colSize;
-        m_infoSection.setKeyValue(scolcount, std::to_string(colSize));
-        m_infoSection.setKeyValue(srowcount, std::to_string(rowSize));
+        ms = findMapSection( sinfo );
+        ms->AddorModifyItem( scolcount, std::to_string(colSize));
+        ms->AddorModifyItem( srowcount, std::to_string(rowSize));
     }
 
-    void flattenHeightHigh(int highval, int val)
+    bool merging(const MMMap& srcMap, int srow, int scol, int erow, int ecol, int nOffsetRow, int nOffsetCol, bool bMergeTiles, bool bMergeHeight, bool bMergeCrystal, bool bMergeOre)
     {
-        m_heightSection.flattenHigh(highval, val);
-    }
-    
-    void flattenHeightLow(int lowval, int val)
-    {
-        m_heightSection.flattenLow(lowval, val);
-    }
-    
-    void flattenHeightBetween(int low, int high, int val)
-    {
-        m_heightSection.flattenBetween(low, high, val);
-    }
-    
-    void borderHeight(int val)
-    {
-        m_heightSection.setBorders(val);
+        // see if merging
+        if (bMergeTiles)
+        {
+            findMapSection( stiles )->merge( srcMap.findMapSection(stiles), srow, scol, erow, ecol, nOffsetRow, nOffsetCol, true, false);
+        }
+
+        if (bMergeHeight)
+        {
+            findMapSection( sheight )->merge( srcMap.findMapSection(sheight), srow, scol, erow, ecol, nOffsetRow, nOffsetCol, true, false);
+        }
+
+        if (bMergeCrystal || bMergeOre)
+        {
+            findMapSection(sresources)->merge(srcMap.findMapSection(sresources), srow, scol, erow, ecol, nOffsetRow, nOffsetCol, bMergeCrystal, bMergeOre);
+        }
+        return true;
     }
 
-    void setMapName(const std::string& name)
+    void flattenHeightHigh( int testVal, int newValue)    // change all values above this to given value
     {
-        m_infoSection.setKeyValue(slevelname, name);
+        MapSection *ms = findMapSection( sheight );
+        ms->flattenHigh( testVal, newValue);
+    }
+
+    void flattenHeightLow(int testVal, int newValue)      // change all values above this to given value
+    {
+        MapSection *ms = findMapSection( sheight );
+        ms->flattenLow( testVal, newValue);
+    }
+    
+    void flattenHeightBetween(int testLow, int testHigh, int newValue)    // change all values testLow <= value <=testHigh to newValue
+    {
+        MapSection *ms = findMapSection( sheight );
+        ms->flattenBetween( testLow, testHigh, newValue);
+    }
+
+    void borderHeight(int height)
+    {
+        MapSection *ms = findMapSection( sheight );
+        ms->setBorders( height );
+    }
+
+    void setMapName(const std::string & mapname)
+    {
+        MapSection *ms = findMapSection( sinfo );
+        ms->AddorModifyItem( slevelname, mapname );
     }
 
     void setMapCreator(const std::string& creator)
     {
-        m_infoSection.setKeyValue(screator, creator);
+        MapSection *ms = findMapSection( sinfo );
+        ms->AddorModifyItem( screator, creator );
     }
 
-    int writeMap(FILE* fp)
+    std::deque<InputLine> getScriptLines() const
     {
-        int err = 0;
-        for (auto it = m_mapOrder.cbegin(); it != m_mapOrder.cend() && (err == 0); it++)
+        std::deque<InputLine> scriptLines;
+
+        const MapSection *ms = findMapSection( sscript );
+        if (ms)
         {
-            // start off each section with name{
-            if (fprintf(fp, "%s{\n", std::string((*it).getName()).c_str()) < 0)
-            {
-                err = ferror(fp);
-                break;
-            }
-            MapSection* ms = nullptr;
-            switch ((*it).getID())
-            {
-            case 1:     // info,
-                err = writeArray(fp, m_infoSection.makeLines());
-                break;
-
-            case 2:     // tiles
-                err = writeArray(fp, m_tileSection.makeLines());
-                break;
-
-            case 3:     // height
-                err = writeArray(fp, m_heightSection.makeLines());
-                break;
-
-            case 4:     // resources
-                if (fprintf(fp, "crystals:\n") < 0)
-                {
-                    err = ferror(fp);
-                    break;
-                }
-                err = writeArray(fp, m_crystals.makeLines());
-                if (err)
-                    break;
-                if (fprintf(fp, "ore:\n") < 0)
-                {
-                    err = ferror(fp);
-                    break;
-                }
-                err = writeArray(fp, m_ore.makeLines());
-                break;
-
-            case 16:    // script  TODO once we start changing script
-
-                err = writeArray(fp, m_script.getWriteLines());
-                break;
-
-             // we do nothing for these, just read in and write out as is. For new map, we write empty sections
-            case 0:     // comments,
-            case 5:     // sobjectives
-            case 6:     // buildings
-            case 7:     // landslidefrequency
-            case 8:     // lavaspread
-            case 9:     // miners
-            case 10:    // briefing
-            case 11:    // briefingsuccess
-            case 12:    // briefingfailure
-            case 13:    // vehicles
-            case 14:    // creatures
-            case 15:    // blocks
-                ms = findSection((*it).getName());
-                if (ms)
-                {
-                    err = writeArray( fp, ms->getLines() );  // by default, we return what we stored.
-                }
-                break;
-            }
-            if (err == 0)
-            {
-                // every section ends with a single }
-                if (fprintf(fp, "}\n") < 0)
-                {
-                    err = ferror(fp);
-                }
-            }
+            scriptLines = ms->getLines();
         }
-        return err;
+        return scriptLines;
     }
 
-    void getEncoding( FILE *fp )  // get encoding flags
+    // return number of lines
+    int setScriptLines(const std::deque<InputLine>& lines)
     {
-        getFileEncoding(fp, m_bUTF8BOM, m_bUTF16LE, m_bUnicode);
-    }
-
-    // read in every line of the map, we will process it later
-    void readMap(FILE* fp, const CommandLineOptions &options )
-    {
-        InputLine iline;
-        std::string line;
-
-        for (; !feof(fp);)
+        MapSection *ms = findMapSection( sscript );
+        if (ms)
         {
-            m_numLines++;
-            if (m_bUnicode)
-                iline.setLine(readLineUTF16(fp, m_bUTF16LE), m_numLines);
-            else
-                iline.setLine(readLineUTF8(fp), m_numLines);
-                
-            m_lines.push_back(iline);
+            ms->setLines( lines );
         }
-        processMap(options);
+        return (int)lines.size();
     }
 
-    const MapSection* findSection(const std::string & str) const
+    std::string getMapName() const
     {
-        MapSection ms(str);
-        MapSectionSet::const_iterator it = m_sections.find(ms);
+        const MapSection *ms = findMapSection( sinfo );
+        return ms->getValue( screator );
+    }
+
+
+
+protected:
+    void deleteSections()
+    {
+        for (auto it : m_sections)
+        {
+            MapSection* ms = it.second;
+            it.second = nullptr;
+            if (ms)
+                delete ms;
+        }
+        m_sections.clear();
+    }
+
+    void copySections( const std::unordered_map<std::string, MapSection *> &rhs)
+    {
+        deleteSections();   // delete any section data
+        for (auto it : rhs)
+        {
+            MapSection *msclone = it.second->clone();
+            m_sections.emplace( it.first, msclone  );
+        }
+    }
+
+
+    MapSection* findMapSection(const std::string &name)
+    {
+        MapSection *ms = nullptr;
+        auto it = m_sections.find(name);
         if (it != m_sections.cend())
         {
-            return &(*it);
+            ms = (*it).second;
         }
-        return nullptr;
+        return ms;
     }
 
-    MapSection* findSection(std::string_view str)
+    const MapSection* findMapSection(const std::string &name) const
     {
-        MapSection ms(str);
-        MapSectionSet::iterator it = m_sections.find(ms);
-        if (it != m_sections.end())
+        const MapSection *ms = nullptr;
+        auto it = m_sections.find(name);
+        if (it != m_sections.cend())
         {
-            return const_cast<MapSection *>(& (*it));  // not sure why this is const from iterator...
+            ms = (*it).second;
         }
-        return nullptr;
-    }
-
-    // used when we read a script from external file
-    void replaceScript(const ScriptFile& sf)
-    {
-        m_script = sf;
+        return ms;
     }
 
 
-  protected:
 
-    int writeArray(FILE *fp, const std::vector<std::string>& lines)
-    {
-        int err = 0;
-        for (auto it = lines.cbegin(); it != lines.cend(); it++)
-        {
-            if (fprintf(fp, "%s\n", (*it).c_str()) < 0)
-            {
-                err = ferror(fp);
-                break;
-            }
-        }
-        return err;
-    }
+    FileIO       m_file;      // everything for reading and writing.
+    ErrorWarning m_errors;    // errors
 
-    // for sections we don't do anything special, we can just output the InputLines
-    int writeArray(FILE* fp, const std::vector<InputLine> lines)
-    {
-        int err = 0;
-        for (auto it = lines.cbegin(); it != lines.cend(); it++)
-        {
-            if (fprintf(fp, "%s\n", std::string((*it).getLine()).c_str()) < 0)
-            {
-                err = ferror(fp);
-                break;
-            }
-        }
-        return err;
-    }
+    std::deque<InputLine>    m_inlines;     // lines read in
+    std::deque<std::string> m_outlines;    // lines ready to write to file
 
+    std::unordered_map<std::string, MapSection *> m_sections;  // holds all of the data for all sections
 
-    // entire file is read in, now break it into the sections
-    void processMap(const CommandLineOptions &options)
-    {
-        m_sections.reserve(32);     // more than needed
-        m_sections.clear();         // should already be clear
+    int  m_height = 0;      // map height from info section
+    int  m_width = 0;       // map width from info section
 
-        m_bValid = true;	// assume it is valid
-        for (auto it = m_lines.cbegin(); m_bValid && (it != m_lines.cend());)  // process all lines
-        {
-            // now process lines for this section
-            MapSection section;  // start a section and add lines to it until section is done
-            bool bEmpty = true;
-            InputLine iline;
-            for (; !section.done() && it != m_lines.cend();)   // add lines to section until it is done
-            {
-                iline.setLine((*it).getLine(), (*it).getLineNum());  // this is now a string_view to the master saved line
-                if (!isEmptyStr(iline.getLine()))
-                    bEmpty = false;
-                section.addLine(iline);
-                it++;
-            }
-            section.verifyClosed();
-            m_bValid = section.valid();
-            if (m_bValid)
-            {
-                auto itt = m_sections.find(section);  // name must not already exist
-                if (itt == m_sections.cend())
-                {
-                    m_sections.insert(section);
-                }
-                else
-                {
-                    m_bValid = false;
-                    m_error.setError(iline, "section: " + std::string(section.name()) + " duplicate section name");
-                    return;
-                }
-            }
-            m_error += section.getError();   // copy any generated errors or warnings
-
-            if (bEmpty)  // read last empty lines - nothing, all done
-            {
-                m_bValid = true;
-                break;
-            }
-        }
-        if (!m_bValid)
-            return;
-
-        // make sure all the sections exist, and process those that we do stuff with
-        for (std::size_t i = 0; i < m_mapOrder.size(); i++)
-        {
-            if (findSection(m_mapOrder[i].getName()))
-            {
-                switch (m_mapOrder[i].getID())
-                {
-                case 1:     // info,
-                    processInfo();
-                    break;
-
-                case 2:     // tiles
-                    processTiles(options);
-                    break;
-
-                case 3:     // height
-                    processHeight(options);
-                    break;
-
-                case 4:     // resources
-                    processResources(options);
-                    break;
-
-                case 16:    // script
-                    processScript();
-                    break;
-
-                // we do nothing for these, just read in and write out as is. If the sections were missing (older maps), we write empty ones.
-                case 0:     // comments,
-                case 5:     // sobjectives
-                case 6:     // buildings
-                case 7:     // landslidefrequency
-                case 8:     // lavaspread
-                case 9:     // miners
-                case 10:    // briefing
-                case 11:    // briefingsuccess
-                case 12:    // briefingfailure
-                case 13:    // vehicles
-                case 14:    // creatures
-                case 15:    // blocks
-                    break;
-                }
-                if (!m_bValid)
-                    return;
-            }
-            else
-            {
-                if (m_mapOrder[i].getOptional() == false)
-                {
-                    m_error.setError(m_lines.back(), "required section missing: " + std::string(m_mapOrder[i].getName()));
-                    m_bValid = false;
-                    return;
-                }
-            }
-        }
-        // one final check. Lets see if there are sections we know nothing about - treat them as a warning
-        for (auto it = m_sections.cbegin(); it != m_sections.cend(); it++)
-        {
-            bool bFound = false;
-            for (auto sit = m_mapOrder.cbegin(); sit != m_mapOrder.cend(); sit++)
-            {
-                if ((*sit).getName() == (*it).name())
-                {
-                    bFound = true;
-                    break;
-                }
-            }
-            if (!bFound)
-            {
-                m_error.setWarning((*it).openLine(), "unknown section name: " + std::string((*it).name()));
-            }
-        }
-
-    }
-
-    // get info into key:value pairs, look for the rowcount and colcount fields and get their values
-    void processInfo()
-    {
-        // working on info section only
-        MapSection* ms = findSection(sinfo);
-        if (ms)
-        {
-            std::size_t len = ms->getLines().size();
-            for (std::size_t i = 0; i < len; i++)
-            {
-                m_infoSection.addLine(ms->getLines()[i], m_error);
-                if (!m_error.getErrors().empty())
-                {
-                    m_bValid = false;
-                    return;
-                }
-            }
-            // info section loaded - now we can get values
-            std::string_view value = m_infoSection.getValue(srowcount);
-            if (!value.empty() && isInteger(value, false))
-            {
-                m_Height = stoi(value);
-            }
-            else if (!value.empty())
-            {
-                m_error.setError(ms->getLines().back(), "section info. Missing " + std::string(srowcount));
-                m_bValid = false;
-                return;
-            }
-            else
-            {
-                m_error.setError(m_infoSection.getInputLine(srowcount), "section info. Invalid integer rowcount:" + std::string(value));
-                m_bValid = false;
-                return;
-            }
-            value = m_infoSection.getValue(scolcount);
-            if (!value.empty() && isInteger(value, false))
-            {
-                m_Width = stoi(value);
-            }
-            else if (!value.empty())
-            {
-                m_error.setError(ms->getLines().back(), "section info. Missing " + std::string(scolcount));
-                m_bValid = false;
-                return;
-            }
-            else
-            {
-                m_error.setError(m_infoSection.getInputLine(srowcount), "section info. Invalid integer colcount:" + std::string(value));
-                m_bValid = false;
-                return;
-            }
-        }
-    }
-
-    void processTiles(const CommandLineOptions &options)
-    {
-        MapSection* ms = findSection(stiles);
-        if (ms)
-        {
-            m_tileSection.setSize(m_Width, m_Height);
-            std::size_t len = ms->getLines().size();
-            for (std::size_t i = 0; i < len; i++)
-            {
-                m_tileSection.addLine(ms->getLines()[i], false, m_error, "section tiles ", options.m_bFix, options.m_nDefTileID);
-                if (!m_error.getErrors().empty())
-                {
-                    m_bValid = false;
-                    return;
-                }
-            }
-            m_tileSection.enoughRows(ms->getLines().back(), m_error, "section tiles ", options.m_bFix, options.m_nDefTileID);
-        }
-    }
-
-    void processHeight(const CommandLineOptions& options)
-    {
-        MapSection* ms = findSection(sheight);
-        if (ms)
-        {
-            m_heightSection.setSize(m_Width+1, m_Height+1);  // height needs extra row/col since we have height per cell corner.
-            std::size_t len = ms->getLines().size();
-            for (std::size_t i = 0; i < len; i++)
-            {
-                m_heightSection.addLine(ms->getLines()[i], true, m_error,"section height ",options.m_bFix, options.m_nDefHeight);
-                if (!m_error.getErrors().empty())
-                {
-                    m_bValid = false;
-                    return;
-                }
-            }
-            m_heightSection.enoughRows(ms->getLines().back(), m_error, "section height ", options.m_bFix, options.m_nDefHeight);
-        }
-    }
-
-    void processResources(const CommandLineOptions& options)
-    {
-        MapSection* ms = findSection(sresources);
-        if (ms)
-        {
-            std::string_view sres;
-            bool bOre = false;
-            bool bCrystals = false;
-            m_crystals.setSize(m_Width, m_Height);
-            m_ore.setSize(m_Width, m_Height);
-            int filling = 0;
-            for (auto it = ms->getLines().cbegin(); it != ms->getLines().cend(); it++)
-            {
-                if (toLower((*it).getLine()) == scrystals)
-                {
-                    filling = 1;
-                    if (bCrystals)
-                    {
-                        m_error.setError(*it, "section resources, duplicate crystals:");
-                        m_bValid = false;
-                        return;
-                    }
-                    bCrystals = true;
-                }
-                else if (toLower((*it).getLine()) == sore)
-                {
-                    filling = 2;
-                    if (bOre)
-                    {
-                        m_error.setError(*it, "section resources, duplicate ore:");
-                    }
-                    bOre = true;
-                }
-                else if (filling == 1) // processing crystals
-                {
-                    m_crystals.addLine(*it, false, m_error, "section resources, crystals ", options.m_bFix, options.m_nDefCrystal);
-                    if (!m_error.getErrors().empty())
-                    {
-                        m_bValid = false;
-                        return;
-                    }
-                }
-                else if (filling == 2) // processing ore
-                {
-                    m_ore.addLine(*it, false, m_error, "section resources, ore ", options.m_bFix, options.m_nDefOre);
-                    if (!m_error.getErrors().empty())
-                    {
-                        m_bValid = false;
-                        return;
-                    }
-                }
-                else  // unknown data
-                {
-                    m_error.setError(*it, "section resources, not in ore or crystals data");
-                }
-            }
-            if (!bCrystals)
-            {
-                m_error.setError(ms->closeLine(), "section resource missing crystals");
-                m_bValid = false;
-                return;
-            }
-            if (!bOre)
-            {
-                m_error.setError(ms->closeLine(), "section resource missing ore");
-                m_bValid = false;
-                return;
-            }
-            m_crystals.enoughRows(ms->getLines().back(), m_error, "section resources, crystals ", options.m_bFix, options.m_nDefCrystal);
-            m_ore.enoughRows(ms->getLines().back(), m_error, "section resources, ore ", options.m_bFix, options.m_nDefOre);
-
-        }
-    }
-
-    void processScript()
-    {
-        MapSection* ms = findSection(sscript);
-        if (ms)
-        {
-            std::size_t len = ms->getLines().size();
-            for (std::size_t i = 0; i < len; i++)
-            {
-                m_script.addLine(ms->getLines()[i], std::string() );  // put all the script lines into script section
-            }
-        }
-    }
-
-  private:
-    RRMap& copy(const RRMap& rhs)  // copy everything except the const strings which are auto initialized
-    {
-        m_lines         = rhs.m_lines;
-        m_sections      = rhs.m_sections;
-        m_infoSection   = rhs.m_infoSection;
-        m_tileSection   = rhs.m_tileSection;      // array of tiles
-        m_heightSection = rhs.m_heightSection;    // array of heights
-        m_crystals      = rhs.m_crystals;         // array of crystals
-        m_ore           = rhs.m_ore;              // array of crystals
-        m_script        = rhs.m_script;
-
-        m_error    = rhs.m_error;
-        m_Width    = rhs.m_Width;
-        m_Height   = rhs.m_Height;
-        m_numLines = rhs.m_numLines;
-
-        m_bValid   = rhs.m_bValid;
-        m_bUTF8BOM = rhs.m_bUTF8BOM;
-        m_bUTF16LE = rhs.m_bUTF16LE;
-        m_bUnicode = rhs.m_bUnicode;
-        return *this;
-    }
-      
-    typedef std::unordered_set<MapSection, MapSection::compHash, MapSection::compHash> MapSectionSet;
-
-    std::vector<InputLine>         m_lines;            // base lines read in
-    MapSectionSet                  m_sections;         // sections - in a map for faster lookup
-    MapSection::infoSection        m_infoSection;      // for info section, this is the parsed key:value pairs
-    MapSection::arrayItem          m_tileSection;      // array of tiles
-    MapSection::arrayItem          m_heightSection;    // array of heights
-    MapSection::arrayItem          m_crystals;         // array of crystals
-    MapSection::arrayItem          m_ore;              // array of crystals
-    ScriptFile                     m_script;           // save script into this for future processing and external files
-
-    ErrorWarning                   m_error;
-    int m_Width  = 0;
-    int m_Height = 0;
-    int m_numLines = 0;
-
-    bool  m_bValid = false;
-    bool  m_bUTF8BOM = false;
-    bool  m_bUTF16LE = false;
-    bool  m_bUnicode = false;
+    bool m_bUnicode = false;
+    bool m_bUTF16LE = false;
 
     // commonly used strings 
-    const std::string_view scolcount  = "colcount";
-    const std::string_view srowcount  = "rowcount";
-    const std::string_view screator   = "creator";
-    const std::string_view slevelname = "levelname";
-
-
-    const std::string_view scrystals  = "crystals:";
-    const std::string_view sore       = "ore:";
+    static constexpr char scolcount[]  = "colcount";
+    static constexpr char srowcount[]  = "rowcount";
+    static constexpr char screator[]   = "creator";
+    static constexpr char slevelname[] = "levelname";
 
     // all of the sections
-    const std::string_view scomments           = "comments";
-    const std::string_view sinfo               = "info";
-    const std::string_view stiles              = "tiles";
-    const std::string_view sheight             = "height";
-    const std::string_view sresources          = "resources";
-    const std::string_view sobjectives         = "objectives";
-    const std::string_view sbuildings          = "buildings";
-    const std::string_view slandslidefrequency = "landslidefrequency";
-    const std::string_view slavaspread         = "lavaspread";
-    const std::string_view sminers             = "miners";
-    const std::string_view sbriefing           = "briefing";
-    const std::string_view sbriefingsuccess    = "briefingsuccess";
-    const std::string_view sbriefingfailure    = "briefingfailure";
-    const std::string_view svehicles           = "vehicles";
-    const std::string_view screatures          = "creatures";
-    const std::string_view sblocks             = "blocks";
-    const std::string_view sscript             = "script";
-
+    static constexpr char scomments[]           = "comments";
+    static constexpr char sinfo[]               = "info";
+    static constexpr char stiles[]              = "tiles";
+    static constexpr char sheight[]             = "height";
+    static constexpr char sresources[]          = "resources";
+    static constexpr char sobjectives[]         = "objectives";
+    static constexpr char sbuildings[]          = "buildings";
+    static constexpr char slandslidefrequency[] = "landslidefrequency";
+    static constexpr char slavaspread[]         = "lavaspread";
+    static constexpr char sminers[]             = "miners";
+    static constexpr char sbriefing[]           = "briefing";
+    static constexpr char sbriefingsuccess[]    = "briefingsuccess";
+    static constexpr char sbriefingfailure[]    = "briefingfailure";
+    static constexpr char svehicles[]           = "vehicles";
+    static constexpr char screatures[]          = "creatures";
+    static constexpr char sblocks[]             = "blocks";
+    static constexpr char sscript[]             = "script";
     // order of sections in a map
 
     class mapOrder
     {
       public:
-          mapOrder(std::string_view name, int id, bool optional) : m_name(name), m_id(id), m_optional(optional) {}
+          mapOrder() = default;
+          mapOrder(const std::string &name, int id, bool optional) : m_name(name), m_id(id), m_optional(optional) {}
           ~mapOrder() {}
 
-          std::string_view getName()     const { return m_name; }
-          int              getID()       const { return m_id;   }
-          bool             getOptional() const { return m_optional; }
+          const std::string &  getName()     const { return m_name; }
+          int                  getID()       const { return m_id;   }
+          bool                 getOptional() const { return m_optional; }
       protected:
 
-        std::string_view m_name;       // name of section
-        int              m_id;         // order index
-        bool             m_optional;   // if section is required during read. On write we always write an empty section if it has no data
+        std::string  m_name;       // name of section
+        int          m_id;         // order index. write in order 0 - 16
+        bool         m_optional;   // true if section optional on read, false is required. On write output empty if it has no data.
     };
 
-    const std::vector<mapOrder> m_mapOrder =
+    // this vector must in order, it defines the order that maps are created
+    std::deque<mapOrder> m_mapOrder =
     {
         { scomments,           0, true  },
         { sinfo,               1, false },
@@ -1642,10 +2324,36 @@ class RRMap
         { svehicles,          13, true  },
         { screatures,         14, true  },
         { sblocks,            15, true  },
-        { sscript,            16, true  },
+        { sscript,            16, true  }
     };
 
-}; // class RRMap
+    // fast index from name to array order
+    std::unordered_map<std::string,int> m_mapLookup =
+    {
+        { scomments,           0 },
+        { sinfo,               1 },
+        { stiles,              2 },
+        { sheight,             3 },
+        { sresources,          4 },
+        { sobjectives,         5 },
+        { sbuildings,          6 },
+        { slandslidefrequency, 7 },
+        { slavaspread,         8 },
+        { sminers,             9 },
+        { sbriefing,          10 },
+        { sbriefingsuccess,   11 },
+        { sbriefingfailure,   12 },
+        { svehicles,          13 },
+        { screatures,         14 },
+        { sblocks,            15 },
+        { sscript,            16 }
+    };
+
+}; // class MMMap
+
+
+#pragma pop_macro("min")
+#pragma pop_macro("max")
 
 
 #endif  // MMDatUtil_H

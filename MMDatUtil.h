@@ -104,6 +104,14 @@ static constexpr char DATE_ISO[11] =
 
 namespace MMUtil
 {
+    // remove all double quotes. Used to insert macro value into an existing string
+    static inline std::string removeAllDoubleQuotes(const std::string& str)
+    {
+        std::string rets = str;
+        for( std::size_t pos = 0; (pos = rets.find('\"')) != std::string::npos; rets.erase(pos) )
+            ;
+        return rets;
+    }
 
     // remove leading blank chars from string view, return new view
     static inline std::string_view removeLeadingWhite(std::string_view str)
@@ -1189,7 +1197,7 @@ public:
     // methods that are section dependent, default they do nothing
     virtual std::string          getValue([[maybe_unused]] const std::string & key) const { return std::string(); }
     virtual void                 AddorModifyItem([[maybe_unused]] const std::string& key, [[maybe_unused]] const std::string& value) {}
-    virtual void                 resize([[maybe_unused]] int width, [[maybe_unused]] int height, [[maybe_unused]] int defvalue1, [[maybe_unused]] int defvalue2) {}
+    virtual void                 resize([[maybe_unused]] int height, [[maybe_unused]] int width, [[maybe_unused]] int defvalue1, [[maybe_unused]] int defvalue2) {}
     virtual void                 setBorders([[maybe_unused]] int defValue) {}
     virtual void                 flattenHigh([[maybe_unused]] int testVal, [[maybe_unused]] int newValue) {}  // change all values above this to given value
     virtual void                 flattenLow([[maybe_unused]] int testVal, [[maybe_unused]] int newValue) {}  // change all values above this to given value
@@ -1430,7 +1438,7 @@ class IntArraySection : public MapSection
         return m_outputLines;
     }
 
-    virtual void resize(int width, int height, int defvalue, [[maybe_unused]] int defvalue2) override  // resize to use this new width/height.
+    virtual void resize(int height, int width, int defvalue, [[maybe_unused]] int defvalue2) override  // resize to use this new width/height.
     {
         if (height != m_data.size())       // change in number of rows
         {
@@ -1593,8 +1601,8 @@ class IntArraySection : public MapSection
         return output;
     }
 
-    std::deque<std::deque<int>> m_data;   // array of column vectors.
-    bool m_bAllowNeg = false;   // set to true if negative values allowed
+    std::deque<std::deque<int>> m_data;   // array of row vectors.
+    bool m_bAllowNeg = false;             // set to true if negative values allowed
 
 };
 
@@ -1669,10 +1677,10 @@ public:
         return m_outputLines;
     }
 
-    virtual void resize(int width, int height, int defcrystal, int defore) override  // resize to use this new width/height.
+    virtual void resize(int height, int width, int defcrystal, int defore) override  // resize to use this new width/height.
     {
-        m_crystals.resize( width, height, defcrystal, defcrystal );
-        m_ore.resize( width, height, defore, defore );
+        m_crystals.resize( height, width, defcrystal, defcrystal );
+        m_ore.resize( height, width, defore, defore );
     }
 
     virtual bool verifyBounds(int rows, int cols, bool bFix, const InputLine& iline, ErrorWarning& errorWarning, const std::string& errwarnpre) override
@@ -1739,6 +1747,7 @@ class TileSection : public IntArraySection
     }
 };
 
+// height section has extra row/col since we store the height for each corner of a tile
 class HeightSection : public IntArraySection  // heights are allowed to be negative
 {
   public:
@@ -1795,6 +1804,11 @@ class HeightSection : public IntArraySection  // heights are allowed to be negat
         return IntArraySection::verifyBounds(rows+1, cols+1, bFix, iline, errorWarning, errwarnpre);
     }
 
+    virtual void resize(int height, int width, int defheight, int ) override  // resize to use this new width/height.
+    {
+        IntArraySection::resize(height+1, width+1, defheight, 0);
+    }
+
     virtual void merge(const MapSection* srcp, int srow, int scol, int erow, int ecol, int rowOffset, int colOffset, bool bAllow1, [[maybe_unused]] bool bAllow2) override  // merge in values from src that are in range
     {
         if (bAllow1)
@@ -1803,7 +1817,6 @@ class HeightSection : public IntArraySection  // heights are allowed to be negat
             IntArraySection::merge(src, srow, scol, erow + 1, ecol + 1, rowOffset, colOffset, true, false);
         }
     }
-
 };
 
 class MMMap
@@ -2095,17 +2108,17 @@ class MMMap
             colSize = m_width;
 
         MapSection *ms = findMapSection( stiles );
-        ms->resize(colSize, rowSize, defTile, 0);
+        ms->resize(rowSize, colSize, defTile, 0);
         ms->setBorders( 38 );                           // tile borders all set to solid rock regular
 
         ms = findMapSection( sheight );
-        ms->resize( colSize, rowSize, defHeight, 0 );     // heigh section auto deals with extra row/col
+        ms->resize( rowSize, colSize, defHeight, 0 );     // heigh section auto deals with extra row/col
 
         ms = findMapSection( sresources );
-        ms->resize( colSize, rowSize, defCrystal, defOre );
+        ms->resize( rowSize, colSize, defCrystal, defOre );
 
-        m_height = colSize;
-        m_width = rowSize;
+        m_height = rowSize;
+        m_width = colSize;
 
         // update map size in info
         ms = findMapSection( sinfo );

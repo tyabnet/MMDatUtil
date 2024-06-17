@@ -107,9 +107,11 @@ namespace MMUtil
     // remove all double quotes. Used to insert macro value into an existing string
     static inline std::string removeAllDoubleQuotes(const std::string& str)
     {
-        std::string rets = str;
-        for( std::size_t pos = 0; (pos = rets.find('\"')) != std::string::npos; rets.erase(pos) )
-            ;
+        std::string rets;
+        rets.reserve(str.size());
+        for (std::size_t i = 0; i < str.size(); i++)
+            if (str[i] != '\"')
+                rets += str[i];
         return rets;
     }
 
@@ -384,12 +386,20 @@ class InputLine
 
     bool empty() const { return m_filename.empty() && m_string.empty(); }
 
-    // used to store the real string
+    // change line to be this line. Used during macro substitution
+    void setLine(std::string const & line)
+    {
+        m_string  = line;
+    }
+
+    // change/set line and linenum only
     void setLine(std::string const & line, int linenum)
     {
         m_string  = line;
         m_linenum = linenum;
     }
+    
+    // change line, linenum, and filename
     void setLine(const std::string & line, int linenum, const std::string & filename)
     {
         m_string  = line;
@@ -2208,7 +2218,7 @@ class MMMap
     std::string getMapName() const
     {
         const MapSection *ms = findMapSection( sinfo );
-        return ms->getValue( screator );
+        return ms->getValue( slevelname );
     }
 
 

@@ -763,7 +763,8 @@ protected:
 
         std::string getValue(const std::string & key) const
         {
-            auto it = m_defines.find(key);
+            std::string keylc = MMUtil::toLower(key);
+            auto it = m_defines.find(keylc);
             if (it != m_defines.cend())
                 return (*it).second.getValue();
             return std::string();
@@ -779,7 +780,7 @@ protected:
             }
             else
             {
-                m_defines.emplace(key, DefineKeyValue(key, value) );
+                m_defines.emplace(keylc, DefineKeyValue(key, value) );
             }
         }
 
@@ -826,7 +827,7 @@ protected:
     static constexpr uint64_t eTokenComma          = 0x0000000200000000ull;  // ,
     static constexpr uint64_t eTokenString         = 0x0000000400000000ull;  // string literal (was defined within quotes), quotes not part of string
     static constexpr uint64_t eTokenComment        = 0x0000000800000000ull;  // contains comment and optional leading space prior to comment
-    static constexpr uint64_t eTokenCommentLine    = 0x0000001000000000ull;  // entire line is comment, may have space in front that has to be removed.
+    static constexpr uint64_t eTokenCommentLine    = 0x0000001000000000ull;  // entire line is comment, may have space in front
     static constexpr uint64_t eTokenBlankLine      = 0x0000002000000000ull;  // entire line is empty and not a comment. Will end event chain if within one
     static constexpr uint64_t eTokenMacro          = 0x0000004000000000ull;  // $(macro)$  token is just the macro name
 
@@ -861,409 +862,449 @@ protected:
         ScriptLine(const InputLine & line) : m_line(line) {}
         ~ScriptLine() = default;
 
-        // no syntax analysis, simply break up line into tokens
-        void rawParse( ErrorWarning & errors )
+        // no syntax analysis, simply break up line into tokens.
+        // all macro subsitution is part of rawParse - there is no macro token
+        // when a macro is found, its value replaces $(name) into the temp line, becomes the new input line and the line starts all over again.
+        // macros inside of strings will expand with all quotes removed into the current string, no need to reprocess the line.
+        void rawParse( ErrorWarning & errors, const Defines & defines )
         {
-            std::string_view input = m_line.getLine();   // view into entire line
-            std::size_t inputLen = input.length();
 
-            // check for comment
-            std::size_t commentpos = input.find('#');
-            if (commentpos == 0)
+            bool bMacro = false;        // if a macro is found, reparse the line after macro expansion.
+            do   // stay in loop retokenizing entire line until no more macros
             {
-                m_tokens.emplace_back(input, eTokenCommentLine);     // entire line is comment
-                m_bComment = true;
-                return;   // full length comment
-            }
-            if ((commentpos > 0) && (commentpos < inputLen))  // see if all blank before comment
-            {
-                bool bWhite = true;
-                for (std::size_t i = 0; i < commentpos; i++)
+                bMacro = false;                             // start off no macro in this line so far
+                m_tokens.clear();                           // start off with no tokens
+                std::string localline = m_line.getLine();   // make a copy of the line in case of macros
+                std::string_view input = localline;         // view into entire line
+                std::size_t inputLen = input.length();
+
+                // check for comment
+                std::size_t commentpos = input.find('#');
+                if (commentpos == 0)                          // line starts with comment, macros are not processed inside of comments.
                 {
-                    if (std::isblank((unsigned char)input[i]))
-                        continue;
-                    else
+                    std::string comment(input);
+                    if (comment.size() > 1 && comment[1] == '.')    // comments starting with #. we will expaande macros into
                     {
-                        bWhite = false;
-                        break;
+                        if (!embededMacro( comment, errors, defines))
+                            return;
                     }
-                }
-                if (bWhite)   // all spaces prior to comment - this is allowed
-                {
-                    m_tokens.emplace_back(MMUtil::removeLeadingWhite(input), eTokenCommentLine);     // entire line is comment
-                    m_bComment = true;
-                    return;
-                }
 
-                // now start backwards from comment, find first non-space.
-                // will remember there is a comment, it is added at end.
-                std::size_t i = commentpos - 1;
-                for (; i > 0; i--)
-                {
-                    if (!std::isblank((unsigned char)input[i]))
-                    {
-                        break;
-                    }
+                    m_tokens.emplace_back(comment, eTokenCommentLine);     // entire line is comment
+                    return;   // full length comment
                 }
-                commentpos = i + 1; // either # char or beginning of white space prior to comment
-            }
-            else
-            {
-                // see if entire line is empty
-                if (MMUtil::isEmptyStr(input))
+                if ((commentpos > 0) && (commentpos < inputLen))  // see if all blank before comment
                 {
-                    m_tokens.emplace_back(input, eTokenBlankLine);   // entire line is empty - it will terminate an event chain
-                    return;
-                }
-                commentpos = inputLen;    // pretend we have a comment after end of line - this allows us to use this to stop parsing
-            }
-
-            // now sit in loop parsing tokens. Stop when we hit the comment start location (or end of string)
-            std::string_view token;
-            for (std::size_t npos = 0; npos < commentpos;)
-            {
-                std::size_t epos = npos + 1;
-                // if we have an alpha, treat as some sort of name for the remaining alpha and digits
-                uint8_t ch = input[npos];
-                if (std::isalpha((unsigned char)ch))   // have an alpha char. Continue while more alpha or digits
-                {
-                    for (; epos < commentpos; epos++)
+                    bool bWhite = true;
+                    for (std::size_t i = 0; i < commentpos; i++)
                     {
-                        if (!std::isdigit(input[epos]) && !std::isalpha((unsigned char)input[epos])) // this char ends the token
+                        if (std::isblank((unsigned char)input[i]))
+                            continue;
+                        else
+                        {
+                            bWhite = false;
                             break;
+                        }
                     }
-                    token = input.substr(npos, epos - npos);
-                    m_tokens.emplace_back(token, eTokenName);
-                }
+                    if (bWhite)   // all spaces prior to comment - this is allowed
+                    {
+                        std::string comment(input);
+                        if (comment.size() > commentpos && comment[commentpos+1] == '.')    // comments starting with #. we will expaand macros
+                        {
+                            if (!embededMacro( comment, errors, defines))
+                                return;
+                        }
+                        m_tokens.emplace_back(comment, eTokenCommentLine);     // entire line is comment
+                        return;
+                    }
 
+                    // now start backwards from comment, find first non-space.
+                    // will remember there is a comment, it is added at end.
+                    std::size_t i = commentpos - 1;
+                    for (; i > 0; i--)
+                    {
+                        if (!std::isblank((unsigned char)input[i]))
+                        {
+                            break;
+                        }
+                    }
+                    commentpos = i + 1; // either # char or beginning of white space prior to comment
+                }
                 else
                 {
-                    switch (ch)
+                    // see if entire line is empty
+                    if (MMUtil::isEmptyStr(input))
                     {
-                    case ' ':  // space   see if single space or sequence of spaces
-                    case 9:    //tab
+                        m_tokens.emplace_back(input, eTokenBlankLine);   // entire line is empty - it will terminate an event chain
+                        return;
+                    }
+                    commentpos = inputLen;    // pretend we have a comment after end of line - this allows us to use this to stop parsing
+                }
+
+                // now sit in loop parsing tokens. Stop when we hit the comment start location (or end of string)
+                std::string_view token;
+                for (std::size_t npos = 0; (npos < commentpos) && !bMacro;)
+                {
+                    std::size_t epos = npos + 1;
+                    // if we have an alpha, treat as some sort of name for the remaining alpha and digits
+                    uint8_t ch = input[npos];
+                    if (std::isalpha((unsigned char)ch))   // have an alpha char. Continue while more alpha or digits
                     {
-                        for (; (epos < commentpos) && std::isblank((unsigned char)input[epos]); epos++)
-                            ;
+                        for (; epos < commentpos; epos++)
+                        {
+                            if (!std::isdigit(input[epos]) && !std::isalpha((unsigned char)input[epos])) // this char ends the token
+                                break;
+                        }
                         token = input.substr(npos, epos - npos);
-                        m_tokens.emplace_back(token, token.length() > 1 ? eTokenSpaces : eTokenSpace);
-                        break;
+                        m_tokens.emplace_back(token, eTokenName);
                     }
 
-                    case '.':   // this may be a dot not a number
-                    case '0':
-                    case '1':
-                    case '2':
-                    case '3':
-                    case '4':
-                    case '5':
-                    case '6':
-                    case '7':
-                    case '8':
-                    case '9':  // starting number, float, or variable
+                    else
                     {
-                        // because variables can start with a number, we need to scan to see if we only have numbers and at least one alpha.
-                        // anything that is non-alpha before the alpha means a number. Once you see an alpha, continue with only
-                        // alpha and numbers.
-                        if (ch != '.')
+                        switch (ch)
                         {
-                            for (; (epos < commentpos) && std::isdigit((unsigned char)input[epos]); epos++)
-                                ;  // scan until first non-number
-                            if ((epos < commentpos) && isalpha(input[epos]))  // we have an alpha, so treat as an name
-                            {
-                                for (epos++; epos < commentpos && (std::isalpha((unsigned char)input[epos]) || std::isdigit((unsigned char)input[epos])); epos++)
-                                    ;
-                                token = input.substr(npos, epos - npos);
-                                m_tokens.emplace_back(token, eTokenName);
-                                break;
-                            }
-                            epos = npos + 1; // back so we can build number or float
+                        case ' ':  // space   see if single space or sequence of spaces
+                        case 9:    //tab
+                        {
+                            for (; (epos < commentpos) && std::isblank((unsigned char)input[epos]); epos++)
+                                ;
+                            token = input.substr(npos, epos - npos);
+                            m_tokens.emplace_back(token, token.length() > 1 ? eTokenSpaces : eTokenSpace);
+                            break;
                         }
 
-                        bool bFloat = false;
-                        if (ch == '.')                  // floats can begin with a .
+                        case '.':   // this may be a dot not a number
+                        case '0':
+                        case '1':
+                        case '2':
+                        case '3':
+                        case '4':
+                        case '5':
+                        case '6':
+                        case '7':
+                        case '8':
+                        case '9':  // starting number, float, or variable
                         {
-                            if ((epos < commentpos) && std::isdigit((unsigned char)input[epos]))  // next is a number so treat as a float
-                                bFloat = true;
-                            else                       // just a dot char, so add to tokens as a dot
+                            // because variables can start with a number, we need to scan to see if we only have numbers and at least one alpha.
+                            // anything that is non-alpha before the alpha means a number. Once you see an alpha, continue with only
+                            // alpha and numbers.
+                            if (ch != '.')
                             {
-                                token = input.substr(npos, 1);
-                                m_tokens.emplace_back(token, eTokenDot);
-                                break;
-                            }
-                        }
-                        for (; epos < commentpos; epos++)  // now we treat it as either an int or float
-                        {
-                            if (!std::isdigit((unsigned char)input[epos]))
-                            {
-                                if (input[epos] == '.')
+                                for (; (epos < commentpos) && std::isdigit((unsigned char)input[epos]); epos++)
+                                    ;  // scan until first non-number
+                                if ((epos < commentpos) && isalpha(input[epos]))  // we have an alpha, so treat as an name
                                 {
-                                    if (!bFloat)
-                                        bFloat = true;
+                                    for (epos++; epos < commentpos && (std::isalpha((unsigned char)input[epos]) || std::isdigit((unsigned char)input[epos])); epos++)
+                                        ;
+                                    token = input.substr(npos, epos - npos);
+                                    m_tokens.emplace_back(token, eTokenName);
+                                    break;
+                                }
+                                epos = npos + 1; // back so we can build number or float
+                            }
+
+                            bool bFloat = false;
+                            if (ch == '.')                  // floats can begin with a .
+                            {
+                                if ((epos < commentpos) && std::isdigit((unsigned char)input[epos]))  // next is a number so treat as a float
+                                    bFloat = true;
+                                else                       // just a dot char, so add to tokens as a dot
+                                {
+                                    token = input.substr(npos, 1);
+                                    m_tokens.emplace_back(token, eTokenDot);
+                                    break;
+                                }
+                            }
+                            for (; epos < commentpos; epos++)  // now we treat it as either an int or float
+                            {
+                                if (!std::isdigit((unsigned char)input[epos]))
+                                {
+                                    if (input[epos] == '.')
+                                    {
+                                        if (!bFloat)
+                                            bFloat = true;
+                                        else
+                                            break;
+                                    }
                                     else
                                         break;
                                 }
-                                else
-                                    break;
                             }
+                            // token is from [spos,epos)
+                            token = input.substr(npos, epos - npos);
+                            m_tokens.emplace_back(token, bFloat ? eTokenFloat : eTokenInt);
+                            break;
                         }
-                        // token is from [spos,epos)
-                        token = input.substr(npos, epos - npos);
-                        m_tokens.emplace_back(token, bFloat ? eTokenFloat : eTokenInt);
-                        break;
-                    }
 
-                    case ';':
-                    {
-                        token = input.substr(npos, 1);
-                        m_tokens.emplace_back(token, eTokenSemi);
-                        break;
-                    }
-
-                    case ':':  // single or double
-                    {
-                        uint64_t tag = eTokenColon;
-                        if ((epos < commentpos) && (input[epos] == ':'))
+                        case ';':
                         {
-                            tag = eTokenDColon;
-                            epos++;
+                            token = input.substr(npos, 1);
+                            m_tokens.emplace_back(token, eTokenSemi);
+                            break;
                         }
-                        token = input.substr(npos, epos - npos);
-                        m_tokens.emplace_back(token, tag);
-                        break;
-                    }
 
-                    case '(':  // single or double brace
-                    {
-                        uint64_t tag = eTokenOBrace;
-                        if ((epos < commentpos) && (input[epos] == '('))
+                        case ':':  // single or double
                         {
-                            tag = eTokenDOBrace;
-                            epos++;
-                        }
-                        token = input.substr(npos, epos - npos);
-                        m_tokens.emplace_back(token, tag);
-                        break;
-                    }
-
-                    case ')':  // single or double brace
-                    {
-                        uint64_t tag = eTokenCBrace;
-                        if ((epos < commentpos) && (input[epos] == ')'))
-                        {
-                            tag = eTokenDCBrace;
-                            epos++;
-                        }
-                        token = input.substr(npos, epos - npos);
-                        m_tokens.emplace_back(token, tag);
-                        break;
-                    }
-
-                    case '[':
-                    {
-                        token = input.substr(npos, 1);
-                        m_tokens.emplace_back(token, eTokenOBracket);
-                        break;
-                    }
-
-                    case ']':
-                    {
-                        token = input.substr(npos, 1);
-                        m_tokens.emplace_back(token, eTokenCBracket);
-                        break;
-                    }
-
-                    case '+':  // addition or asignment
-                    {
-                        uint64_t tag = eTokenPlus;
-                        if ((epos < commentpos) && (input[epos] == '='))
-                        {
-                            tag = eTokenPlusAssign;
-                            epos++;
-                        }
-                        token = input.substr(npos, epos - npos);
-                        m_tokens.emplace_back(token, tag);
-                        break;
-                    }
-
-                    case '-':  // addition or asignment
-                    {
-                        uint64_t tag = eTokenMinus;
-                        if ((epos < commentpos) && (input[epos] == '='))
-                        {
-                            tag = eTokenMinusAssign;
-                            epos++;
-                        }
-                        token = input.substr(npos, epos - npos);
-                        m_tokens.emplace_back(token, tag);
-                        break;
-                    }
-
-                    case '*':  // addition or asignment
-                    {
-                        uint64_t tag = eTokenMultiply;
-                        if ((epos < commentpos) && (input[epos] == '='))
-                        {
-                            tag = eTokenMultiplyAssign;
-                            epos++;
-                        }
-                        token = input.substr(npos, epos - npos);
-                        m_tokens.emplace_back(token, tag);
-                        break;
-                    }
-
-                    case '/':  // can be divide, objective, assignment
-                    {
-                        uint64_t tag = eTokenFslash;
-                        if (epos < commentpos)   // possible to have 2nd char
-                        {
-                            if (input[epos] == '/')
+                            uint64_t tag = eTokenColon;
+                            if ((epos < commentpos) && (input[epos] == ':'))
                             {
+                                tag = eTokenDColon;
                                 epos++;
-                                tag = eTokenDivide;
                             }
-                            else if (input[epos] == '=')
+                            token = input.substr(npos, epos - npos);
+                            m_tokens.emplace_back(token, tag);
+                            break;
+                        }
+
+                        case '(':  // single or double brace
+                        {
+                            uint64_t tag = eTokenOBrace;
+                            if ((epos < commentpos) && (input[epos] == '('))
                             {
+                                tag = eTokenDOBrace;
                                 epos++;
-                                tag = eTokenDivideAssign;
                             }
+                            token = input.substr(npos, epos - npos);
+                            m_tokens.emplace_back(token, tag);
+                            break;
                         }
-                        token = input.substr(npos, epos - npos);
-                        m_tokens.emplace_back(token, tag);
-                        if (tag == eTokenFslash)  // if objective, everything after the / is object and treat as string
+
+                        case ')':  // single or double brace
                         {
-                            token = input.substr(epos, commentpos - epos);
-                            m_tokens.emplace_back(token, eTokenObjStr);
-                            epos = commentpos;  // this forces the end of processing
-                        }
-                        break;
-                    }
-
-                    case '<':  // < or <=
-                    {
-                        uint64_t tag = eTokenLess;
-                        if ((epos < commentpos) && (input[epos] == '='))
-                        {
-                            tag = eTokenLessEqual;
-                            epos++;
-                        }
-                        token = input.substr(npos, epos - npos);
-                        m_tokens.emplace_back(token, tag);
-                        break;
-                    }
-
-                    case '>':  // > or >=
-                    {
-                        uint64_t tag = eTokenGreater;
-                        if ((epos < commentpos) && (input[epos] == '='))
-                        {
-                            tag = eTokenGreaterEqual;
-                            epos++;
-                        }
-                        token = input.substr(npos, epos - npos);
-                        m_tokens.emplace_back(token, tag);
-                        break;
-                    }
-
-                    case '!':  // ! or !=    ! is current an error
-                    {
-                        uint64_t tag = eTokenNot;
-                        if ((epos < commentpos) && (input[epos] == '='))
-                        {
-                            tag = eTokenNotEqual;
-                            epos++;
-                        }
-                        token = input.substr(npos, epos - npos);
-                        m_tokens.emplace_back(token, tag);
-                        break;
-                    }
-
-                    case '=':  // = or ==   
-                    {
-                        uint64_t tag = eTokenAssignment;
-                        if ((epos < commentpos) && (input[epos] == '='))
-                        {
-                            tag = eTokenEqual;
-                            epos++;
-                        }
-                        token = input.substr(npos, epos - npos);
-                        m_tokens.emplace_back(token, tag);
-                        break;
-                    }
-
-                    case ',':
-                    {
-                        token = input.substr(npos, 1);
-                        m_tokens.emplace_back(token, eTokenComma);
-                        break;
-                    }
-
-                    case '"':  // start quoted string. We want to keep the quotes
-                    {
-                        for (; epos < commentpos && input[epos] != '"'; epos++)
-                            ;
-                        if ((epos >= commentpos) || (input[epos] != '"'))   // missing ending quote
-                        {
-                            ;   // we need to do some sort of error
-                        }
-                        if (epos == npos)
-                            token = "\"\"";
-                        else
-                            token = input.substr(npos, epos++ - npos + 1);
-                        m_tokens.emplace_back(token, eTokenString);
-
-                        break;
-                    }
-
-                    case '$':   // possible start of macro. Format is $(macro)$. macro is only alpha/digits, must start with alpha
-                    {
-                        if ((epos < commentpos) && (input[epos] == '('))  // macro start
-                        {
-                            if (((epos + 3) < commentpos) && isalpha((unsigned char)input[epos + 1]))
+                            uint64_t tag = eTokenCBrace;
+                            if ((epos < commentpos) && (input[epos] == ')'))
                             {
-                                std::size_t macrostart = epos + 1;
-                                std::size_t macroend = macrostart;
-                                for (; macroend < commentpos && std::isalnum((unsigned char)input[macroend]);macroend++)
-                                    ;
-                                if ((macroend + 1 < commentpos) && (input[macroend] == ')') && (input[macroend + 1] == '$')) // have valid macro
+                                tag = eTokenDCBrace;
+                                epos++;
+                            }
+                            token = input.substr(npos, epos - npos);
+                            m_tokens.emplace_back(token, tag);
+                            break;
+                        }
+
+                        case '[':
+                        {
+                            token = input.substr(npos, 1);
+                            m_tokens.emplace_back(token, eTokenOBracket);
+                            break;
+                        }
+
+                        case ']':
+                        {
+                            token = input.substr(npos, 1);
+                            m_tokens.emplace_back(token, eTokenCBracket);
+                            break;
+                        }
+
+                        case '+':  // addition or asignment
+                        {
+                            uint64_t tag = eTokenPlus;
+                            if ((epos < commentpos) && (input[epos] == '='))
+                            {
+                                tag = eTokenPlusAssign;
+                                epos++;
+                            }
+                            token = input.substr(npos, epos - npos);
+                            m_tokens.emplace_back(token, tag);
+                            break;
+                        }
+
+                        case '-':  // addition or asignment
+                        {
+                            uint64_t tag = eTokenMinus;
+                            if ((epos < commentpos) && (input[epos] == '='))
+                            {
+                                tag = eTokenMinusAssign;
+                                epos++;
+                            }
+                            token = input.substr(npos, epos - npos);
+                            m_tokens.emplace_back(token, tag);
+                            break;
+                        }
+
+                        case '*':  // addition or asignment
+                        {
+                            uint64_t tag = eTokenMultiply;
+                            if ((epos < commentpos) && (input[epos] == '='))
+                            {
+                                tag = eTokenMultiplyAssign;
+                                epos++;
+                            }
+                            token = input.substr(npos, epos - npos);
+                            m_tokens.emplace_back(token, tag);
+                            break;
+                        }
+
+                        case '/':  // can be divide, objective, assignment
+                        {
+                            uint64_t tag = eTokenFslash;
+                            if (epos < commentpos)   // possible to have 2nd char
+                            {
+                                if (input[epos] == '/')
                                 {
-                                    token = input.substr(macrostart, macroend - macrostart);
-                                    m_tokens.emplace_back(token, eTokenMacro);
-                                    epos = macroend;        // next token starts after the trailing $
-                                    break;
+                                    epos++;
+                                    tag = eTokenDivide;
+                                }
+                                else if (input[epos] == '=')
+                                {
+                                    epos++;
+                                    tag = eTokenDivideAssign;
                                 }
                             }
-                            errors.setError(m_line,"Tyab Extension. Invalid macro usage: Macros start with alpha and alpha numeric only: $(macro)$");
-                            return;
+                            token = input.substr(npos, epos - npos);
+                            m_tokens.emplace_back(token, tag);
+                            if (tag == eTokenFslash)  // if objective, everything after the / is object and treat as string
+                            {
+                                token = input.substr(epos, commentpos - epos);
+                                m_tokens.emplace_back(token, eTokenObjStr);
+                                epos = commentpos;  // this forces the end of processing
+                            }
+                            break;
                         }
-                        // invalid starting $ sequence treat same as default case
-                        // for now take all the unknown chars and make a token out of it (may have to also allow alpha and digits if mm engine supports unicode var names)
-                        for (; (epos < commentpos) && !isKnown(input[epos]); epos++)
-                            ;
-                        token = input.substr(npos, epos - npos);
-                        m_tokens.emplace_back(token, eUnknown);
-                        break;
-                    }
 
-                    default:  // no idea. Posssible a unicode variable name (TODO - does MM engine deal with this case?)
+                        case '<':  // < or <=
+                        {
+                            uint64_t tag = eTokenLess;
+                            if ((epos < commentpos) && (input[epos] == '='))
+                            {
+                                tag = eTokenLessEqual;
+                                epos++;
+                            }
+                            token = input.substr(npos, epos - npos);
+                            m_tokens.emplace_back(token, tag);
+                            break;
+                        }
+
+                        case '>':  // > or >=
+                        {
+                            uint64_t tag = eTokenGreater;
+                            if ((epos < commentpos) && (input[epos] == '='))
+                            {
+                                tag = eTokenGreaterEqual;
+                                epos++;
+                            }
+                            token = input.substr(npos, epos - npos);
+                            m_tokens.emplace_back(token, tag);
+                            break;
+                        }
+
+                        case '!':  // ! or !=    ! is current an error
+                        {
+                            uint64_t tag = eTokenNot;
+                            if ((epos < commentpos) && (input[epos] == '='))
+                            {
+                                tag = eTokenNotEqual;
+                                epos++;
+                            }
+                            token = input.substr(npos, epos - npos);
+                            m_tokens.emplace_back(token, tag);
+                            break;
+                        }
+
+                        case '=':  // = or ==   
+                        {
+                            uint64_t tag = eTokenAssignment;
+                            if ((epos < commentpos) && (input[epos] == '='))
+                            {
+                                tag = eTokenEqual;
+                                epos++;
+                            }
+                            token = input.substr(npos, epos - npos);
+                            m_tokens.emplace_back(token, tag);
+                            break;
+                        }
+
+                        case ',':
+                        {
+                            token = input.substr(npos, 1);
+                            m_tokens.emplace_back(token, eTokenComma);
+                            break;
+                        }
+
+                        case '"':  // start quoted string. We want to keep the quotes
+                        {
+                            for (; epos < commentpos && input[epos] != '"'; epos++)
+                                ;
+                            if ((epos >= commentpos) || (input[epos] != '"'))   // missing ending quote
+                            {
+                                ;   // we need to do some sort of error
+                            }
+                            if (epos == npos)
+                                token = "\"\"";
+                            else
+                                token = input.substr(npos, epos++ - npos + 1);
+
+                            std::string quotetoken(token);  // saved quoted string into string so we can deal with macro expansion
+                            if (!embededMacro(quotetoken, errors, defines))
+                                return;     // error
+
+                            m_tokens.emplace_back(quotetoken, eTokenString);
+
+                            break;
+                        }
+
+                        case '$':   // possible start of macro. Format is $(macro)$. macro is only alpha/digits, must start with alpha
+                        {
+                            std::size_t endpos;
+                            std::string macro;
+                            if (isMacro(m_line, errors, input, npos, endpos, macro))
+                            {
+                                if (!defines.contains(macro))
+                                {
+                                    errors.setError(m_line,std::string("Unknown macro name: ")+macro);
+                                    return;
+                                }
+                                std::string macrovalue = defines.getValue( macro );
+                                if (macrovalue.empty())
+                                {
+                                    errors.setError(m_line,"Empty macro value");
+                                    return;
+                                }
+                                // have macro, replace data in line, expanded line is now the input line (allows errors to capture it), and start reprocessing entire line again.
+                                // this allows macros to be almost every token
+                                localline.replace( npos,endpos - npos+1,macrovalue);
+                                m_line.setLine(localline);          // change InputLine to have modified expanded line.
+                                bMacro = true;                      // will cause token processing to start all over for this line.
+                                break;
+
+                            }
+                            // invalid starting $ sequence treat same as default case
+                            // for now take all the unknown chars and make a token out of it (may have to also allow alpha and digits if mm engine supports unicode var names)
+                            for (; (epos < commentpos) && !isKnown(input[epos]); epos++)
+                                ;
+                            token = input.substr(npos, epos - npos);
+                            m_tokens.emplace_back(token, eUnknown);
+                            break;
+                        }
+
+                        default:  // no idea. Posssible a unicode variable name (TODO - does MM engine deal with this case?)
+                        {
+                            // for now take all the unknown chars and make a token out of it (may have to also allow alpha and digits if mm engine supports unicode var names)
+                            for (; (epos < commentpos) && !isKnown(input[epos]); epos++)
+                                ;
+                            token = input.substr(npos, epos - npos);
+                            m_tokens.emplace_back(token, eUnknown);
+                            break;
+                        }
+
+                        } // switch
+                    } // else
+                    npos = epos;
+                } // for
+                  // we have parsed everything not a comment. If we have a comment, now add it
+                if (!bMacro && (commentpos < inputLen))
+                {
+                    std::string_view commentview = input.substr(commentpos);   // may have spaces before comment.
+                    std::string commentstr(commentview);                      // string that may be modified
+                    if (MMUtil::removeLeadingWhite(commentview).find("#.") == 0)
                     {
-                        // for now take all the unknown chars and make a token out of it (may have to also allow alpha and digits if mm engine supports unicode var names)
-                        for (; (epos < commentpos) && !isKnown(input[epos]); epos++)
-                            ;
-                        token = input.substr(npos, epos - npos);
-                        m_tokens.emplace_back(token, eUnknown);
-                        break;
+                        if (!embededMacro( commentstr, errors, defines))
+                            return;
                     }
 
-                    } // switch
-                } // else
-                npos = epos;
-            } // for
-              // we have parsed everything not a comment. If we have a comment, now add it
-            if (commentpos < inputLen)
-            {
-                m_tokens.emplace_back(input.substr(commentpos), eTokenComment);
+                    m_tokens.emplace_back(commentstr, eTokenComment);
+                }
             }
+            while (bMacro == true);  // until no more macros
 
         }
 
@@ -1280,12 +1321,77 @@ protected:
             return str;
         }
 
-        bool commentLine() const { return m_bComment; }   // return true if entire line is comment
-
-
     protected:
+        // look at line starting at pos (it is the first $ char). Return true if we have valid $(name) format.
+        // error will be filled in if $( found but name is invalid or no closing ) and false returned
+        // if true returned, the  macronamelc is filled in with lower case name of the macro
+        // if true returned, epos is next char past the closing )
+        bool isMacro(const InputLine &iline, ErrorWarning & errors, std::string_view line, std::size_t spos, std::size_t & epos, std::string& macroname )
+        {
+            bool retval = false;
+            std::size_t pos = spos;           // start
+            epos = line.size();               // end (temp for now)
+            if ((pos < epos) && (line[pos] == '$'))  // should always be true by caller
+            {
+                pos++;
+                if ((pos < epos) && (line[pos] == '('))  // now have $( sequence.
+                {
+                    pos++;
+                    for (epos = pos; (epos < line.size()) && (line[epos] != ')'); epos++)  // find closing )
+                        ;
+                    if (epos >= line.size())
+                    {
+                        errors.setError(iline,"Missing closing ) in macro");
+                        return false;
+                    }
+                    if (epos - spos - 2 <= 0)
+                    {
+                        errors.setError(iline,"Missing macro name inside $()");
+                        return false;
+                    }
+                    macroname = MMUtil::removeLeadingAndTrailingWhite(line.substr(spos+2,epos-spos-2));
+                    if (MMUtil::isAlphaNumericName(macroname))
+                        retval = true;
+                    else
+                        errors.setError(iline,std::string("Invalid macro name: ")+macroname);
+                }
+            }
+            return retval;
+        }
 
-        // this defines the allowed first char of a token. Note it does not allow any non-ascii variable names
+        bool embededMacro(std::string& token, ErrorWarning& errors, const Defines & defines)
+        {
+            bool bqMacro = false;
+            do    // loop until no more interior macros
+            {
+                bqMacro = false;         // start off assuming no macro
+                std::size_t stpos = token.find("$(");
+                if (stpos != std::string::npos)     // found $(
+                {
+                    std::string macroname;
+                    std::size_t endpos;
+                    if (isMacro(m_line, errors, token, stpos, endpos, macroname))  // have macro
+                    {
+                        if (!defines.contains(macroname))
+                        {
+                            errors.setError(m_line, std::string("Unknown macro name: ") + macroname);
+                            return false;
+                        }
+                        std::string macrovalue = defines.getValue(macroname);
+                        if (macrovalue.empty())
+                        {
+                            errors.setError(m_line, "Empty macro value");
+                            return false;
+                        }
+                        token.replace(stpos, endpos - stpos + 1, MMUtil::removeAllDoubleQuotes(macrovalue));
+                        bqMacro = true;
+                    }
+                }
+            } while (bqMacro);
+            return true;
+        }
+
+                // this defines the allowed first char of a token. Note it does not allow any non-ascii variable names
         bool isKnown(char ch)
         {
             if (std::isdigit((unsigned char)ch) || std::isalpha((unsigned char)ch) || std::isblank((unsigned char)ch))
@@ -1299,8 +1405,6 @@ protected:
 
         InputLine               m_line;                // holds the line, linenumber, filename
         std::deque<ScriptToken> m_tokens;              // parsed tokens for this line
-        bool                    m_bComment = false;    // true if comment line 
-        bool                    m_bHasComment = false; // true if line also contains context with a comment at end of line
     };
 
 public:
@@ -1337,10 +1441,10 @@ public:
         m_defines.addKeyValue("TyabMapName", mapname);
 
         // compute date for main script
-        std::string sdate;
-        if (!m_inputlines.empty())
+        std::string sdate = FileIO::getDateStr(m_filename, cmdline.m_datestr);
+        if (sdate.empty() && !m_inputlines.empty())
         {
-            sdate = FileIO::getDateStr(m_filename.empty() ? std::filesystem::path(Unicode::utf8_to_wstring(m_inputlines[0].getFileName())) : m_filename, cmdline.m_datestr);
+            sdate = FileIO::getDateStr(std::filesystem::path(Unicode::utf8_to_wstring(m_inputlines[0].getFileName())), cmdline.m_datestr);
         }
 
         m_defines.addKeyValue("TyabScriptDate", sdate);        // main script we know its date
@@ -1372,7 +1476,7 @@ public:
         for (auto it : m_inputlines)
         {
             ScriptLine sl( it );
-            sl.rawParse( m_errors );
+            sl.rawParse( m_errors, m_defines );
             m_scriptlines.push_back( sl );
         }
 
@@ -1456,7 +1560,8 @@ protected:
         constexpr char ktyabscriptdate[]    = "tyabscriptdate ";    // following is date format, Add to line the processed date for main script file
         constexpr char ktyabscriptincdate[] = "tyabscriptincdate "; // following is date format. Add to line the processed data for current script file.
         constexpr char kinclude[]           = "include ";           // include the following script. Already included includes ignored.
-        constexpr char ktyabMMDatUtil[]     = "tyabmmdatutil ";     // add in this utility info.
+        constexpr char ktyabMMDatUtil[]     = "tyabmmdatutil";      // add in this utility info.
+
         constexpr char kKeepComment[]       = "#.";                 // keep comment, ignore it
 
         // process every line, dealing with the pragmas

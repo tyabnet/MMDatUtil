@@ -19,6 +19,13 @@
 #undef max
 
 
+// script engine.
+// script format
+
+// varvalue:  integer | float | retmacro | variable
+// variable: 
+
+
 class ScriptEngine
 {
 public:
@@ -101,7 +108,7 @@ protected:
     const std::string kStr_erosionscale                 = "erosionscale";                    // | Macro | Global erosion scale factor |
     const std::string kStr_float                        = "float";                           // | Variable | Floating point number. |
     const std::string kStr_geologicalcenter             = "geologicalcenter";                // | Macro | Number of Geological Centers. |
-    const std::string kStr_get                          = "get";                             // | Macro | Get tile ID. |
+    const std::string kStr_get                          = "get";                             // | Macro | Get tile ID., get(row)(col) |
     const std::string kStr_granitegrinder               = "granitegrinder";                  // | Macro | Number of Granite Grinders. |
     const std::string kStr_green                        = "green";                           // | Color | Arrow colors. |
     const std::string kStr_hard_rock                    = "hard_rock";                       // | Macro | Tile ID of hard rock(34). |
@@ -119,8 +126,8 @@ protected:
     const std::string kStr_id                           = "id";                              // | Data Field | Object ID. |
     const std::string kStr_if                           = "if";                              // | Occurance | single time trigger. |
     const std::string kStr_init                         = "init";                            // | Event Chain | First event called after map load.
+    const std::string kStr_int                          = "int";                             // | Variable | Integer number. |
     const std::string kStr_intarray                     = "intarray";                        // | Variable | Integer array. |
-    const std::string kStr_integer                      = "integer";                         // | Variable | Integer number. |
     const std::string kStr_ispowered                    = "ispowered";                       // | Data Field | Same as power. |
     const std::string kStr_kill                         = "kill";                            // | Event | Kill object. |
     const std::string kStr_landslide                    = "landslide";                       // | Event | Unknown. |
@@ -165,6 +172,7 @@ protected:
     const std::string kStr_progress_path                = "progress_path";                   // | Macro | Tile id of a progress path(13). |
     const std::string kStr_qmsg                         = "qmsg";                            // | Event | Display message to user. |
     const std::string kStr_rapidrider                   = "rapidrider";                      // | Macro | Number of Rapid Riders. |
+    const std::string kStr_random                       = "random";                          // | Macro | return random number, random(low)(high) |
     const std::string kStr_RechargeSeamGoal_C           = "RechargeSeamGoal_C";              // | Collection | Visible recharge seams. |
     const std::string kStr_red                          = "red";                             // | Color | Arrow colors. |
     const std::string kStr_reinforce                    = "reinforce";                       // | Trigger | Trigger when wall is reinforced. |
@@ -330,8 +338,8 @@ protected:
     const std::string kS_id                           = MMUtil::toLower( kStr_id                           );   // | Data Field | Object ID. |
     const std::string kS_if                           = MMUtil::toLower( kStr_if                           );   // | Occurance | single time trigger. |
     const std::string kS_init                         = MMUtil::toLower( kStr_init                         );   // | Event Chain | First event called after map load.
+    const std::string kS_int                          = MMUtil::toLower( kStr_int                          );   // | Variable | Integer number. |
     const std::string kS_intarray                     = MMUtil::toLower( kStr_intarray                     );   // | Variable | Integer array. |
-    const std::string kS_integer                      = MMUtil::toLower( kStr_integer                      );   // | Variable | Integer number. |
     const std::string kS_ispowered                    = MMUtil::toLower( kStr_ispowered                    );   // | Data Field | Same as power. |
     const std::string kS_kill                         = MMUtil::toLower( kStr_kill                         );   // | Event | Kill object. |
     const std::string kS_landslide                    = MMUtil::toLower( kStr_landslide                    );   // | Event | Unknown. |
@@ -352,7 +360,7 @@ protected:
     const std::string kS_lose                         = MMUtil::toLower( kStr_lose                         );   // | Event | Lose the map. |
     const std::string kS_miner                        = MMUtil::toLower( kStr_miner                        );   // | Variable / Class | Miner object or class. |
     const std::string kS_miners                       = MMUtil::toLower( kStr_miners                       );   // | Macro | Miners discovered or active. |
-    const std::string kS_mininglaser                  = MMUtil::toLower( kStr_mininglaser                  );   // | Macro | Number of Geological Centers. |
+    const std::string kS_mininglaser                  = MMUtil::toLower( kStr_mininglaser                  );   // | Macro | Number of Mining Lasers. |
     const std::string kS_monsters                     = MMUtil::toLower( kStr_monsters                     );   // | Macro | Number of monsters. |
     const std::string kS_msg                          = MMUtil::toLower( kStr_msg                          );   // | Event | Display a message to user. |
     const std::string kS_N                            = MMUtil::toLower( kStr_N                            );   // | Emerge Direction | North. |
@@ -375,6 +383,7 @@ protected:
     const std::string kS_powerstation                 = MMUtil::toLower( kStr_powerstation                 );   // | Macro | Number of Power Stations. |
     const std::string kS_progress_path                = MMUtil::toLower( kStr_progress_path                );   // | Macro | Tile id of a progress path(13). |
     const std::string kS_qmsg                         = MMUtil::toLower( kStr_qmsg                         );   // | Event | Display message to user. |
+    const std::string kS_random                       = MMUtil::toLower( kStr_random                       );   // | Macro | return random number, random(low)(high) |
     const std::string kS_rapidrider                   = MMUtil::toLower( kStr_rapidrider                   );   // | Macro | Number of Rapid Riders. |
     const std::string kS_RechargeSeamGoal_C           = MMUtil::toLower( kStr_RechargeSeamGoal_C           );   // | Collection | Visible recharge seams. |
     const std::string kS_red                          = MMUtil::toLower( kStr_red                          );   // | Color | Arrow colors. |
@@ -458,6 +467,7 @@ protected:
     // init and tick are not added since the script developer provides those optional event chains.
     // thus variable names are also checked for init and tick since they are event chain only.
     typedef std::unordered_map<std::string, std::string> ReservedWordsType;
+
 
     // map contains all reserved words, key is lower case, value is friendly name
     const ReservedWordsType ReservedWordsMap =
@@ -549,8 +559,8 @@ protected:
         { kS_id                           , kStr_id                           },   // | Data Field | Object ID. |
         { kS_if                           , kStr_if                           },   // | Occurance | single time trigger. |
         { kS_init                         , kStr_init                         },   // | Event Chain | First event called after map load.
+        { kS_int                          , kStr_int                          },   // | Variable | Integer number. |
         { kS_intarray                     , kStr_intarray                     },   // | Variable | Integer array. |
-        { kS_integer                      , kStr_integer                      },   // | Variable | Integer number. |
         { kS_ispowered                    , kStr_ispowered                    },   // | Data Field | Same as power. |
         { kS_kill                         , kStr_kill                         },   // | Event | Kill object. |
         { kS_landslide                    , kStr_landslide                    },   // | Event | Unknown. |
@@ -571,7 +581,7 @@ protected:
         { kS_lose                         , kStr_lose                         },   // | Event | Lose the map. |
         { kS_miner                        , kStr_miner                        },   // | Variable / Class | Miner object or class. |
         { kS_miners                       , kStr_miners                       },   // | Macro | Miners discovered or active. |
-        { kS_mininglaser                  , kStr_mininglaser                  },   // | Macro | Number of Geological Centers. |
+        { kS_mininglaser                  , kStr_mininglaser                  },   // | Macro | Number of Mining Lasers. |
         { kS_monsters                     , kStr_monsters                     },   // | Macro | Number of monsters. |
         { kS_msg                          , kStr_msg                          },   // | Event | Display a message to user. |
         { kS_N                            , kStr_N                            },   // | Emerge Direction | North. |
@@ -594,6 +604,7 @@ protected:
         { kS_powerstation                 , kStr_powerstation                 },   // | Macro | Number of Power Stations. |
         { kS_progress_path                , kStr_progress_path                },   // | Macro | Tile id of a progress path(13). |
         { kS_qmsg                         , kStr_qmsg                         },   // | Event | Display message to user. |
+        { kS_random                       , kStr_random                       },   // | Macro | return random number, random(low)(high) |
         { kS_rapidrider                   , kStr_rapidrider                   },   // | Macro | Number of Rapid Riders. |
         { kS_RechargeSeamGoal_C           , kStr_RechargeSeamGoal_C           },   // | Collection | Visible recharge seams. |
         { kS_red                          , kStr_red                          },   // | Color | Arrow colors. |
@@ -674,14 +685,139 @@ protected:
     };
 
 
+    static constexpr uint64_t eMacroFlagReturnNumeric = 0x0000000000000001;  // int/floats may be freely exchanged between each other
+    static constexpr uint64_t eMacroFlag2Param        = 0x0000000000000002;  // macro has 2 parameters
+
+    // macros that return a value - can be used as variable
+    const std::unordered_map<std::string, uint64_t> macrosReturnValue =
+    {
+        { kS_air                          , eMacroFlagReturnNumeric },   // macro int, amount of air
+        { kS_Barrier_C                    , eMacroFlagReturnNumeric },   // collection, building
+        { kS_Bat                          , eMacroFlagReturnNumeric },   // collection, creature
+        { kS_building_path                , eMacroFlagReturnNumeric },   // macro int, number of objects
+        { kS_BuildingCanteen_C            , eMacroFlagReturnNumeric },   // collection, building
+        { kS_BuildingDocks_C              , eMacroFlagReturnNumeric },   // collection, building
+        { kS_BuildingElectricFence_C      , eMacroFlagReturnNumeric },   // collection, building
+        { kS_BuildingGeologicalCenter_C   , eMacroFlagReturnNumeric },   // collection, building
+        { kS_BuildingMiningLaser_C        , eMacroFlagReturnNumeric },   // collection, building
+        { kS_BuildingOreRefinery_C        , eMacroFlagReturnNumeric },   // collection, building
+        { kS_BuildingPowerPath_C          , eMacroFlagReturnNumeric },   // collection, building
+        { kS_BuildingPowerStation_C       , eMacroFlagReturnNumeric },   // collection, building
+        { kS_buildings                    , eMacroFlagReturnNumeric },   // macro int, number of buildings.
+        { kS_BuildingSuperTeleport_C      , eMacroFlagReturnNumeric },   // collection, building
+        { kS_BuildingSupportStation_C     , eMacroFlagReturnNumeric },   // collection, building
+        { kS_BuildingTeleportPad_C        , eMacroFlagReturnNumeric },   // collection, building
+        { kS_BuildingToolStore_C          , eMacroFlagReturnNumeric },   // collection, building
+        { kS_BuildingUpgradeStation_C     , eMacroFlagReturnNumeric },   // collection, building
+        { kS_canteen                      , eMacroFlagReturnNumeric },   // macro, int, number of Canteens.
+        { kS_cargocarrier                 , eMacroFlagReturnNumeric },   // macro, int number of Cargo Carriers.
+        { kS_chromecrusher                , eMacroFlagReturnNumeric },   // macro int, number of Chrome Crushers
+        { kS_clock                        , eMacroFlagReturnNumeric },   // macro, float, return game time
+        { kS_CreatureBat_C                , eMacroFlagReturnNumeric },   // collection, creature
+        { kS_CreatureIceMonster_C         , eMacroFlagReturnNumeric },   // collection, creature
+        { kS_CreatureLavaMonster_C        , eMacroFlagReturnNumeric },   // collection, creature
+        { kS_CreatureRockMonster_C        , eMacroFlagReturnNumeric },   // collection, creature
+        { kS_CreatureSmallSpider_C        , eMacroFlagReturnNumeric },   // collection, creature
+        { kS_CreatureSlimySlug_C          , eMacroFlagReturnNumeric },   // collection, creature
+        { kS_creatures                    , eMacroFlagReturnNumeric },   // macro, int, Number of creatures
+        { kS_Crystal_C                    , eMacroFlagReturnNumeric },   // collection, unstored crystals|
+        { kS_crystal_seam                 , eMacroFlagReturnNumeric },   // macro, int, id of crystal seam always 42
+        { kS_crystals                     , eMacroFlagReturnNumeric },   // macro, int, number of stored crystals
+        { kS_docks                        , eMacroFlagReturnNumeric },   // Macro, Number of Docks.
+        { kS_Dynamite_C                   , eMacroFlagReturnNumeric },   // Collection, All dynamite outside of toolstore.
+        { kS_electricfence                , eMacroFlagReturnNumeric },   // Macro, Number of Fences.
+        { kS_ElectricFence_C              , eMacroFlagReturnNumeric },   // Macro | Number of Fence objects.Not a collection. |
+        { kS_EventErosion_C               , eMacroFlagReturnNumeric },   // | Collection | Active erosions. |
+        { kS_EventLandslide_C             , eMacroFlagReturnNumeric },   // | Collection | Active active landslides. |
+        { kS_erosionscale                 , eMacroFlagReturnNumeric },   // | Macro | Global erosion scale factor |
+        { kS_geologicalcenter             , eMacroFlagReturnNumeric },   // | Macro | Number of Geological Centers. |
+        { kS_get                          , eMacroFlagReturnNumeric | eMacroFlag2Param },   // | Macro | Get tile ID. |
+        { kS_granitegrinder               , eMacroFlagReturnNumeric },   // | Macro | Number of Granite Grinders. |
+        { kS_hard_rock                    , eMacroFlagReturnNumeric },   // | Macro | Tile ID of hard rock(34). |
+        { kS_hostiles                     , eMacroFlagReturnNumeric },   // | Macro | Number of hostile creatures. |
+        { kS_hoverscout                   , eMacroFlagReturnNumeric },   // | Macro | Number of Hover Scouts. |
+        { kS_IceMonster                   , eMacroFlagReturnNumeric },   // | Collection | Ice Monsters. |
+        { kS_lava                         , eMacroFlagReturnNumeric },   // | Macro | Tile ID of lava(6). |
+        { kS_LavaMonster                  , eMacroFlagReturnNumeric },   // | Collection | Lava Monsters. |
+        { kS_LMLC                         , eMacroFlagReturnNumeric },   // | Macro | Number of Large Mobile Laser Cutters. |
+        { kS_loaderdozer                  , eMacroFlagReturnNumeric },   // | Macro | Number of Loader Dozers. |
+        { kS_loose_rock                   , eMacroFlagReturnNumeric },   // | Macro | Tile ID of loose rock(30). |
+        { kS_miners                       , eMacroFlagReturnNumeric },   // | Macro | Miners discovered or active. |
+        { kS_mininglaser                  , eMacroFlagReturnNumeric },   // | Macro | Number of Geological Centers. |
+        { kS_monsters                     , eMacroFlagReturnNumeric },   // | Macro | Number of monsters. |
+        { kS_NavModifierLava_C            , eMacroFlagReturnNumeric },   // | Collection | Amount of lava tiles. | NavModifierLava_C | Collection | Amount of lava tiles. |
+        { kS_NavModifierPowerPath_C       , eMacroFlagReturnNumeric },   // | Collection | Amount of Power Path tiles, any type.NavModifierPowerPath_C | Collection | Amount of Power Path tiles, any type.Only finished patOnly finished paths. |
+        { kS_NavModifierRubble_C          , eMacroFlagReturnNumeric },   // | Collection | Amount of Rubble tiles, any stage. |
+        { kS_NavModifierWater_C           , eMacroFlagReturnNumeric },   // | Collection | Amount of water tiles. |
+        { kS_ore                          , eMacroFlagReturnNumeric },   // | Macro | Ore count. |
+        { kS_Ore_C                        , eMacroFlagReturnNumeric },   // | Collection | All ore. |
+        { kS_orerefinery                  , eMacroFlagReturnNumeric },   // | Macro | Number of Ore Refineries. |
+        { kS_ore_seam                     , eMacroFlagReturnNumeric },   // | Macro | Tile ID of an ore seam(46). |
+        { kS_powerstation                 , eMacroFlagReturnNumeric },   // | Macro | Number of Power Stations. |
+        { kS_progress_path                , eMacroFlagReturnNumeric },   // | Macro | Tile id of a progress path(13). |
+        { kS_random                       , eMacroFlagReturnNumeric | eMacroFlag2Param },   // | Macro | return random number, random(low)(high) |
+        { kS_rapidrider                   , eMacroFlagReturnNumeric },   // | Macro | Number of Rapid Riders. |
+        { kS_RechargeSeamGoal_C           , eMacroFlagReturnNumeric },   // | Collection | Visible recharge seams. |
+        { kS_RockMonster                  , eMacroFlagReturnNumeric },   // | Collection | Rock Monsters. |
+        { kS_SlimySlug                    , eMacroFlagReturnNumeric },   // | Collection | Slimy Slugs. |
+        { kS_slug_hole                    , eMacroFlagReturnNumeric },   // | Macro | Tile id of slimy slug hole(12). |
+        { kS_slugs                        , eMacroFlagReturnNumeric },   // | Macro | Number of slimy slugs. |
+        { kS_smalldigger                  , eMacroFlagReturnNumeric },   // | Macro | Number of Small Diggers. |
+        { kS_SmallSpider                  , eMacroFlagReturnNumeric },   // | Collection | Small Spiders. |
+        { kS_smalltransporttruck          , eMacroFlagReturnNumeric },   // | Macro | Number of Small Transport Trucks. |
+        { kS_SMLC                         , eMacroFlagReturnNumeric },   // | Macro | Number of Small Mobile Laser Cutters |
+        { kS_solid_rock                   , eMacroFlagReturnNumeric },   // | Macro | Tile ID of solid rock(38). |
+        { kS_Stud_C                       , eMacroFlagReturnNumeric },   // | Collection | All building studs. |
+        { kS_studs                        , eMacroFlagReturnNumeric },   // | Macro | Building Stud count. |
+        { kS_superteleport                , eMacroFlagReturnNumeric },   // | Macro | Number of Super Teleports. |
+        { kS_supportstation               , eMacroFlagReturnNumeric },   // | Macro | Number of Support Stations. |
+        { kS_teleportpad                  , eMacroFlagReturnNumeric },   // | Macro | Numbewr of Teleport Pads. |
+        { kS_time                         , eMacroFlagReturnNumeric },   // | Macro / Trigger | Game time or trigger. |
+        { kS_toolstore                    , eMacroFlagReturnNumeric },   // | Macro | Returns number of toolstores. |
+        { kS_tunnelscout                  , eMacroFlagReturnNumeric },   // | Macro | Number of Tunnel Scouts. |
+        { kS_tunneltransport              , eMacroFlagReturnNumeric },   // | Macro | Number of Tunnel Transports. |
+        { kS_upgradestation               , eMacroFlagReturnNumeric },   // | Macro | Number of Upgrade Stations. |
+        { kS_vehicles                     , eMacroFlagReturnNumeric },   // | Macro | Number of vehicles. |
+        { kS_VehicleCargoCarrier_C        , eMacroFlagReturnNumeric },   // | Collection | Cargo Carriers |
+        { kS_VehicleChromeCrusher_C       , eMacroFlagReturnNumeric },   // | Collection | Chrome Crushers |
+        { kS_VehicleGraniteGrinder_C      , eMacroFlagReturnNumeric },   // | Collection | Granite Grinders |
+        { kS_VehicleHoverScout_C          , eMacroFlagReturnNumeric },   // | Collection | Hover Scouts |
+        { kS_VehicleLMLC_C                , eMacroFlagReturnNumeric },   // | Collection | L   arge Mobile Laser Cutters |
+        { kS_VehicleLoaderDozer_C         , eMacroFlagReturnNumeric },   // | Collection | Loader Dozers |
+        { kS_VehicleRapidRider_C          , eMacroFlagReturnNumeric },   // | Collection | Rapid Riders |
+        { kS_VehicleSmallDigger_C         , eMacroFlagReturnNumeric },   // | Collection | Small Diggers |
+        { kS_VehicleSmallTransportTruck_C , eMacroFlagReturnNumeric },   // | Collection | Small Transport Trucks |
+        { kS_VehicleSMLC_C                , eMacroFlagReturnNumeric },   // | Collection | Small Mobile Laser Cutter |
+        { kS_VehicleTunnelScout_C         , eMacroFlagReturnNumeric },   // | Collection | Tunnel Scouts |
+        { kS_VehicleTunnelTransport_C     , eMacroFlagReturnNumeric },   // | Collection | Tunnel Transports |
+        { kS_water                        , eMacroFlagReturnNumeric },   // | Macro | Tile ID of water(11). |
+    };
+
+    const std::unordered_set<std::string> colors =
+    {
+        kS_black,
+        kS_blue,
+        kS_darkgreen,
+        kS_green,
+        kS_red,
+        kS_white,
+        kS_yellow,
+    };
+
+    bool isColor(const std::string& color) const
+    {
+        return colors.contains(MMUtil::toLower(color));
+    }
+
+
     typedef std::unordered_set<std::string> ReserveWordsEventsVars;
 
-    bool isReservedVar( const std::string & key )
+    bool isReservedVar( const std::string & key ) const
     {
         return m_ReservedWordsVars.contains( MMUtil::toLower( key ) );
     }
 
-    bool isReservedEvent( const std::string & key )
+    bool isReservedEvent( const std::string & key ) const
     {
         return m_ReservedWordsEvents.contains( MMUtil::toLower( key ) );
     }
@@ -789,7 +925,6 @@ protected:
     };
 
     // when we tokenize a line, each token will be one of these.
-
     static constexpr uint64_t eUnknown             = 0x0000000000000000ull;  // unknown
     static constexpr uint64_t eTokenFloat          = 0x0000000000000001ull;  // some sort of floating point number
     static constexpr uint64_t eTokenInt            = 0x0000000000000002ull;  // number 
@@ -829,7 +964,281 @@ protected:
     static constexpr uint64_t eTokenComment        = 0x0000000800000000ull;  // contains comment and optional leading space prior to comment
     static constexpr uint64_t eTokenCommentLine    = 0x0000001000000000ull;  // entire line is comment, may have space in front
     static constexpr uint64_t eTokenBlankLine      = 0x0000002000000000ull;  // entire line is empty and not a comment. Will end event chain if within one
-    static constexpr uint64_t eTokenMacro          = 0x0000004000000000ull;  // $(macro)$  token is just the macro name
+    static constexpr uint64_t eTokenVariable       = 0x0000002000000000ull;  // also has eTokenName set, this is a user variable
+    static constexpr uint64_t eTokenEventChain     = 0x0000002000000000ull;  // also has eTokenName set, this is a user event chain name
+
+    static constexpr uint64_t eTokenIgnore         = 0x8000000000000000ull;  // if set ignore the token completely. When when ignorning invalid spaces
+
+    class variableType
+    {
+    public:
+
+        enum varType : int {
+            eVarTypeBool = 0,   // variable holds bool4
+            eVarTypeInt,        // variable holds int
+            eVarTypeFloat,      // variable holds float
+            eVarTypeString,     // variable holds string
+            eVarTypeIntArray,   // variable holds int array
+            eVarTypeMiner,      // variable holds Miner
+            eVarTypeBuilding,   // variable holds Building
+            eVarTypeVehicle,    // variable holds Vehicle
+            eVarTypeCreature,   // variable holds creature
+            eVarTypeArrow,      // variable holds arrow
+            eVarTypeTimer,      // variable holds timers
+            eVarTypeLAST = eVarTypeTimer
+        };
+
+        variableType() = default;
+        variableType(const std::string& name, varType type) : m_name(name), m_namelc(MMUtil::toLower(m_name)), m_type(type), m_count(1) {}
+        ~variableType() = default;
+
+        void setValueString( const std::string &val ) { m_string = val; }
+        void setValueTimer(float delay, float min, float max, const std::string& event)
+        {
+            m_timerdelay = delay;
+            m_timermin = min;
+            m_timermax = max;
+            m_timerevent = event;
+        }
+        void setValueBool( bool val ) { m_bool = val; }
+        void setValueInt( int val ) { m_int = val; }
+        void setValueFloat( float val ) { m_float = val; }
+        void setValueMiner( int id ) { m_id = id; }
+        void setValueBuilding( int row, int col ) { m_row = row; m_col = col; }
+
+        int getType() const { return (int)m_type; }
+        const std::string & getName() const { return m_name; }
+        const std::string & getNamelc() const { return m_namelc; }
+
+        bool operator == (const variableType& rhs) const { return m_namelc == rhs.m_namelc; } // collections
+        bool operator <  (const variableType& rhs) const { return m_namelc <  rhs.m_namelc; } // collections
+
+        // return true/false if this varible is a duplicate value - only for miner, building, vehicle,creature,arrow
+        bool isDuplicateValue(const variableType& rhs) const
+        {
+            switch (rhs.m_type)
+            {
+            default: break;
+ 
+            case eVarTypeMiner:
+            case eVarTypeVehicle:
+            case eVarTypeCreature:   // variable holds creature
+                return (rhs.m_type == m_type) && (rhs.m_id == m_id);
+
+            case eVarTypeBuilding:
+                return (rhs.m_type == m_type) && (rhs.m_row == m_row) && (rhs.m_col == m_col);
+            }
+            return false;
+        }
+
+        // true if name has been optimized
+        bool isOptName() const
+        {
+            return m_optname.empty();
+        }
+
+        // return ref to either original name or optimized name if it has one
+        const std::string & getOptName() const
+        {
+            return m_optname.empty() ? m_name : m_optname;
+        }
+
+        void intcount() { m_count++; }
+        int getCount() const { return m_count; }
+
+
+    protected:
+        std::string m_namelc;     // lower case name
+        std::string m_name;       // original name may be mixed case
+        std::string m_optname;    // optimized name to write with
+        int         m_count = 0;  // number of references
+        varType     m_type = eVarTypeBool;  // defines type of variable
+
+        // these are the types of = parameters
+        std::string m_string;         // string value or arrow color
+        std::string m_timerevent;
+        float       m_float = 0;      // float value
+        float       m_timerdelay = 0;
+        float       m_timermin = 0;
+        float       m_timermax = 0;
+        bool        m_int = 0;        // integer value
+        int         m_id  = 0;        // id of miner/vehicle/creature
+        int         m_row = 0;        // building row
+        int         m_col = 0;        // building col
+        bool        m_bool = false;   // true/false
+        bool        m_hasValue = false;
+    };
+
+    typedef std::shared_ptr<variableType> variableTypeSP;
+    
+    // holds all user variables
+    // the class variableType is the information for a single user variable. The collections all store
+    // a shared_ptr to it, so all the collections can work on the same object and we don't worry about ownership.
+    class allUserVariables
+    {
+    public:
+
+        // In addition the the entire collection, we duplicate into variable type collections.
+        // This allows faster checks to identify duplicate variables to same object (which is an error)
+        class userVariables
+        {
+        public:
+            userVariables() = default;
+            ~userVariables() = default;
+
+            void add(const std::string& key, variableTypeSP& p)
+            {
+                m_variables[p.get()->getType()].emplace( key, p );
+            }
+
+            bool contains(const std::string& key, variableType::varType type)
+            {
+                return m_variables[type].contains(MMUtil::toLower(key));
+            }
+
+            variableType * find(const std::string& key, variableType::varType type)
+            {
+                auto it = m_variables[type].find(MMUtil::toLower(key));
+                return it->second.get();
+            }
+
+            const variableType * find(const std::string& key, variableType::varType type) const
+            {
+                auto it = m_variables[type].find(MMUtil::toLower(key));
+                return it->second.get();
+            }
+        protected:
+
+            std::unordered_map<std::string, variableTypeSP> m_variables[variableType::eVarTypeLAST+1];  
+        };
+
+
+        allUserVariables() = default;
+        ~allUserVariables() = default;
+
+        void add(variableTypeSP& variable)
+        {
+            const std::string & key = variable.get()->getNamelc();
+            if (!contains(key))
+            {
+                m_allvariables.emplace(key,variable);
+                m_typevariables.add(key, variable);
+            }
+            assert(0 && "adding existing variable");
+        }
+
+        bool contains(const std::string& key)
+        {
+            return m_allvariables.contains( MMUtil::toLower(key) );
+        }
+
+        variableType * find(const std::string& key)
+        {
+            auto it = m_allvariables.find( MMUtil::toLower(key));
+            return it->second.get();
+        }
+
+        const variableType * find(const std::string& key) const
+        {
+            auto it = m_allvariables.find( MMUtil::toLower(key));
+            return it->second.get();
+        }
+
+    protected:
+        std::unordered_map<std::string, variableTypeSP> m_allvariables;
+        userVariables                                   m_typevariables;
+    };
+
+
+    class eventChainName
+    {
+    public:
+        eventChainName() = default;
+        eventChainName(const std::string& name) : m_name(name), m_namelc(MMUtil::toLower(name)), m_count(1) {}
+        ~eventChainName() = default;
+
+        void incCount() { m_count++; }
+        int  getCount() const { return m_count; }
+        void setOptName( const std::string &optname ) { m_optname = optname; }
+
+        // true if name has been optimized
+        bool isOptName() const
+        {
+            return m_optname.empty();
+        }
+
+        const std::string& getOptName() const { return m_optname.empty() ? m_name : m_optname; }
+
+    protected:
+        std::string m_name;      // original name
+        std::string m_namelc;    // lower case version of name
+        std::string m_optname;   // optimized name
+        int         m_count = 0; // number of times name is used
+    };
+
+    class allEventChainNames
+    {
+    public:
+        allEventChainNames() = default;
+        ~allEventChainNames() = default;
+
+        bool contains(const std::string& key) const
+        {
+            return m_eventchainnames.contains(MMUtil::toLower(key));
+        }
+
+        // increment the count if it already exists, or add a new one
+        void add(const std::string& name)
+        {
+            std::string namelc = MMUtil::toLower(name);
+            auto it = m_eventchainnames.find( MMUtil::toLower(name));
+            if (it != m_eventchainnames.end())
+            {
+                (*it).second.incCount();
+            }
+            else
+            {
+                m_eventchainnames.emplace(namelc,eventChainName(name));
+            }
+        }
+
+        // true if name has been optimized
+        bool isOptName(const std::string& name) const
+        {
+            auto it = m_eventchainnames.find( MMUtil::toLower(name));
+            if (it != m_eventchainnames.end())
+            {
+                return (*it).second.isOptName();
+            }
+            return false;
+        }
+
+
+        void setOptName(const std::string& name, const std::string& optName)
+        {
+            auto it = m_eventchainnames.find( MMUtil::toLower(name));
+            if (it != m_eventchainnames.end())
+            {
+                (*it).second.setOptName( optName );
+            }
+        }
+
+        std::string getOptName(const std::string& name) const
+        {
+            std::string namelc = MMUtil::toLower(name);
+            auto it = m_eventchainnames.find( MMUtil::toLower(name));
+            if (it != m_eventchainnames.end())
+            {
+                return (*it).second.getOptName();
+            }
+            return std::string();
+        }
+
+
+
+    protected:
+        std::unordered_map<std::string, eventChainName> m_eventchainnames;
+    };
 
     class ScriptToken   // TODO needs to hold more info - not sure what that will be
     {
@@ -840,12 +1249,15 @@ protected:
         ScriptToken(const std::string& str, uint64_t id) : m_token(str), m_tokenlc(MMUtil::toLower(m_token)), m_id(id) {}
         ScriptToken(std::string_view str, uint64_t id)   : m_token(str), m_tokenlc(MMUtil::toLower(m_token)), m_id(id) {}
 
+        void setToken( const std::string &str) { m_token = str; m_tokenlc = MMUtil::toLower(str); }     // used to convert multiple spaces to single space
+
         bool operator == (const ScriptToken &rhs ) { return m_tokenlc == rhs.m_tokenlc; }   // for collections
         bool operator <  (const ScriptToken &rhs ) { return m_tokenlc < rhs.m_tokenlc; }    // for collections
 
         const std::string & getToken() const   { return m_token; }
         const std::string & getTokenlc() const { return m_tokenlc; }
         uint64_t getID() const { return m_id; }
+        void orID( uint64_t value ) { m_id |= value; }      // used to refine the token type during processing.
 
     protected:
         std::string m_token;
@@ -1309,19 +1721,229 @@ protected:
         }
 
         // build line from the parsed tokens
-        std::string serialize_out() const
+        std::string serialize_out( const ScriptEngine & se ) const
         {
             std::string str;
             std::size_t len = m_line.getLine().length();
             str.reserve( len ? len : 256 );
             for (auto it : m_tokens)
-                str += it.getToken();
+            {
+                if (it.getID() & eTokenIgnore)  // if token is flag for ignore
+                    continue;                   // don't add it to output. Used to remove invalid space
+                if (it.getID() & eTokenVariable) // token is some sort of user variable, it may be renamed
+                {
+                    const allUserVariables & var = se.getUserVariables();
+                    const variableType * vt = var.find(it.getToken());
+                    if (vt->isOptName())
+                        str += vt->getOptName();       // replace with generated optimized name
+                    else
+                        str += it.getToken();          // keep case used in this instance
+                }
+                else if (it.getID() & eTokenEventChain) // token is an event chain name
+                {
+                    const allEventChainNames & var = se.getEventChainNames();
+                    if (var.isOptName(it.getToken()))
+                        str += var.getOptName(it.getToken());
+                    else
+                        str += it.getToken();          // keep case used in this instance
+                }
+                else
+                    str += it.getToken();
+            }
 
             str.shrink_to_fit();
             return str;
         }
 
+        // process the tokens, see if this is a variable declaration. if so return true, if not return false
+        // errors can be filled in if invalid, caller checks for any errors added.
+        // spaces can be removed if bFixSpace
+        // vars is updated as complete declarations are detected.
+        bool processVariableDecleration(const ScriptEngine& se, allUserVariables& vars, bool bFixSpace, ErrorWarning& errors)
+        {
+            if (m_processed)    // line has been processed, don't process again.
+                return false;
+
+            bool retval = false;
+            std::size_t index = 0;
+
+            if (index >= m_tokens.size())
+                return false;
+
+            ScriptToken& it = m_tokens[index];
+
+            if (it.getID() & eTokenIgnore)
+            {
+                index++;
+                if (index >= m_tokens.size())
+                    return false;
+            }
+
+            if (processSpaces(it, bFixSpace, 0, errors))    // return true if a space or spaces and may change to ignorable or convert multiple to single
+            {
+                index++;
+                if (index >= m_tokens.size())
+                    return false;
+            }
+
+            it = m_tokens[index];
+            if ((index <= 1) && (it.getID() & eTokenName))  // have token, see if it is one of the variable types (bool, int, float, string, intarrray, miner, building, vehicle, creature, arrow, timer)
+            {
+                if (it.getTokenlc() == se.kS_bool)
+                    return processVariableDecl(variableType::eVarTypeBool, index, se, vars, bFixSpace, errors);
+
+                if (it.getTokenlc() == se.kS_int)
+                    return processVariableDecl(variableType::eVarTypeInt, index, se, vars, bFixSpace, errors);
+
+                if (it.getTokenlc() == se.kS_float)
+                    return processVariableDecl(variableType::eVarTypeFloat, index, se, vars, bFixSpace, errors);
+
+                if (it.getTokenlc() == se.kS_string)
+                    return processVariableDecl(variableType::eVarTypeString, index, se, vars, bFixSpace, errors);
+
+                if (it.getTokenlc() == se.kS_intarray)
+                    return processVariableDecl(variableType::eVarTypeIntArray, index, se, vars, bFixSpace, errors);
+
+                if (it.getTokenlc() == se.kS_miner)
+                    return processVariableDecl(variableType::eVarTypeMiner, index, se, vars, bFixSpace, errors);
+
+                if (it.getTokenlc() == se.kS_building)
+                    return processVariableDecl(variableType::eVarTypeBuilding, index, se, vars, bFixSpace, errors);
+
+                if (it.getTokenlc() == se.kS_vehicle)
+                    return processVariableDecl(variableType::eVarTypeVehicle, index, se, vars, bFixSpace, errors);
+
+                if (it.getTokenlc() == se.kS_creature)
+                    return processVariableDecl(variableType::eVarTypeCreature, index, se, vars, bFixSpace, errors);
+
+                if (it.getTokenlc() == se.kS_arrow)
+                    return processVariableDecl(variableType::eVarTypeArrow, index, se, vars, bFixSpace, errors);
+
+                if (it.getTokenlc() == se.kS_timer)
+                    return processVariableDecl(variableType::eVarTypeTimer, index, se, vars, bFixSpace, errors);
+
+            }
+            return retval;
+        }
+
     protected:
+        // return true if a space or spaces and may change to ignorable or convert multiple to single
+        bool processSpaces(ScriptToken& it, bool bFixSpace, uint64_t mask, ErrorWarning& errors)
+        {
+            if (it.getID() & eTokenIgnore)          // already told to ignore this token
+                return false;                       // no a space
+
+            if (it.getID() & eTokenSpace)           // single space
+            {
+                if (!(mask & eTokenSpace))          // space not allowed
+                {
+                    if (bFixSpace)                  // allowed to fix
+                    {
+                        it.orID( eTokenIgnore );    // set ignore to comp
+                    }
+                    else
+                    {
+                        errors.setError(m_line,"Invalid space");
+                    }
+                }
+                return true;
+            }
+
+            if (it.getID() & eTokenSpaces)      // sequence of spaces (more than one)
+            {
+                if (!(mask & eTokenSpace))      // no spaces allowed
+                {
+                    if (bFixSpace)                  // allowed to fix
+                    {
+                        it.orID( eTokenIgnore );    // set ignore to comp
+                    }
+                    else
+                    {
+                        errors.setError(m_line,"Invalid space - no spaces allowed");
+                    }
+
+                }
+                else    // single space is allowed
+                {
+                    if (bFixSpace)                  // allowed to fix
+                    {
+                        it.setToken(" ");       // change to single space
+                    }
+                    else
+                    {
+                        errors.setError(m_line,"Invalid spaces - only single space allowed");
+                    }
+                }
+                return true;
+            }
+        }
+
+
+        // index is the token for type. format is space name optional =value(s) depending on type of variable.
+        bool processVariableDecl(variableType::varType type, std::size_t index, const ScriptEngine& se, allUserVariables& vars, bool bFixSpace, ErrorWarning& errors)
+        {
+            m_processed = true;     // no matter what, line has now been processed
+
+            index++;                //next token
+            if (index >= m_tokens.size())
+            {
+                errors.setError(m_line, "missing space and variable name");
+                return true;
+            }
+
+            // must have a space token
+            if (!processSpaces(m_tokens[index], bFixSpace, eTokenSpace, errors))   // must have a space
+            {
+                errors.setError(m_line, "missing space after variable decleration");
+                return true;
+            }
+
+            index++;
+            if (index >= m_tokens.size())
+            {
+                errors.setError(m_line, "missing variable name");
+                return true;
+            }
+
+            ScriptToken & it = m_tokens[index];
+            if (!(it.getID() & eTokenName))
+            {
+                errors.setError(m_line, std::string("invalid variable name: ") + it.getToken());
+                return true;
+            }
+
+            if (se.isReservedVar(it.getTokenlc()))
+            {
+                errors.setError(m_line, std::string("variable name is reserved keyword: ") + it.getTokenlc());
+                return true;
+            }
+
+            if (vars.contains(it.getTokenlc()))
+            {
+                errors.setError(m_line,std::string("Duplicate variable name: ") + it.getToken());
+            }
+
+            if (se.getEventChainNames().contains(it.getTokenlc()))
+            {
+                errors.setError(m_line,std::string("Variable name duplicates EventChain name")+ it.getTokenlc());
+            }
+
+            // variable name is valid, and not already in use. start building the variable data
+            variableTypeSP vtsp(std::make_shared<variableType>(type, it.getToken())); // the shared pointer is what is added to collections
+            variableType * vt = vtsp.get();     // actual data
+
+            index++;
+            if (index < m_tokens.size())
+            {
+               // bool bOk = processVarDeclParms( type, index, se, vars, bFixSpace, errors, vt );
+                //if(!bOk)
+                //    return true;
+            }
+
+            vars.add( vtsp );  // add the variable
+            return true;
+        }
+
         // look at line starting at pos (it is the first $ char). Return true if we have valid $(name) format.
         // error will be filled in if $( found but name is invalid or no closing ) and false returned
         // if true returned, the  macronamelc is filled in with lower case name of the macro
@@ -1391,7 +2013,7 @@ protected:
             return true;
         }
 
-                // this defines the allowed first char of a token. Note it does not allow any non-ascii variable names
+        // this defines the allowed first char of a token. Note it does not allow any non-ascii variable names
         bool isKnown(char ch)
         {
             if (std::isdigit((unsigned char)ch) || std::isalpha((unsigned char)ch) || std::isblank((unsigned char)ch))
@@ -1405,6 +2027,7 @@ protected:
 
         InputLine               m_line;                // holds the line, linenumber, filename
         std::deque<ScriptToken> m_tokens;              // parsed tokens for this line
+        bool                    m_processed = false;   // set to true when line has been completely processed
     };
 
 public:
@@ -1469,21 +2092,19 @@ public:
         return 0;
     }
 
-    std::deque<InputLine> processInputLines( bool /*bFixSpace*/)
+    std::deque<InputLine> processInputLines( bool bFixSpace)
     {
         std::deque<InputLine> output;
 
-        for (auto it : m_inputlines)
-        {
-            ScriptLine sl( it );
-            sl.rawParse( m_errors, m_defines );
-            m_scriptlines.push_back( sl );
-        }
+        pass0Processing();
 
         if (!m_errors.emptyErrors())    // have errors, return empty output
             return output;
 
         // do all the processing. TODO
+        pass1Processing( bFixSpace );
+        // 
+        // 
         //
         // end processing.
 
@@ -1493,13 +2114,35 @@ public:
 
         for (auto it : m_scriptlines)
         {
-            output.push_back(InputLine(it.serialize_out(),linenum++,filename));
+            output.push_back(InputLine(it.serialize_out(*this),linenum++,filename));
         }
         return output;
     }
 
-
 protected:
+    // pass 0 is parsing all input lines into tokens.
+    void pass0Processing()
+    {
+        for (auto it : m_inputlines)
+        {
+            ScriptLine sl(it);
+            sl.rawParse(m_errors, m_defines);
+            m_scriptlines.push_back(sl);
+        }
+    }
+
+    // pass 1 is collecting up all variables and event chain names.
+    void pass1Processing( bool bFixSpace )
+    {
+        for (auto it : m_scriptlines)
+        {
+
+        }
+    }
+
+
+
+
     // this is recursive. The passed in filename is to be loaded and lines added to input lines.
     // return false if unable to load file. Return true if file is loaded
     bool loadScriptFile(const std::filesystem::path & filename, const std::deque<std::filesystem::path> & incdirs, std::deque<std::filesystem::path> & processed, const InputLine &inputline, bool bAnsi, const std::string & indent )
@@ -1809,12 +2452,82 @@ protected:
         return false;
     }
 
+    const allUserVariables   & getUserVariables()   const { return m_variableNames; }
+    const allEventChainNames & getEventChainNames() const { return m_eventChainNames; }
+
+
 protected:
+    // walk the event chain and variable names, ignore init and tick, sort in order of reference,
+    // and generate new names that are as short as possible
+    void optimizeNames()
+    {
+
+    }
+
+
+    // given the last optimized name returned give the next one. Start with nullstr to start from beginning
+    // names are a-z if single length. z wraps to a0
+    // 2 or more length are alpha followed by 0-9 or a-z. Thus az wraps to b0, zz wraps to a00
+    // internal recrusive generate next name.
+    std::string iNextName(const std::string& name ) const
+    {
+        std::size_t len = name.length();
+        if (!len)
+            return std::string("a");        // handle first time
+        if (len == 1)  // single length is only a-z and wraps after z to a0
+        {
+            char current = name[0];
+            assert(current >= 'a' && current <= 'z');
+            if (current < 'z')
+            {
+                char str[2];
+                str[0] = current + 1;
+                str[1] = 0;
+                return std::string(str);
+            }
+            return std::string("a0");   // next one after z
+        }
+        std::string prev = name.substr(0,len-1);
+        char current = name[len-1];
+        if (current == '9')  // 0-9 continue into a-z
+        {
+            current = 'a';
+            return prev + current;
+        }
+        if (current < 'z')
+        {
+            current++;      // next numeric or next alpha
+            return prev + current;
+        }
+        // wrap to 0, so increment the prev substring allowing az -> b0
+        current = '0';      // wrap to 0.
+        return iNextName(prev) + current;  // recursive
+    }
+
+    // uses iNextName to generate next name. Skips reserved words.
+    std::string nextOptimizedName(const std::string& last) const
+    {
+        std::string next = last;
+        do
+        {
+            next = iNextName(next);
+        }
+        while (isReservedVar(next));
+        return next;
+    }
+
+
+
+
+
     std::filesystem::path          m_filename;     // empty unless script file is replacing map script section. This is the main file.
     std::deque<InputLine>          m_inputlines;   // lines to process after all include and other pragmas 
     std::deque<InputLine>          m_outputlines;  // lines all processed ready to replace the script section
 
     std::deque<ScriptLine>         m_scriptlines;   // every line of script processed into tokens.
+
+    allEventChainNames             m_eventChainNames;  // all event chain names
+    allUserVariables               m_variableNames;    // all variable names
 
     ErrorWarning                   m_errors;
     Defines                        m_defines;      // user macros

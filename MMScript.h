@@ -964,9 +964,10 @@ protected:
     static constexpr uint64_t eTokenComment        = 0x0000000800000000ull;  // contains comment and optional leading space prior to comment
     static constexpr uint64_t eTokenCommentLine    = 0x0000001000000000ull;  // entire line is comment, may have space in front
     static constexpr uint64_t eTokenBlankLine      = 0x0000002000000000ull;  // entire line is empty and not a comment. Will end event chain if within one
-    static constexpr uint64_t eTokenVariable       = 0x0000002000000000ull;  // also has eTokenName set, this is a user variable
-    static constexpr uint64_t eTokenEventChain     = 0x0000002000000000ull;  // also has eTokenName set, this is a user event chain name
+    static constexpr uint64_t eTokenVariable       = 0x0000004000000000ull;  // also has eTokenName set, this is a user variable
+    static constexpr uint64_t eTokenEventChain     = 0x0000008000000000ull;  // also has eTokenName set, this is a user event chain name
 
+    static constexpr uint64_t eTokenOptional       = 0x4000000000000000ull;  // set if token is optional
     static constexpr uint64_t eTokenIgnore         = 0x8000000000000000ull;  // if set ignore the token completely. When when ignorning invalid spaces
 
     class variableType
@@ -989,7 +990,7 @@ protected:
         };
 
         variableType() = default;
-        variableType(const std::string& name, varType type) : m_name(name), m_namelc(MMUtil::toLower(m_name)), m_type(type), m_count(1) {}
+        variableType(const std::string& name, varType type) : m_name(name), m_namelc(MMUtil::toLower(name)), m_type(type), m_count(1) {}
         ~variableType() = default;
 
         void setValueString( const std::string &val ) { m_string = val; }
@@ -1083,11 +1084,18 @@ protected:
         class userVariables
         {
         public:
-            userVariables() = default;
+            userVariables()
+            {
+                for (auto it : m_variables)
+                {
+                    it.reserve(256);
+                }
+            }
             ~userVariables() = default;
 
             void add(const std::string& key, variableTypeSP& p)
             {
+                assert( key.empty() == false );
                 m_variables[p.get()->getType()].emplace( key, p );
             }
 
@@ -1113,18 +1121,17 @@ protected:
         };
 
 
-        allUserVariables() = default;
+        allUserVariables() { m_allvariables.reserve(1024); }
         ~allUserVariables() = default;
 
         void add(variableTypeSP& variable)
         {
             const std::string & key = variable.get()->getNamelc();
-            if (!contains(key))
+            if (!contains(key)) // have to check since it could already be a reported error
             {
                 m_allvariables.emplace(key,variable);
                 m_typevariables.add(key, variable);
             }
-            assert(0 && "adding existing variable");
         }
 
         bool contains(const std::string& key)
@@ -1141,6 +1148,8 @@ protected:
         const variableType * find(const std::string& key) const
         {
             auto it = m_allvariables.find( MMUtil::toLower(key));
+            if (it == m_allvariables.end())
+                return nullptr;
             return it->second.get();
         }
 
@@ -1789,6 +1798,8 @@ protected:
             it = m_tokens[index];
             if ((index <= 1) && (it.getID() & eTokenName))  // have token, see if it is one of the variable types (bool, int, float, string, intarrray, miner, building, vehicle, creature, arrow, timer)
             {
+                assert(it.getTokenlc().empty() == false);
+                assert(it.getToken().empty() == false);
                 if (it.getTokenlc() == se.kS_bool)
                     return processVariableDecl(variableType::eVarTypeBool, index, se, vars, bFixSpace, errors);
 
@@ -1827,55 +1838,56 @@ protected:
         }
 
     protected:
-        // return true if a space or spaces and may change to ignorable or convert multiple to single
+        // mask is 0 or eTokenSpace or (eTokenSpaces | eTokenSpace) bits.
+        // There is never a case where we have to have eTokenSpaces
+        // return true means to skip to next token since a space(s) were processed
         bool processSpaces(ScriptToken& it, bool bFixSpace, uint64_t mask, ErrorWarning& errors)
         {
-            if (it.getID() & eTokenIgnore)          // already told to ignore this token
-                return false;                       // no a space
-
-            if (it.getID() & eTokenSpace)           // single space
+            if (it.getID() & (eTokenSpace | eTokenSpaces))  // token is some form of space
             {
-                if (!(mask & eTokenSpace))          // space not allowed
+                if (it.getID() & eTokenIgnore)           // already told to ignore this token
+                    return true;                         // ignore - tell caller to look at next token
+
+                if (mask & (eTokenSpace | eTokenSpaces)) // some sort of spacing is allowed
                 {
-                    if (bFixSpace)                  // allowed to fix
+                    if (!(mask & eTokenSpaces))          // multiple spaces not allowed
+                    {
+                        if (it.getID() & eTokenSpaces)  // single space allowed but have multiple spaces
+                        {
+                            if (bFixSpace)              // allowed to fix
+                            {
+                                it.setToken(" ");       // change to single space
+                            }
+                            else
+                            {
+                                errors.setError(m_line, "Invalid spaces - only single space allowed");
+                            }
+                        }
+                    }
+                }
+                else    // spaces not allowed
+                {
+                    if (bFixSpace)              // allowed to fix
                     {
                         it.orID( eTokenIgnore );    // set ignore to comp
                     }
                     else
                     {
-                        errors.setError(m_line,"Invalid space");
+                        errors.setError(m_line, "spaces not allowed");
                     }
                 }
-                return true;
+                return true;    // current token is a space
             }
 
-            if (it.getID() & eTokenSpaces)      // sequence of spaces (more than one)
+            // token is not a space. If spaces are optional, then no error
+            if (mask & (eTokenSpace | eTokenSpaces)) // some sort of spacing is allowed/required
             {
-                if (!(mask & eTokenSpace))      // no spaces allowed
+                if (!(mask & eTokenOptional))     // space is required
                 {
-                    if (bFixSpace)                  // allowed to fix
-                    {
-                        it.orID( eTokenIgnore );    // set ignore to comp
-                    }
-                    else
-                    {
-                        errors.setError(m_line,"Invalid space - no spaces allowed");
-                    }
-
+                    errors.setError(m_line, "Missing required space");
                 }
-                else    // single space is allowed
-                {
-                    if (bFixSpace)                  // allowed to fix
-                    {
-                        it.setToken(" ");       // change to single space
-                    }
-                    else
-                    {
-                        errors.setError(m_line,"Invalid spaces - only single space allowed");
-                    }
-                }
-                return true;
             }
+            return false;   // token is not a space
         }
 
 
@@ -1892,7 +1904,7 @@ protected:
             }
 
             // must have a space token
-            if (!processSpaces(m_tokens[index], bFixSpace, eTokenSpace, errors))   // must have a space
+            if (!processSpaces(m_tokens[index], bFixSpace, eTokenSpace | eTokenSpaces, errors))   // must have a space or multiple spaces allowed
             {
                 errors.setError(m_line, "missing space after variable decleration");
                 return true;
@@ -1921,16 +1933,20 @@ protected:
             if (vars.contains(it.getTokenlc()))
             {
                 errors.setError(m_line,std::string("Duplicate variable name: ") + it.getToken());
+                return true;
             }
 
             if (se.getEventChainNames().contains(it.getTokenlc()))
             {
                 errors.setError(m_line,std::string("Variable name duplicates EventChain name")+ it.getTokenlc());
+                return true;
             }
 
             // variable name is valid, and not already in use. start building the variable data
-            variableTypeSP vtsp(std::make_shared<variableType>(type, it.getToken())); // the shared pointer is what is added to collections
+            variableTypeSP vtsp(std::make_shared<variableType>(it.getToken(), type)); // the shared pointer is what is added to collections
             variableType * vt = vtsp.get();     // actual data
+            (vt);
+            (bFixSpace);
 
             index++;
             if (index < m_tokens.size())
@@ -2096,13 +2112,17 @@ public:
     {
         std::deque<InputLine> output;
 
+        // pass 0 is tokenizing every line and processing pragmas (defines, includes, comments, etc)
         pass0Processing();
 
         if (!m_errors.emptyErrors())    // have errors, return empty output
             return output;
 
-        // do all the processing. TODO
+        // pass 1 is collecting up all variables and event chain names
         pass1Processing( bFixSpace );
+        if (!m_errors.emptyErrors())    // have errors, return empty output
+            return output;
+
         // 
         // 
         //
@@ -2136,7 +2156,8 @@ protected:
     {
         for (auto it : m_scriptlines)
         {
-
+            bool bRetVal = it.processVariableDecleration( *this, m_variableNames, bFixSpace, m_errors );
+            (bRetVal);
         }
     }
 

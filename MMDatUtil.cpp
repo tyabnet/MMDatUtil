@@ -332,7 +332,7 @@ class CommandLineParser
 
                 case 31: // unicode
                 {
-                    m_cmdOptions.m_bUnicode = true;
+                    m_cmdOptions.m_bUTF16 = true;
                     break;
                 }
 
@@ -345,6 +345,32 @@ class CommandLineParser
                 case 33: // 8 byte input with no BOM assume ANSI
                 {
                     m_cmdOptions.m_bReadANSI = true;
+                    break;
+                }
+
+                case 34:  // UTF16BE
+                {
+                    m_cmdOptions.m_bUTF16     = true;    // if set output UTF16LE format
+                    m_cmdOptions.m_bBigEndian = true;    // if set output format is big endian, default false is little endian.
+                    break;
+                }
+
+                case 35:  // UTF32LE
+                {
+                    m_cmdOptions.m_bUTF32 = true;    // if set output format is UTF32, either big or little endian
+                    break;
+                }
+
+                case 36:  // UTF32BE
+                {
+                    m_cmdOptions.m_bBigEndian = true;    // if set output format is big endian, default false is little endian.
+                    m_cmdOptions.m_bUTF32     = true;    // if set output format is UTF32, either big or little endian
+                    break;
+                }
+                case 37:  // UTF8
+                {
+                    m_cmdOptions.m_bUTF8     = true;    // if set output format is UTF8. This is the default if no other are used.
+                    break;
                 }
 
 
@@ -414,9 +440,6 @@ class CommandLineParser
         return removeQuotes(std::wstring_view(str));
     }
 
-
-
-
     std::deque<std::wstring> m_tokens;  // we are parsing wstring input data
 
     const std::unordered_set<optionNameID,optionNameID,optionNameID> m_options =  // predefined command line options
@@ -455,6 +478,11 @@ class CommandLineParser
         { L"-unicode",        31 },     // request unicode output
         { L"-bom",            32 },     // request BOM market
         { L"-srcansi",        33 },     // assume ansi code page input if 8 byte without BOM
+        { L"-utf16le",        31 },     // same as -unicode
+        { L"-utf16be",        34 },
+        { L"-utf32le",        35 },
+        { L"-utf32be",        36 },
+        { L"-utf8",           37 },
     };
 
     std::wstring_view getStringParm(std::size_t i)
@@ -587,9 +615,12 @@ void help()
     wprintf(L"      -flattenbetween low, high, value. low <= Heights <= high set to value\n");
     wprintf(L"      -borderheight   force height borders to this value\n");
     wprintf(L"      -unicode        output .dat is UTF16LE format (default UTF8)\n");
+    wprintf(L"      -utf16LE        same as -unicode\n");
+    wprintf(L"      -utf16BE        output .dat is UTF16BE format (default UTF8)\n");
+    wprintf(L"      -utf32LE        output .dat is UTF32LE format (default UTF8)\n");
+    wprintf(L"      -utf32BE        output .dat is UTF32EE format (default UTF8)\n");
     wprintf(L"      -bom            output .dat has BOM Byte Order Marker (default none)\n");
     wprintf(L"      -srcansi        UTF8 input files without BOM assume ANSI codepage\n");
-
     wprintf(L"\n");
     wprintf(L"  -srcmap is used to provide merge data unless -copysrc is used\n");
     wprintf(L"  -script will replace outmap's script with the contents of that file.\n");
@@ -672,7 +703,24 @@ int wmain(int , wchar_t ** )   // ignore all passed in parameters
             showHelpOption();
             return 1;
         }
+
+        if (((cmdParser.getOptions().m_bUTF8 ? 1 : 0) + (cmdParser.getOptions().m_bUTF16 ? 1 : 0) + (cmdParser.getOptions().m_bUTF32 ? 1 : 0)) > 1 )
+        {
+            wprintf(L" ERROR: only one of UTF8, UTF16, UTF32 allowed\n");
+            showHelpOption();
+            return 1;
+        }
     }
+    else
+    {
+        if (cmdParser.getOptions().m_bUTF8 || cmdParser.getOptions().m_bUTF16 || cmdParser.getOptions().m_bUTF32 || cmdParser.getOptions().m_bBOM )
+        {
+            wprintf(L" ERROR: UTF8, UTF16, UTF32, BOM options require -outmap\n");
+            showHelpOption();
+            return 1;
+        }
+    }
+
     // using eraseoutmap with merge options makes no sense
     if (cmdParser.getOptions().m_bEraseOutMap)
     {
@@ -776,6 +824,8 @@ int wmain(int , wchar_t ** )   // ignore all passed in parameters
         {
             return 1;   // error working with temp file.
         }
+
+
 
         // tempOutMap is a temp file and can be used.
         // two cases. If using -eraseoutmap then copy the srcmap.
@@ -908,6 +958,7 @@ int wmain(int , wchar_t ** )   // ignore all passed in parameters
         }
 
         ScriptEngine scrEngine;     // script processing engine
+        scrEngine.setSize( outMap.getHeight(), outMap.getWidth() );
         scrEngine.setFileName( cmdParser.getOptions().m_srcscript );    // set script filename or empty
         scrEngine.addCmdDefines(cmdParser.getOptions(), outMap.getHeight(), outMap.getWidth(), outMap.getMapName() );
         scrEngine.loadScript( outMap.getScriptLines(), cmdParser.getOptions().m_sincdirs, cmdParser.getOptions().m_bReadANSI );
@@ -923,7 +974,7 @@ int wmain(int , wchar_t ** )   // ignore all passed in parameters
             scrEngine.getErrors().printWarnings();
         }
 
-        int outscriptlen = outMap.setScriptLines(scrEngine.processInputLines( cmdParser.getOptions().m_bFix ));
+        int outscriptlen = outMap.setScriptLines(scrEngine.processInputLines( cmdParser.getOptions().m_bScrFixSpace,  cmdParser.getOptions().m_bScrNoComments ));
 
         if (!scrEngine.getErrors().emptyErrors())
         {
@@ -935,15 +986,20 @@ int wmain(int , wchar_t ** )   // ignore all passed in parameters
         {
             scrEngine.getErrors().printWarnings();
         }
-        wprintf(L" Replacing outmap script. %d lines total\n", outscriptlen);
+        wprintf(L"  Replacing outmap script. %d lines total\n", outscriptlen);
 
+        wprintf(L"  Writing temporary outmap: \"%s\"",tempOut.get().wstring().c_str());
         // all outmap modifications done, save to temp file, then copy to real file
         outMap.serializeOutSections();
         outMap.setFileName( tempOut.get() );
 
         FileIO::FileEncoding encoding = FileIO::FileEncoding::UTF8;     // default to UTF8 output
-        if (cmdParser.getOptions().m_bUnicode)
-            encoding = FileIO::FileEncoding::UTF16LE;
+        if (cmdParser.getOptions().m_bUTF16)
+            encoding = cmdParser.getOptions().m_bBigEndian ? FileIO::FileEncoding::UTF16BE : FileIO::FileEncoding::UTF16LE;
+        else if (cmdParser.getOptions().m_bUTF32)
+            encoding = cmdParser.getOptions().m_bBigEndian ? FileIO::FileEncoding::UTF32BE : FileIO::FileEncoding::UTF32LE;
+        std::wstring const &encodingstr = Unicode::utf8_to_wstring(FileIO::getEncodingStr(encoding));
+        wprintf((L"  Encoding: " + encodingstr + (cmdParser.getOptions().m_bBOM ? L" BOM" : L" No BOM") + L"\n").c_str());
 
         if (!outMap.writeMap(encoding, cmdParser.getOptions().m_bBOM))
         {
@@ -956,13 +1012,14 @@ int wmain(int , wchar_t ** )   // ignore all passed in parameters
         wprintf(L"  %d lines written for map file\n",outMap.getNumLinesWrite());
 
         // temp file has completed. Now copy to real destination
+        wprintf(L"  Copying \"%s\" to \"%s\"\n",tempOut.get().wstring().c_str(),cmdParser.getOptions().m_outmap.wstring().c_str());
         BOOL retVal = CopyFileW(tempOut.get().c_str(), cmdParser.getOptions().m_outmap.c_str(), 0);
         if (retVal == 0)
         {
-            wprintf(L" ERROR %d: unable to copy \"%s\" to \"%s\"", GetLastError(), tempOut.get().c_str(), cmdParser.getOptions().m_outmap.c_str());
+            wprintf(L" ERROR %d: unable to copy \"%s\" to \"%s\"", GetLastError(), tempOut.get().wstring().c_str(), cmdParser.getOptions().m_outmap.wstring().c_str());
             return 1;
         }
-        wprintf(L" \"%s\" written. All done.\n", cmdParser.getOptions().m_outmap.c_str());
+        wprintf(L"  \"%s\" written. All done.\n", cmdParser.getOptions().m_outmap.c_str());
 
     }
 

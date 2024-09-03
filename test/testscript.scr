@@ -1,0 +1,17 @@
+  init::;  # verify indenting is removed along with comment
+      return;  
+
+  tick::;
+      return;
+
+#.####################### TestScript ##############################
+#. "$(TyabMapName)" (c) 2024 Tyab All Rights Reserved
+#pragma TyabScriptDate vy.m.d.g 
+#pragma TyabMMDatUtil 
+#.-------------------------------------
+#pragma include "testscript2.scr"
+#.-------------------------------------
+#pragma include "testscript4.scr"
+#.-------------------------------------
+    #. indent
+#.end --- testscript

@@ -32,6 +32,10 @@ public:
     ScriptEngine() { doInit(); }
     ~ScriptEngine() = default;
 
+    void setSize( int rows, int cols ) { m_rows = rows; m_cols = cols; }
+    int getRows() const { return m_rows; }
+    int getCols() const { return m_cols; }
+
 protected:
     bool isReservedWord(const std::string& key)
     {
@@ -106,6 +110,7 @@ protected:
     const std::string kStr_EventErosion_C               = "EventErosion_C";                  // | Collection | Active erosions. |
     const std::string kStr_EventLandslide_C             = "EventLandslide_C";                // | Collection | Active active landslides. |
     const std::string kStr_erosionscale                 = "erosionscale";                    // | Macro | Global erosion scale factor |
+    const std::string kStr_false                        = "false";                           // | bool value or 0.
     const std::string kStr_float                        = "float";                           // | Variable | Floating point number. |
     const std::string kStr_geologicalcenter             = "geologicalcenter";                // | Macro | Number of Geological Centers. |
     const std::string kStr_get                          = "get";                             // | Macro | Get tile ID., get(row)(col) |
@@ -217,6 +222,7 @@ protected:
     const std::string kStr_time                         = "time";                            // | Macro / Trigger | Game time or trigger. |
     const std::string kStr_timer                        = "timer";                           // | Variable | Timer object. |
     const std::string kStr_toolstore                    = "toolstore";                       // | Macro | Returns number of toolstores. |
+    const std::string kStr_true                         = "true";                            // | bool value or 1.
     const std::string kStr_truewait                     = "truewait";                        // | Event | Suspend event chain for real user time period. |
     const std::string kStr_tunnelscout                  = "tunnelscout";                     // | Macro | Number of Tunnel Scouts. |
     const std::string kStr_tunneltransport              = "tunneltransport";                 // | Macro | Number of Tunnel Transports. |
@@ -318,6 +324,7 @@ protected:
     const std::string kS_EventErosion_C               = MMUtil::toLower( kStr_EventErosion_C               );   // | Collection | Active erosions. |
     const std::string kS_EventLandslide_C             = MMUtil::toLower( kStr_EventLandslide_C             );   // | Collection | Active active landslides. |
     const std::string kS_erosionscale                 = MMUtil::toLower( kStr_erosionscale                 );   // | Macro | Global erosion scale factor |
+    const std::string kS_false                        = MMUtil::toLower( kStr_false                        );   // | bool value or 0. |
     const std::string kS_float                        = MMUtil::toLower( kStr_float                        );   // | Variable | Floating point number. |
     const std::string kS_geologicalcenter             = MMUtil::toLower( kStr_geologicalcenter             );   // | Macro | Number of Geological Centers. |
     const std::string kS_get                          = MMUtil::toLower( kStr_get                          );   // | Macro | Get tile ID. |
@@ -429,6 +436,7 @@ protected:
     const std::string kS_time                         = MMUtil::toLower( kStr_time                         );   // | Macro / Trigger | Game time or trigger. |
     const std::string kS_timer                        = MMUtil::toLower( kStr_timer                        );   // | Variable | Timer object. |
     const std::string kS_toolstore                    = MMUtil::toLower( kStr_toolstore                    );   // | Macro | Returns number of toolstores. |
+    const std::string kS_true                         = MMUtil::toLower( kStr_true                         );   // | bool value or 1. |
     const std::string kS_truewait                     = MMUtil::toLower( kStr_truewait                     );   // | Event | Suspend event chain for real user time period. |
     const std::string kS_tunnelscout                  = MMUtil::toLower( kStr_tunnelscout                  );   // | Macro | Number of Tunnel Scouts. |
     const std::string kS_tunneltransport              = MMUtil::toLower( kStr_tunneltransport              );   // | Macro | Number of Tunnel Transports. |
@@ -539,6 +547,7 @@ protected:
         { kS_EventErosion_C               , kStr_EventErosion_C               },   // | Collection | Active erosions. |
         { kS_EventLandslide_C             , kStr_EventLandslide_C             },   // | Collection | Active active landslides. |
         { kS_erosionscale                 , kStr_erosionscale                 },   // | Macro | Global erosion scale factor |
+        { kS_false                        , kStr_false                        },   // | bool value or 0. |
         { kS_float                        , kStr_float                        },   // | Variable | Floating point number. |
         { kS_geologicalcenter             , kStr_geologicalcenter             },   // | Macro | Number of Geological Centers. |
         { kS_get                          , kStr_get                          },   // | Macro | Get tile ID. |
@@ -650,6 +659,7 @@ protected:
         { kS_time                         , kStr_time                         },   // | Macro / Trigger | Game time or trigger. |
         { kS_timer                        , kStr_timer                        },   // | Variable | Timer object. |
         { kS_toolstore                    , kStr_toolstore                    },   // | Macro | Returns number of toolstores. |
+        { kS_true                         , kStr_true                         },   // | bool value or 1. |
         { kS_truewait                     , kStr_truewait                     },   // | Event | Suspend event chain for real user time period. |
         { kS_tunnelscout                  , kStr_tunnelscout                  },   // | Macro | Number of Tunnel Scouts. |
         { kS_tunneltransport              , kStr_tunneltransport              },   // | Macro | Number of Tunnel Transports. |
@@ -730,6 +740,7 @@ protected:
         { kS_EventErosion_C               , eMacroFlagReturnNumeric },   // | Collection | Active erosions. |
         { kS_EventLandslide_C             , eMacroFlagReturnNumeric },   // | Collection | Active active landslides. |
         { kS_erosionscale                 , eMacroFlagReturnNumeric },   // | Macro | Global erosion scale factor |
+        { kS_false                        , eMacroFlagReturnNumeric },   // | Macro | returns false or 0 as numeric |
         { kS_geologicalcenter             , eMacroFlagReturnNumeric },   // | Macro | Number of Geological Centers. |
         { kS_get                          , eMacroFlagReturnNumeric | eMacroFlag2Param },   // | Macro | Get tile ID. |
         { kS_granitegrinder               , eMacroFlagReturnNumeric },   // | Macro | Number of Granite Grinders. |
@@ -774,6 +785,7 @@ protected:
         { kS_teleportpad                  , eMacroFlagReturnNumeric },   // | Macro | Numbewr of Teleport Pads. |
         { kS_time                         , eMacroFlagReturnNumeric },   // | Macro / Trigger | Game time or trigger. |
         { kS_toolstore                    , eMacroFlagReturnNumeric },   // | Macro | Returns number of toolstores. |
+        { kS_true                         , eMacroFlagReturnNumeric },   // | Macro | returns true or 1 as numeric |
         { kS_tunnelscout                  , eMacroFlagReturnNumeric },   // | Macro | Number of Tunnel Scouts. |
         { kS_tunneltransport              , eMacroFlagReturnNumeric },   // | Macro | Number of Tunnel Transports. |
         { kS_upgradestation               , eMacroFlagReturnNumeric },   // | Macro | Number of Upgrade Stations. |
@@ -793,7 +805,7 @@ protected:
         { kS_water                        , eMacroFlagReturnNumeric },   // | Macro | Tile ID of water(11). |
     };
 
-    const std::unordered_set<std::string> colors =
+    const std::unordered_set<std::string> arrowColors =
     {
         kS_black,
         kS_blue,
@@ -806,7 +818,7 @@ protected:
 
     bool isColor(const std::string& color) const
     {
-        return colors.contains(MMUtil::toLower(color));
+        return arrowColors.contains(MMUtil::toLower(color));
     }
 
 
@@ -831,7 +843,7 @@ protected:
     {
         m_ReservedWordsVars.reserve( ReservedWordsMap.size() );
         m_ReservedWordsEvents.reserve( ReservedWordsMap.size() );
-        for (auto it : ReservedWordsMap)
+        for (auto const & it : ReservedWordsMap)
         {
             m_ReservedWordsVars.insert( it.first );
         }
@@ -966,7 +978,9 @@ protected:
     static constexpr uint64_t eTokenBlankLine      = 0x0000002000000000ull;  // entire line is empty and not a comment. Will end event chain if within one
     static constexpr uint64_t eTokenVariable       = 0x0000004000000000ull;  // also has eTokenName set, this is a user variable
     static constexpr uint64_t eTokenEventChain     = 0x0000008000000000ull;  // also has eTokenName set, this is a user event chain name
-
+    static constexpr uint64_t eTokenBoolFalse      = 0x0000010000000000ull;  // also has eTokenInt set
+    static constexpr uint64_t eTokenBoolTrue       = 0x0000020000000000ull;  // also has eTokenInt set
+    static constexpr uint64_t eTokenArrowColor     = 0x0000040000000000ull;  // one of the arrow colors
     static constexpr uint64_t eTokenOptional       = 0x4000000000000000ull;  // set if token is optional
     static constexpr uint64_t eTokenIgnore         = 0x8000000000000000ull;  // if set ignore the token completely. When when ignorning invalid spaces
 
@@ -975,7 +989,7 @@ protected:
     public:
 
         enum varType : int {
-            eVarTypeBool = 0,   // variable holds bool4
+            eVarTypeBool = 0,   // variable holds bool
             eVarTypeInt,        // variable holds int
             eVarTypeFloat,      // variable holds float
             eVarTypeString,     // variable holds string
@@ -993,6 +1007,7 @@ protected:
         variableType(const std::string& name, varType type) : m_name(name), m_namelc(MMUtil::toLower(name)), m_type(type), m_count(1) {}
         ~variableType() = default;
 
+        bool hasData() const { return m_hasValue; }
         void setValueString( const std::string &val ) { m_string = val; }
         void setValueTimer(float delay, float min, float max, const std::string& event)
         {
@@ -1001,11 +1016,11 @@ protected:
             m_timermax = max;
             m_timerevent = event;
         }
-        void setValueBool( bool val ) { m_bool = val; }
-        void setValueInt( int val ) { m_int = val; }
-        void setValueFloat( float val ) { m_float = val; }
-        void setValueMiner( int id ) { m_id = id; }
-        void setValueBuilding( int row, int col ) { m_row = row; m_col = col; }
+        void setValueBool( bool val ) { m_bool = val; m_hasValue = true; }
+        void setValueInt( int val ) { m_int = val; m_hasValue = true; }
+        void setValueFloat( float val ) { m_float = val; m_hasValue = true; }
+        void setValueID( int id ) { m_id = id; m_hasValue = true; }
+        void setValueBuilding( int row, int col ) { m_row = row; m_col = col; m_hasValue = true; }
 
         int getType() const { return (int)m_type; }
         const std::string & getName() const { return m_name; }
@@ -1067,11 +1082,28 @@ protected:
         int         m_row = 0;        // building row
         int         m_col = 0;        // building col
         bool        m_bool = false;   // true/false
-        bool        m_hasValue = false;
+        bool        m_hasValue = false; // set to true if any of the above have data
     };
 
     typedef std::shared_ptr<variableType> variableTypeSP;
     
+
+    std::unordered_map<std::string,variableType::varType> m_varTypeMap = 
+    {
+        { kS_bool,     variableType::eVarTypeBool },
+        { kS_int,      variableType::eVarTypeInt },
+        { kS_float,    variableType::eVarTypeFloat },
+        { kS_intarray, variableType::eVarTypeIntArray },
+        { kS_string,   variableType::eVarTypeString },
+        { kS_miner,    variableType::eVarTypeMiner },
+        { kS_building, variableType::eVarTypeBuilding },
+        { kS_vehicle,  variableType::eVarTypeVehicle },
+        { kS_creature, variableType::eVarTypeCreature },
+        { kS_arrow,    variableType::eVarTypeArrow },
+        { kS_timer,    variableType::eVarTypeTimer }
+    };
+
+
     // holds all user variables
     // the class variableType is the information for a single user variable. The collections all store
     // a shared_ptr to it, so all the collections can work on the same object and we don't worry about ownership.
@@ -1086,7 +1118,7 @@ protected:
         public:
             userVariables()
             {
-                for (auto it : m_variables)
+                for (auto & it : m_variables)
                 {
                     it.reserve(256);
                 }
@@ -1114,6 +1146,18 @@ protected:
             {
                 auto it = m_variables[type].find(MMUtil::toLower(key));
                 return it->second.get();
+            }
+
+            // compare this variable to the passed in one, and return true if the values are the same.
+            // can return true only for miner, creature, vehicle, building variables
+            bool isValueDuplicated(const variableType * var) const
+            {
+                for (auto const & it : m_variables[var->getType()])
+                {
+                    if (it.second.get()->isDuplicateValue(*var))
+                        return true;
+                }
+                return false;
             }
         protected:
 
@@ -1151,6 +1195,14 @@ protected:
             if (it == m_allvariables.end())
                 return nullptr;
             return it->second.get();
+        }
+
+        // used to determine for miner, vehicle, building, creature if the value is already assigned.
+        // return true if it already exists. false if not duplicated
+        bool isValueDuplicated(const variableType * variable) const
+        {
+            return m_typevariables.isValueDuplicated( variable );
+
         }
 
     protected:
@@ -1256,6 +1308,7 @@ protected:
         ~ScriptToken() = default;
 
         ScriptToken(const std::string& str, uint64_t id) : m_token(str), m_tokenlc(MMUtil::toLower(m_token)), m_id(id) {}
+        ScriptToken(const std::string& str, const std::string& strlc, uint64_t id) : m_token(str), m_tokenlc(strlc), m_id(id) {}
         ScriptToken(std::string_view str, uint64_t id)   : m_token(str), m_tokenlc(MMUtil::toLower(m_token)), m_id(id) {}
 
         void setToken( const std::string &str) { m_token = str; m_tokenlc = MMUtil::toLower(str); }     // used to convert multiple spaces to single space
@@ -1287,7 +1340,7 @@ protected:
         // all macro subsitution is part of rawParse - there is no macro token
         // when a macro is found, its value replaces $(name) into the temp line, becomes the new input line and the line starts all over again.
         // macros inside of strings will expand with all quotes removed into the current string, no need to reprocess the line.
-        void rawParse( ErrorWarning & errors, const Defines & defines )
+        void rawParse( const ScriptEngine & se, ErrorWarning & errors, const Defines & defines, bool bFixSpace )
         {
 
             bool bMacro = false;        // if a macro is found, reparse the line after macro expansion.
@@ -1355,7 +1408,13 @@ protected:
                     // see if entire line is empty
                     if (MMUtil::isEmptyStr(input))
                     {
-                        m_tokens.emplace_back(input, eTokenBlankLine);   // entire line is empty - it will terminate an event chain
+                        if (bFixSpace || input.empty())
+                        {
+                            std::string empty;
+                            m_tokens.emplace_back(empty, empty, eTokenBlankLine);   // entire line is empty - it will terminate an event chain
+                        }
+                        else
+                            errors.setError(m_line,"empty line has spaces. Use -sfixspace option to fix.");
                         return;
                     }
                     commentpos = inputLen;    // pretend we have a comment after end of line - this allows us to use this to stop parsing
@@ -1376,9 +1435,17 @@ protected:
                                 break;
                         }
                         token = input.substr(npos, epos - npos);
-                        m_tokens.emplace_back(token, eTokenName);
+                        // check for special true/false, we treat them as int numeric constants
+                        std::string tokenlc = MMUtil::toLower(token);
+                        if (tokenlc == se.kS_false)
+                            m_tokens.emplace_back(token, eTokenInt | eTokenBoolFalse);
+                        else if (tokenlc == se.kS_true)
+                            m_tokens.emplace_back(token, eTokenInt | eTokenBoolTrue);
+                        else if (se.isColor(tokenlc))
+                            m_tokens.emplace_back(token, eTokenArrowColor);
+                        else
+                            m_tokens.emplace_back(token, eTokenName);
                     }
-
                     else
                     {
                         switch (ch)
@@ -1730,12 +1797,12 @@ protected:
         }
 
         // build line from the parsed tokens
-        std::string serialize_out( const ScriptEngine & se ) const
+        std::string serialize_out( const ScriptEngine & se, bool bNoComments ) const
         {
             std::string str;
             std::size_t len = m_line.getLine().length();
             str.reserve( len ? len : 256 );
-            for (auto it : m_tokens)
+            for (auto const & it : m_tokens)
             {
                 if (it.getID() & eTokenIgnore)  // if token is flag for ignore
                     continue;                   // don't add it to output. Used to remove invalid space
@@ -1756,6 +1823,11 @@ protected:
                     else
                         str += it.getToken();          // keep case used in this instance
                 }
+                // check if removing non-essential comments
+                else if ((it.getID() & eTokenComment) && bNoComments && isIgnorableComment(it.getTokenlc()))
+                    continue;
+                else if ((it.getID() & eTokenCommentLine) && bNoComments && isIgnorableComment(it.getTokenlc()))
+                    continue;
                 else
                     str += it.getToken();
             }
@@ -1764,80 +1836,82 @@ protected:
             return str;
         }
 
+        // script language does not allow any leading spaces on a line that is not a comment line.
+        void processInitialSpace(bool bFixSpace, ErrorWarning errors)
+        {
+            if (m_processed)
+                return;
+            if (m_tokens.empty())   // should not happen, we always have some token for a line even if the line is blank.
+                return;
+            ScriptToken &it = m_tokens[0];     // first token
+            if (it.getID() & (eTokenSpace | eTokenSpaces))  // first token is a space or spaces
+            {
+                it.orID( eTokenIgnore );    // ignore leading space (allows more errors to be detected)
+                if (!bFixSpace)
+                    errors.setError(m_line,"Leading space not allowed. Use -sfixspace to correct");
+            }
+        }
+
+        // script language does not allow any trailing spaces on a line that is not a comment line.
+        void processLastSpace(bool bFixSpace, ErrorWarning errors)
+        {
+            if (m_processed)
+                return;
+            if (m_tokens.empty())   // should not happen, we always have some token for a line even if the line is blank.
+                return;
+            ScriptToken & it = m_tokens.back();      // last token
+            if (it.getID() & (eTokenSpace | eTokenSpaces))  // first token is a space or spaces
+            {
+                it.orID( eTokenIgnore );    // ignore trailing space (allows more errors to be detected)
+                if (!bFixSpace)
+                    errors.setError(m_line,"trailing space not allowed. Use -sfixspace to correct");
+            }
+        }
+
+
         // process the tokens, see if this is a variable declaration. if so return true, if not return false
         // errors can be filled in if invalid, caller checks for any errors added.
         // spaces can be removed if bFixSpace
         // vars is updated as complete declarations are detected.
-        bool processVariableDecleration(const ScriptEngine& se, allUserVariables& vars, bool bFixSpace, ErrorWarning& errors)
+        void processVariableDecleration(const ScriptEngine& se, allUserVariables& vars, bool bFixSpace, ErrorWarning& errors)
         {
             if (m_processed)    // line has been processed, don't process again.
-                return false;
+                return;
+            if (m_tokens.empty())  // should never happen
+                return;
 
-            bool retval = false;
             std::size_t index = 0;
+            if (!getNextToken((size_t)((intmax_t)(-1)), index))    // start at beginning - find first non-ignored token
+                return;               // no more tokens, not a variable line
 
-            if (index >= m_tokens.size())
-                return false;
-
-            ScriptToken& it = m_tokens[index];
-
-            if (it.getID() & eTokenIgnore)
-            {
-                index++;
-                if (index >= m_tokens.size())
-                    return false;
-            }
-
-            if (processSpaces(it, bFixSpace, 0, errors))    // return true if a space or spaces and may change to ignorable or convert multiple to single
-            {
-                index++;
-                if (index >= m_tokens.size())
-                    return false;
-            }
-
-            it = m_tokens[index];
+            ScriptToken &it = m_tokens[index];  // get first usable token
             if ((index <= 1) && (it.getID() & eTokenName))  // have token, see if it is one of the variable types (bool, int, float, string, intarrray, miner, building, vehicle, creature, arrow, timer)
             {
                 assert(it.getTokenlc().empty() == false);
                 assert(it.getToken().empty() == false);
-                if (it.getTokenlc() == se.kS_bool)
-                    return processVariableDecl(variableType::eVarTypeBool, index, se, vars, bFixSpace, errors);
-
-                if (it.getTokenlc() == se.kS_int)
-                    return processVariableDecl(variableType::eVarTypeInt, index, se, vars, bFixSpace, errors);
-
-                if (it.getTokenlc() == se.kS_float)
-                    return processVariableDecl(variableType::eVarTypeFloat, index, se, vars, bFixSpace, errors);
-
-                if (it.getTokenlc() == se.kS_string)
-                    return processVariableDecl(variableType::eVarTypeString, index, se, vars, bFixSpace, errors);
-
-                if (it.getTokenlc() == se.kS_intarray)
-                    return processVariableDecl(variableType::eVarTypeIntArray, index, se, vars, bFixSpace, errors);
-
-                if (it.getTokenlc() == se.kS_miner)
-                    return processVariableDecl(variableType::eVarTypeMiner, index, se, vars, bFixSpace, errors);
-
-                if (it.getTokenlc() == se.kS_building)
-                    return processVariableDecl(variableType::eVarTypeBuilding, index, se, vars, bFixSpace, errors);
-
-                if (it.getTokenlc() == se.kS_vehicle)
-                    return processVariableDecl(variableType::eVarTypeVehicle, index, se, vars, bFixSpace, errors);
-
-                if (it.getTokenlc() == se.kS_creature)
-                    return processVariableDecl(variableType::eVarTypeCreature, index, se, vars, bFixSpace, errors);
-
-                if (it.getTokenlc() == se.kS_arrow)
-                    return processVariableDecl(variableType::eVarTypeArrow, index, se, vars, bFixSpace, errors);
-
-                if (it.getTokenlc() == se.kS_timer)
-                    return processVariableDecl(variableType::eVarTypeTimer, index, se, vars, bFixSpace, errors);
-
+                auto mapit = se.m_varTypeMap.find(it.getTokenlc());
+                if (mapit != se.m_varTypeMap.cend())        // this is one of our variable types
+                {
+                    processVariableDecl(mapit->second, index, se, vars, bFixSpace, errors);
+                    m_processed = true;     // no need to process this line again.
+                }
             }
-            return retval;
         }
 
     protected:
+        bool isIgnorableComment(const std::string& str) const
+        {
+            bool bCanBeIgnored = false;
+            std::string_view strview = MMUtil::removeLeadingWhite(str);
+            if (strview.find('#') == 0) // some sort of comment (should always be true since token type caller check for was a comment type)
+            {
+                if( (strview.find("#.") != 0) && (strview.find("##pragma") != 0) )
+                    bCanBeIgnored = true;
+            }
+            return bCanBeIgnored;
+        }
+
+
         // mask is 0 or eTokenSpace or (eTokenSpaces | eTokenSpace) bits.
         // There is never a case where we have to have eTokenSpaces
         // return true means to skip to next token since a space(s) were processed
@@ -1856,13 +1930,21 @@ protected:
                         {
                             if (bFixSpace)              // allowed to fix
                             {
-                                it.setToken(" ");       // change to single space
+                                if (mask & eTokenOptional)      // if space is optional, remove it if fixing
+                                    it.orID( eTokenIgnore );
+                                else
+                                    it.setToken(" ");       // change to single space
                             }
                             else
                             {
                                 errors.setError(m_line, "Invalid spaces - only single space allowed");
                             }
                         }
+                    }
+                    else  // multiple spaces are allowed.
+                    {
+                        if (bFixSpace && (mask & eTokenOptional))  // if spaces are optional
+                            it.orID( eTokenIgnore );               // then remove them
                     }
                 }
                 else    // spaces not allowed
@@ -1892,72 +1974,248 @@ protected:
 
 
         // index is the token for type. format is space name optional =value(s) depending on type of variable.
-        bool processVariableDecl(variableType::varType type, std::size_t index, const ScriptEngine& se, allUserVariables& vars, bool bFixSpace, ErrorWarning& errors)
+        void processVariableDecl(variableType::varType type, std::size_t index, const ScriptEngine& se, allUserVariables& vars, bool bFixSpace, ErrorWarning& errors)
         {
             m_processed = true;     // no matter what, line has now been processed
-
-            index++;                //next token
-            if (index >= m_tokens.size())
+            if (!getNextToken(index,index))
             {
                 errors.setError(m_line, "missing space and variable name");
-                return true;
+                return;
             }
 
             // must have a space token
             if (!processSpaces(m_tokens[index], bFixSpace, eTokenSpace | eTokenSpaces, errors))   // must have a space or multiple spaces allowed
             {
                 errors.setError(m_line, "missing space after variable decleration");
-                return true;
+                return;
             }
 
-            index++;
-            if (index >= m_tokens.size())
+            if (!getNextToken(index,index))
             {
                 errors.setError(m_line, "missing variable name");
-                return true;
+                return;
             }
 
             ScriptToken & it = m_tokens[index];
             if (!(it.getID() & eTokenName))
             {
                 errors.setError(m_line, std::string("invalid variable name: ") + it.getToken());
-                return true;
+                return;
             }
 
             if (se.isReservedVar(it.getTokenlc()))
             {
                 errors.setError(m_line, std::string("variable name is reserved keyword: ") + it.getTokenlc());
-                return true;
+                return;
             }
 
             if (vars.contains(it.getTokenlc()))
             {
                 errors.setError(m_line,std::string("Duplicate variable name: ") + it.getToken());
-                return true;
+                return;
             }
 
             if (se.getEventChainNames().contains(it.getTokenlc()))
             {
                 errors.setError(m_line,std::string("Variable name duplicates EventChain name")+ it.getTokenlc());
-                return true;
+                return;
             }
 
             // variable name is valid, and not already in use. start building the variable data
             variableTypeSP vtsp(std::make_shared<variableType>(it.getToken(), type)); // the shared pointer is what is added to collections
             variableType * vt = vtsp.get();     // actual data
-            (vt);
-            (bFixSpace);
 
-            index++;
-            if (index < m_tokens.size())
+            if (getNextToken(index,index))   // there is another token
             {
-               // bool bOk = processVarDeclParms( type, index, se, vars, bFixSpace, errors, vt );
-                //if(!bOk)
-                //    return true;
+                if (processSpaces(m_tokens[index], bFixSpace, eTokenSpace | eTokenSpaces | eTokenOptional, errors))   // optional space(s)
+                {
+                    getNextToken(index,index);
+                }
+            }
+            if ((index < m_tokens.size()) && !(m_tokens[index].getID() & eTokenComment))  // have non-space, non-comment token
+            {
+                // have a non-comment token.
+                if (vt->getType() == variableType::eVarTypeIntArray)
+                {
+                    errors.setError(m_line,"invalid syntax after intarray name.");
+                }
+                else if (m_tokens[index].getID() & eTokenAssignment)  // only token allowed by all other variables is =
+                {
+                    if (getNextToken(index,index))   // there is anothere token
+                    {
+                        if (processSpaces(m_tokens[index], bFixSpace, eTokenSpace | eTokenSpaces | eTokenOptional, errors))   // optional space(s)
+                            getNextToken(index,index);
+                    }
+                    if (index < m_tokens.size())  // have more tokens
+                    {
+                        it = m_tokens[index];
+                        switch (vt->getType())
+                        {
+                        case variableType::eVarTypeBool:
+
+                            if (it.getID() & (eTokenBoolFalse | eTokenBoolTrue))    // have an actual boolean.
+                            {
+                                vt->setValueBool( (it.getID() & eTokenBoolFalse) ? false : true );
+                            }
+                            else if (it.getID() & (eTokenInt | eTokenFloat))
+                            {
+                                errors.setWarning(m_line,"numeric value assigned to bool - should be true or false");
+                                int value = std::stoi(it.getToken());
+                                vt->setValueBool( value ? true : false );
+                            }
+                            else
+                                errors.setError(m_line,"invalid boolean value");
+
+                            break;
+
+                        case variableType::eVarTypeInt:
+                            if (it.getID() & (eTokenBoolFalse | eTokenBoolTrue))    // have an actual boolean.
+                            {
+                                errors.setWarning(m_line,"boolean assigned to int");
+                                vt->setValueInt( (it.getID() & eTokenBoolFalse) ? 0 : 1 );
+                            }
+                            else if (it.getID() & (eTokenInt | eTokenFloat))
+                            {
+                                int value = std::stoi(it.getToken());
+                                vt->setValueInt( value );
+                            }
+                            else
+                                errors.setError(m_line,"invalid int value");
+                            break;
+
+                        case variableType::eVarTypeFloat:
+                            if (it.getID() & (eTokenBoolFalse | eTokenBoolTrue))    // have an actual boolean.
+                            {
+                                errors.setWarning(m_line,"boolean assigned to float");
+                                vt->setValueFloat( (it.getID() & eTokenBoolFalse) ? 0.0f : 1.0f );
+                            }
+                            else if (it.getID() & (eTokenInt | eTokenFloat))
+                            {
+                                float value = std::stof(it.getToken());
+                                vt->setValueFloat( value );
+                            }
+                            else
+                                errors.setError(m_line,"invalid float value");
+                            break;
+
+                        case variableType::eVarTypeMiner:
+                            processAssignmentTokenID( it, vt, vars, errors, se.kS_miner);
+                            break;
+
+                        case variableType::eVarTypeVehicle:
+                            processAssignmentTokenID( it, vt, vars, errors, se.kS_vehicle);
+                            break;
+
+                        case variableType::eVarTypeCreature:
+                            processAssignmentTokenID(it, vt, vars, errors, se.kS_creature);
+                            break;
+
+                        case variableType::eVarTypeArrow:
+                            if (it.getID() & eTokenArrowColor)
+                            {
+                                vt->setValueString( it.getToken() );
+                            }
+                            else
+                                errors.setError(m_line,"invalid arrow color");
+                            break;
+
+                        case variableType::eVarTypeTimer:
+                        {
+                            float values[3] = { 0 };
+                            std::string eventchain;
+
+                            if (processfloats(index, values, 3, bFixSpace, errors))
+                            {
+                                it = m_tokens[index];
+                                if (it.getID() & eTokenName)
+                                {
+                                    vt->setValueTimer(values[0], values[1], values[2], it.getTokenlc());
+                                    if (!se.isReservedVar(it.getTokenlc()))
+                                        break;
+                                    else
+                                    {
+                                        errors.setError(m_line,"timer eventchain name is reserved word");
+                                    }
+                                }
+
+                            }
+                            errors.setError(m_line, "Invalid timer sytax or values");
+                        }
+                        break;
+
+                        case variableType::eVarTypeBuilding:
+                            if ((it.getID() & eTokenInt) && !(it.getID() & (eTokenBoolFalse | eTokenBoolTrue)))
+                            {
+                                int row = 0;
+                                int col = 0;
+                                row = std::stoi(it.getTokenlc());
+
+                                if (getNextTokenNoSpaces(index,index,bFixSpace,errors))    // have another token
+                                {
+                                    it = m_tokens[index];
+                                    if (it.getID() == eTokenComma)
+                                    {
+                                        if (getNextTokenNoSpaces(index, index, bFixSpace, errors))
+                                        {
+                                            it = m_tokens[index];
+                                            if ((it.getID() & eTokenInt) && !(it.getID() & (eTokenBoolFalse | eTokenBoolTrue)))
+                                            {
+                                                col = std::stoi(it.getTokenlc());
+                                                vt->setValueBuilding(row,col);
+                                                if ((row < se.getRows()) && (col < se.getCols()))
+                                                {
+                                                    if (!vars.isValueDuplicated(vt))
+                                                        break;
+                                                    else
+                                                    {
+                                                        errors.setError(m_line, "Duplicate building variable row,col. Only one variable per building location allowed");
+                                                        break;
+                                                    }
+                                                }
+                                                else
+                                                {
+                                                    errors.setError(m_line,"row,col out of range");
+                                                    break;
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            errors.setError(m_line,"Invalid Building row,col");
+                            break;
+
+                        case variableType::eVarTypeString:
+                            if (it.getID() & eTokenString)
+                            {
+                                vt->setValueString( it.getToken() );
+                            }
+                            else
+                                errors.setError(m_line,"invalid string");
+                            break;
+
+                        } // switch
+                        if (getNextTokenNoSpaces(index,index,bFixSpace,errors))
+                        {
+                            if (!(m_tokens[index].getID() & eTokenComment))
+                                errors.setError(m_line,"unexpected characters");
+                        }
+                    }
+                    else
+                        errors.setError(m_line,"Missing data after =");
+                }
+                else // all other tokens are invalid  Even with errors, we still add variable to detect more errors
+                    errors.setError(m_line,"Missing =");
             }
 
-            vars.add( vtsp );  // add the variable
-            return true;
+            // timer variable is the only one that must have an assignment
+            if (!vt->hasData() && (vt->getType() == variableType::eVarTypeTimer))
+            {
+                errors.setError(m_line,"timer variable invalid format");
+            }
+
+            vars.add( vtsp );  // add the variable even if we had errors.
+
         }
 
         // look at line starting at pos (it is the first $ char). Return true if we have valid $(name) format.
@@ -2040,9 +2298,86 @@ protected:
             return npos != std::string_view::npos;
         }
 
+        // return true if another index exists, false if end of line. Skip all ignored
+        // input index: token index to start. Use -1 to start from beginning.
+        // output newindex: token index of token that is not already ignored
+        bool getNextToken(std::size_t index, std::size_t& newindex)
+        {
+            if ((intmax_t)index < 0)
+                newindex = 0;   // first time start at 0
+            else
+                newindex = index + 1;  // else move to next token
+            for (;newindex < m_tokens.size() && !(m_tokens[newindex].getID() & eTokenIgnore); newindex++) // if ignored, move to next token
+                ;
+
+            return (newindex >=m_tokens.size()) ? false : true;
+        }
+
+        bool getNextTokenNoSpaces(std::size_t index, std::size_t& newindex, bool bFixSpace, ErrorWarning errors)
+        {
+            newindex = index;
+            do
+            {
+                if (!getNextToken(newindex, newindex))         // get next token
+                    break;
+            }
+            while (processSpaces(m_tokens[newindex], bFixSpace, 0, errors));   // spaces not allowed but fixing, they are removed
+            return newindex < m_tokens.size();
+        }
+
+        void processAssignmentTokenID(const ScriptToken& it, variableType* vt, const allUserVariables& vars, ErrorWarning& errors, const std::string &typeName )
+        {
+            if (it.getID() & (eTokenFloat))
+            {
+                errors.setError(m_line, std::string("floating point value is not a valid ") + typeName + " id");
+                float value = std::stof(it.getToken());
+                vt->setValueID((int)value);
+            }
+            else if ((it.getID() & (eTokenInt)) && !(it.getID() & (eTokenBoolFalse | eTokenBoolTrue))) // ids are int and not bools
+            {
+                int value = std::stoi(it.getToken());
+                vt->setValueID(value);
+                if (vars.isValueDuplicated(vt))
+                {
+                    errors.setError(m_line, std::string("Duplicate ") + typeName + " ID - only one variable per " + typeName + " id allowed");
+                }
+            }
+            else
+                errors.setError(m_line, std::string("invalid ") + typeName + " ID - expecting integer constant");
+        }
+
+        // look for the number of floats, fill in data with the values, fill in errors if any issue.
+        // input returned pointing to index of last float
+        // return true if no errors, return false if any issues.
+        bool processfloats(std::size_t& index, float* data, int numfloats, bool bFixSpace, ErrorWarning & errors)
+        {
+            int floatloop = 0;
+            for (; floatloop < numfloats; floatloop++)
+            {
+                ScriptToken const & it = m_tokens[index];
+                if (!(it.getID() & eTokenInt | eTokenFloat))
+                    break;
+                data[floatloop] = stof(it.getTokenlc());
+                if (!getNextTokenNoSpaces(index, index, bFixSpace, errors))    // have another token
+                    break;
+
+                if (!(m_tokens[index].getID() == eTokenComma))
+                {
+                    errors.setError(m_line, "missing comma");
+                    break;
+                }
+
+                if (!getNextTokenNoSpaces(index, index, bFixSpace, errors))
+                    break;
+            }
+            return floatloop == numfloats;
+        }
+
+
 
         InputLine               m_line;                // holds the line, linenumber, filename
         std::deque<ScriptToken> m_tokens;              // parsed tokens for this line
+        bool                    m_eventchain = false;  // true = this line starts an event chain. TODO most likely will need a shared pointer to some data about chain.
         bool                    m_processed = false;   // set to true when line has been completely processed
     };
 
@@ -2089,7 +2424,7 @@ public:
         m_defines.addKeyValue("TyabScriptDate", sdate);        // main script we know its date
         m_defines.addKeyValue("TyabMMUtilDate", __DATE__ );    // compile date for this utility
 
-        for (auto it : cmdline.m_defines)
+        for (auto const & it : cmdline.m_defines)
         {
             if (m_defines.contains(it.key()))
             {
@@ -2108,12 +2443,12 @@ public:
         return 0;
     }
 
-    std::deque<InputLine> processInputLines( bool bFixSpace)
+    std::deque<InputLine> processInputLines( bool bFixSpace, bool bNoComments )
     {
         std::deque<InputLine> output;
 
         // pass 0 is tokenizing every line and processing pragmas (defines, includes, comments, etc)
-        pass0Processing();
+        pass0Processing(bFixSpace);
 
         if (!m_errors.emptyErrors())    // have errors, return empty output
             return output;
@@ -2132,21 +2467,21 @@ public:
         int linenum = 1;
         std::string filename;       // blank filename for output
 
-        for (auto it : m_scriptlines)
+        for (auto const & it : m_scriptlines)
         {
-            output.push_back(InputLine(it.serialize_out(*this),linenum++,filename));
+            output.push_back(InputLine(it.serialize_out(*this, bNoComments),linenum++,filename));
         }
         return output;
     }
 
 protected:
     // pass 0 is parsing all input lines into tokens.
-    void pass0Processing()
+    void pass0Processing( bool bFixSpace )
     {
-        for (auto it : m_inputlines)
+        for (auto const & it : m_inputlines)
         {
             ScriptLine sl(it);
-            sl.rawParse(m_errors, m_defines);
+            sl.rawParse(*this, m_errors, m_defines, bFixSpace);
             m_scriptlines.push_back(sl);
         }
     }
@@ -2154,15 +2489,18 @@ protected:
     // pass 1 is collecting up all variables and event chain names.
     void pass1Processing( bool bFixSpace )
     {
-        for (auto it : m_scriptlines)
+        for (auto & it : m_scriptlines)
         {
-            bool bRetVal = it.processVariableDecleration( *this, m_variableNames, bFixSpace, m_errors );
-            (bRetVal);
+            // if first token is some sort of space, error or fix.
+            it.processInitialSpace( bFixSpace, m_errors );
+            // if last token is some sort of space, error or fix.
+            it.processLastSpace( bFixSpace, m_errors );
+
+            it.processVariableDecleration( *this, m_variableNames, bFixSpace, m_errors );
+
+            //it.processEventChainName( *this, m_eventChainNames, bFixSpace, m_errors );
         }
     }
-
-
-
 
     // this is recursive. The passed in filename is to be loaded and lines added to input lines.
     // return false if unable to load file. Return true if file is loaded
@@ -2179,7 +2517,7 @@ protected:
         std::filesystem::path filenameonly = filename.filename();
         std::filesystem::path pathonly = filename;
         pathonly.remove_filename();
-        for (auto it : processed)
+        for (auto const & it : processed)
         {
             if (it.empty())     // should never happen we don't store empty paths
                 continue;
@@ -2229,10 +2567,9 @@ protected:
         constexpr char kKeepComment[]       = "#.";                 // keep comment, ignore it
 
         // process every line, dealing with the pragmas
-        for (auto lineit : lines)
+        for (auto const & iline : lines)
         {
             linenum++;
-            const InputLine &iline = lineit;                // line we are working on.
             std::string_view lineview = iline.getLine();    // string data.
 
             std::string linelc = MMUtil::toLower(lineview);
@@ -2250,7 +2587,7 @@ protected:
             }
             if (pos != 0 || (linelcview.size() <= std::size(kPragma1))) // don't have pragma or too short
             {
-                m_errors.setWarning(lineit,indent+"#pragma ignored if not in col 0 or missing option");
+                m_errors.setWarning(iline,indent+"#pragma ignored if not in col 0 or missing option");
                 m_inputlines.push_back(iline);
                 continue;
             }
@@ -2260,7 +2597,7 @@ protected:
 
             if (linelcview.find("define ") == 0)    // define new macro key=value
             {
-                if (!processPragmaDefine(lineit, linelcview, sizeof(kdefine),indent))
+                if (!processPragmaDefine(iline, linelcview, sizeof(kdefine),indent))
                     return false;
                 // change line we store to ##pragma so it can't be processed again
                 m_inputlines.push_back( InputLine (std::string("#")+iline.getLine(),iline.getLineNum(), iline.getFileName()) );
@@ -2268,7 +2605,7 @@ protected:
             else if (linelcview.find(ktyabscriptdate) == 0) // add in file time info from main script file
             {
                 std::string value;
-                if (!processPragmatyabscriptdate(lineit, linelcview, sizeof(ktyabscriptdate), value, indent))
+                if (!processPragmatyabscriptdate(iline, linelcview, sizeof(ktyabscriptdate), value, indent))
                     return false;
                 // change line we store to ##pragma so it can't be processed again
                 m_inputlines.push_back( InputLine (std::string("#")+iline.getLine()+" "+value, iline.getLineNum(), iline.getFileName()));
@@ -2276,7 +2613,7 @@ protected:
             else if (linelcview.find(ktyabscriptincdate) == 0) // add in file time info from current included script file
             {
                 std::string value;
-                if (!processPragmatyabscriptincdate(lineit, linelcview, sizeof(ktyabscriptincdate), foundfullpath, value, indent))
+                if (!processPragmatyabscriptincdate(iline, linelcview, sizeof(ktyabscriptincdate), foundfullpath, value, indent))
                     return false;
                 // change line we store to ##pragma so it can't be processed again
                 m_inputlines.push_back( InputLine (std::string("#")+iline.getLine()+" "+value, iline.getLineNum(), iline.getFileName()));
@@ -2285,7 +2622,7 @@ protected:
             {
                 // change line we store to ##pragma so it can't be processed again
                 m_inputlines.push_back( InputLine (std::string("#")+iline.getLine(),iline.getLineNum(), iline.getFileName()) );
-                if (!processPragmaInclude(linelcview,sizeof(kinclude),incdirs, processed, lineit, bAnsi, indent))
+                if (!processPragmaInclude(linelcview,sizeof(kinclude),incdirs, processed, iline, bAnsi, indent))
                     return false;
             }
             else if (linelcview.find(ktyabMMDatUtil) == 0)  // info on this utility
@@ -2297,7 +2634,7 @@ protected:
             }
             else
             {
-                m_errors.setWarning(lineit, indent+"unknown pragma, ignored");
+                m_errors.setWarning(iline, indent+"unknown pragma, ignored");
                 m_inputlines.push_back(iline);
             }
         }
@@ -2538,9 +2875,6 @@ protected:
     }
 
 
-
-
-
     std::filesystem::path          m_filename;     // empty unless script file is replacing map script section. This is the main file.
     std::deque<InputLine>          m_inputlines;   // lines to process after all include and other pragmas 
     std::deque<InputLine>          m_outputlines;  // lines all processed ready to replace the script section
@@ -2552,6 +2886,9 @@ protected:
 
     ErrorWarning                   m_errors;
     Defines                        m_defines;      // user macros
+
+    int                            m_rows = 0;
+    int                            m_cols = 0;
 
 
 };

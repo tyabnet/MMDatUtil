@@ -100,8 +100,6 @@ static constexpr char DATE_ISO[11] =
 // command line is processed in unicode format
 // all command line output is unicode format
 
-
-
 namespace MMUtil
 {
     // remove all double quotes. Used to insert macro value into an existing string
@@ -363,7 +361,10 @@ public:
     bool         m_bFlattenLow    = false;
     bool         m_bFlattenBetween= false;
     bool         m_bBorderHeight  = false;
-    bool         m_bUnicode       = false;  // if set output UTF16LE format
+    bool         m_bUTF8          = false;  // if set UTF8 format (will be default if none set)
+    bool         m_bUTF16         = false;  // if set UTF16 format
+    bool         m_bUTF32         = false;  // if set output format is UTF32, either big or little endian
+    bool         m_bBigEndian     = false;  // if set output format is big endian, default false is little endian.
     bool         m_bBOM           = false;  // if set, output will have Byte Order Marker
     bool         m_bReadANSI      = false;  // if set, assume 8 byte input with no BOM is ANSI
 }; // class CommandLineOptions
@@ -563,10 +564,10 @@ class FileIO
     FileEncoding getEncoding() const { return m_encoding; }
     void setAnsi( bool bAnsi ) { m_bAnsi = bAnsi; }
     
-    const std::string & getEncodingStr() const
+    static const std::string & getEncodingStr( FileEncoding encoding )
     {
         static const std::string encodings[] = { "ANSI", "UTF8", "UTF16LE", "UTF16BE", "UTF32LE", "UTF32BE" };
-        return encodings[m_encoding];
+        return encodings[encoding];
     }
 
     // set bAnsi to true if you want 8 bit input format without BOM to assume ANSI code page
@@ -671,26 +672,25 @@ class FileIO
         }
         if (retval)
         {
-            for (auto it : lines)
+            for (auto const &it : lines)
             {
-                const std::string & strref = it;
                 retval = false;
                 switch (encoding)
                 {
                     case UTF8:
-                        retval = writeLineUTF8(fp,strref);
+                        retval = writeLineUTF8(fp,it);
                         break;
                     case UTF16LE:
-                        retval = writeLineUTF16(fp,strref,false);
+                        retval = writeLineUTF16(fp,it,false);
                         break;
                     case UTF16BE:
-                        retval = writeLineUTF16(fp,strref,true);
+                        retval = writeLineUTF16(fp,it,true);
                         break;
                     case UTF32LE:
-                        retval = writeLineUTF32(fp,strref,false);
+                        retval = writeLineUTF32(fp,it,false);
                         break;
                     case UTF32BE:
-                        retval = writeLineUTF32(fp,strref,true);
+                        retval = writeLineUTF32(fp,it,true);
                         break;
                 }
                 if (!retval)
@@ -721,7 +721,7 @@ class FileIO
         std::filesystem::path temp;
 
         // first search the paths already found
-        for (auto it : paths)
+        for (auto const & it : paths)
         {
             temp = it;
             if (!temp.empty())      // should never be empty but just in case
@@ -739,7 +739,7 @@ class FileIO
         }
 
         // still not found, try all the paths in inc dirs
-        for (auto it : incdirs )
+        for (auto const & it : incdirs )
         {
             temp = it / fileNameOnly;
             if (std::filesystem::exists(temp, ec))
@@ -1085,7 +1085,7 @@ class FileIO
         u16line += '\r';
         u16line += '\n';
 
-        for (auto it : u16line)
+        for (auto const & it : u16line)
         {
             uint32_t ch = it;
             uint8_t  out[2];
@@ -1111,7 +1111,7 @@ class FileIO
         u32line += '\r';
         u32line += '\n';
 
-        for (auto it : u32line)
+        for (auto const & it : u32line)
         {
             uint32_t ch = it;
             uint8_t  out[4];
@@ -1560,9 +1560,8 @@ class IntArraySection : public MapSection
 
     virtual void setTo(int defValue1, [[maybe_unused]] int defValue2)    // change all value to this value. Used when clearing out a map ready to receive merge data
     {
-        for (auto rit : m_data)
+        for (auto &row : m_data)
         {
-            std::deque<int> & row = rit;
             for (auto cit = row.begin(); cit != row.end(); cit++)
             {
                 *cit = defValue1;
@@ -1875,11 +1874,12 @@ class MMMap
         return m_file.writeFile( m_outlines, m_errors, encoding, forceBOM);
     }
 
+    
     const std::string & getEncoding(FileIO::FileEncoding& encoding, bool& hasBOM) const
     {
         encoding = m_file.getEncoding();
         hasBOM = m_file.hasBOM();
-        return m_file.getEncodingStr();
+        return FileIO::getEncodingStr(encoding);
     }
 
     int getNumLinesRead() const  { return (int)m_inlines.size(); }
@@ -1894,9 +1894,8 @@ class MMMap
         std::string sectionName;
 
         MapSection *ms = nullptr;
-        for (auto it : m_inlines)
+        for (auto const &iline : m_inlines)
         {
-            const InputLine & iline = it;                   // get ref to line
             const std::string & linestr = iline.getLine(); // get ref to string data
             std::string_view lineview = linestr;           // get view to string data
             if (ms)     // already building a section - wait until ending }
@@ -1989,7 +1988,7 @@ class MMMap
         std::string line;
         line.reserve( (m_width+1) * 5 );    // estimate of worse case array output but it could be longer
 
-        for (auto it : m_mapOrder)
+        for (auto const &it : m_mapOrder)
         {
             std::string secnamestr = it.getName();
 
@@ -2014,7 +2013,7 @@ class MMMap
     bool processSections( bool bFix, int deftile, int defheight, int defcrystal, int defore)
     {
         // look at all sections and make sure the requires ones are there.
-        for (auto it : m_mapOrder)
+        for (auto const & it : m_mapOrder)
         {
             bool  optional = it.getOptional();
             if (!optional)
@@ -2104,7 +2103,7 @@ class MMMap
         m_width    = rhs.m_width;
         m_height   = rhs.m_height;
 
-        m_bUnicode = rhs.m_bUnicode;
+        m_bUTF16 = rhs.m_bUTF16;
         m_bUTF16LE = rhs.m_bUTF16LE;
         return *this;
     }
@@ -2226,7 +2225,7 @@ class MMMap
 protected:
     void deleteSections()
     {
-        for (auto it : m_sections)
+        for (auto & it : m_sections)
         {
             MapSection* ms = it.second;
             it.second = nullptr;
@@ -2239,7 +2238,7 @@ protected:
     void copySections( const std::unordered_map<std::string, MapSection *> &rhs)
     {
         deleteSections();   // delete any section data
-        for (auto it : rhs)
+        for (auto const & it : rhs)
         {
             MapSection *msclone = it.second->clone();
             m_sections.emplace( it.first, msclone  );
@@ -2282,7 +2281,7 @@ protected:
     int  m_height = 0;      // map height from info section
     int  m_width = 0;       // map width from info section
 
-    bool m_bUnicode = false;
+    bool m_bUTF16 = false;
     bool m_bUTF16LE = false;
 
     // commonly used strings 

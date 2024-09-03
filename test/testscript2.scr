@@ -1,0 +1,8 @@
+#.####################### testscript2 ##############################
+#. testscript2.scr (c) 2024 Tyab All Rights Reserved
+#pragma TyabScriptIncDate vy.m.d.g 
+#
+#.-------------------------------------
+#pragma include "testscript3.scr"
+#.-------------------------------------
+#.end --- testscript2

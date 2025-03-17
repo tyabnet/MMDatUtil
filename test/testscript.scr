@@ -1,3 +1,4 @@
+  timer MyTimerObj=2,0.4,0.5,MyTimer
   int blblah=2
   
   init::;  # verify indenting is removed along with comment

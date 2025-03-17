@@ -112,6 +112,7 @@ protected:
     const std::string kStr_EventLandslide_C             = "EventLandslide_C";                // | Collection | Active active landslides. |
     const std::string kStr_erosionscale                 = "erosionscale";                    // | Macro | Global erosion scale factor |
     const std::string kStr_false                        = "false";                           // | bool value or 0.
+    const std::string kStr_flee                         = "flee";                            // | Event | Monster flees |
     const std::string kStr_float                        = "float";                           // | Variable | Floating point number. |
     const std::string kStr_geologicalcenter             = "geologicalcenter";                // | Macro | Number of Geological Centers. |
     const std::string kStr_get                          = "get";                             // | Macro | Get tile ID., get(row)(col) |
@@ -185,6 +186,7 @@ protected:
     const std::string kStr_reset                        = "reset";                           // | Event | Resets the player's selection |
     const std::string kStr_resetspeed                   = "resetspeed";                      // | Event | Loads the game speed from settings again. |
     const std::string kStr_resume                       = "resume";                          // | Event | Same as unpause. |
+    const std::string kStr_return                       = "return";                          // | Event | return event |                          
     const std::string kStr_RockMonster                  = "RockMonster";                     // | Collection | Rock Monsters. |
     const std::string kStr_row                          = "row";                             // | Data Field | Object row. |
     const std::string kStr_S                            = "S";                               // | Emerge Direction | South. |
@@ -247,6 +249,7 @@ protected:
     const std::string kStr_VehicleTunnelScout_C         = "VehicleTunnelScout_C";            // | Collection | Tunnel Scouts |
     const std::string kStr_VehicleTunnelTransport_C     = "VehicleTunnelTransport_C";        // | Collection | Tunnel Transports |
     const std::string kStr_wait                         = "wait";                            // | Event | Suspend event chain for a given period of time modified by game speed. | me speed. |
+    const std::string kStr_wake                         = "wake";                            // | Event | Wakeup monster | monster variable. |
     const std::string kStr_walk                         = "walk";                            // | Trigger | Trigger when miner walks on a tile. |
     const std::string kStr_water                        = "water";                           // | Macro | Tile ID of water(11). |
     const std::string kStr_W                            = "W";                               // | Emerge Direction | West. |
@@ -328,6 +331,7 @@ protected:
     const std::string kS_EventLandslide_C             = MMUtil::toLower( kStr_EventLandslide_C             );   // | Collection | Active active landslides. |
     const std::string kS_erosionscale                 = MMUtil::toLower( kStr_erosionscale                 );   // | Macro | Global erosion scale factor |
     const std::string kS_false                        = MMUtil::toLower( kStr_false                        );   // | bool value or 0. |
+    const std::string kS_flee                         = MMUtil::toLower( kStr_flee                         );   // | Event | Monster flee | Monster variable |
     const std::string kS_float                        = MMUtil::toLower( kStr_float                        );   // | Variable | Floating point number. |
     const std::string kS_geologicalcenter             = MMUtil::toLower( kStr_geologicalcenter             );   // | Macro | Number of Geological Centers. |
     const std::string kS_get                          = MMUtil::toLower( kStr_get                          );   // | Macro | Get tile ID. |
@@ -401,6 +405,7 @@ protected:
     const std::string kS_reset                        = MMUtil::toLower( kStr_reset                        );   // | Event | Resets the player's selection |
     const std::string kS_resetspeed                   = MMUtil::toLower( kStr_resetspeed                   );   // | Event | Loads the game speed from settings again. |
     const std::string kS_resume                       = MMUtil::toLower( kStr_resume                       );   // | Event | Same as unpause. |
+    const std::string kS_return                       = MMUtil::toLower( kStr_return                       );   // | Event | return event |
     const std::string kS_RockMonster                  = MMUtil::toLower( kStr_RockMonster                  );   // | Collection | Rock Monsters. |
     const std::string kS_row                          = MMUtil::toLower( kStr_row                          );   // | Data Field | Object row. |
     const std::string kS_S                            = MMUtil::toLower( kStr_S                            );   // | Emerge Direction | South. |
@@ -463,6 +468,7 @@ protected:
     const std::string kS_VehicleTunnelScout_C         = MMUtil::toLower( kStr_VehicleTunnelScout_C         );   // | Collection | Tunnel Scouts |
     const std::string kS_VehicleTunnelTransport_C     = MMUtil::toLower( kStr_VehicleTunnelTransport_C     );   // | Collection | Tunnel Transports |
     const std::string kS_wait                         = MMUtil::toLower( kStr_wait                         );   // | Event | Suspend event chain for a given period of time modified by game speed. | me speed. |
+    const std::string kS_wake                         = MMUtil::toLower( kStr_wake                         );   // | Event | Monster wakes | Monster ID |
     const std::string kS_walk                         = MMUtil::toLower( kStr_walk                         );   // | Trigger | Trigger when miner walks on a tile. |
     const std::string kS_water                        = MMUtil::toLower( kStr_water                        );   // | Macro | Tile ID of water(11). |
     const std::string kS_W                            = MMUtil::toLower( kStr_W                            );   // | Emerge Direction | West. |
@@ -553,6 +559,7 @@ protected:
         { kS_EventLandslide_C             , kStr_EventLandslide_C             },   // | Collection | Active active landslides. |
         { kS_erosionscale                 , kStr_erosionscale                 },   // | Macro | Global erosion scale factor |
         { kS_false                        , kStr_false                        },   // | bool value or 0. |
+        { kS_flee                         , kStr_flee                         },   // | Event | Monster flees | Monster ID |
         { kS_float                        , kStr_float                        },   // | Variable | Floating point number. |
         { kS_geologicalcenter             , kStr_geologicalcenter             },   // | Macro | Number of Geological Centers. |
         { kS_get                          , kStr_get                          },   // | Macro | Get tile ID. |
@@ -626,6 +633,7 @@ protected:
         { kS_reset                        , kStr_reset                        },   // | Event | Resets the player's selection |
         { kS_resetspeed                   , kStr_resetspeed                   },   // | Event | Loads the game speed from settings again. |
         { kS_resume                       , kStr_resume                       },   // | Event | Same as unpause. |
+        { kS_return                       , kStr_return                       },   // | Event | return event |
         { kS_RockMonster                  , kStr_RockMonster                  },   // | Collection | Rock Monsters. |
         { kS_row                          , kStr_row                          },   // | Data Field | Object row. |
         { kS_S                            , kStr_S                            },   // | Emerge Direction | South. |
@@ -688,6 +696,7 @@ protected:
         { kS_VehicleTunnelScout_C         , kStr_VehicleTunnelScout_C         },   // | Collection | Tunnel Scouts |
         { kS_VehicleTunnelTransport_C     , kStr_VehicleTunnelTransport_C     },   // | Collection | Tunnel Transports |
         { kS_wait                         , kStr_wait                         },   // | Event | Suspend event chain for a given period of time modified by game speed. | me speed. |
+        { kS_wake                         , kStr_wake                         },   // | Event | Wake monster | Monster ID |
         { kS_walk                         , kStr_walk                         },   // | Trigger | Trigger when miner walks on a tile. |
         { kS_water                        , kStr_water                        },   // | Macro | Tile ID of water(11). |
         { kS_W                            , kStr_W                            },   // | Emerge Direction | West. |
@@ -1457,13 +1466,13 @@ protected:
                 for (std::size_t npos = 0; (npos < commentpos) && !bMacro;)
                 {
                     std::size_t epos = npos + 1;
-                    // if we have an alpha, treat as some sort of name for the remaining alpha and digits
+                    // if we have an alpha, treat as some sort of name for the remaining alpha, digits and underbar
                     uint8_t ch = input[npos];
                     if (std::isalpha((unsigned char)ch))   // have an alpha char. Continue while more alpha or digits
                     {
                         for (; epos < commentpos; epos++)
                         {
-                            if (!std::isdigit(input[epos]) && !std::isalpha((unsigned char)input[epos])) // this char ends the token
+                            if (!std::isdigit((unsigned char)input[epos]) && !std::isalpha((unsigned char)input[epos]) && (input[epos] != '_')) // this char ends the token
                                 break;
                         }
                         token = input.substr(npos, epos - npos);
@@ -1511,9 +1520,9 @@ protected:
                             {
                                 for (; (epos < commentpos) && std::isdigit((unsigned char)input[epos]); epos++)
                                     ;  // scan until first non-number
-                                if ((epos < commentpos) && isalpha(input[epos]))  // we have an alpha, so treat as an name
+                                if ((epos < commentpos) && (isalpha(input[epos] || (input[epos] == '_'))))  // we have an alpha, so treat as an name
                                 {
-                                    for (epos++; epos < commentpos && (std::isalpha((unsigned char)input[epos]) || std::isdigit((unsigned char)input[epos])); epos++)
+                                    for (epos++; epos < commentpos && (std::isalpha((unsigned char)input[epos]) || std::isdigit((unsigned char)input[epos]) || (input[epos]=='_')); epos++)
                                         ;
                                     token = input.substr(npos, epos - npos);
                                     m_tokens.emplace_back(token, eTokenName);
@@ -2081,6 +2090,10 @@ protected:
                         auto it = chains.find(str);
                         it->incCount();
                     }
+                    else // must be undefined var or chain
+                    {
+                        errors.setWarning(m_line,std::string("Unknown name: ") + str + " - undeclared variable or event chain");
+                    }
                 }
                 if (!getNextToken(index,index))         // move to next token
                     break;                              // no tokens left, done
@@ -2322,7 +2335,7 @@ protected:
 
                             if (processfloats(index, values, 3, bFixSpace, errors))
                             {
-                                ScriptToken &tit = m_tokens[index];
+                                ScriptToken &tit = m_tokens[index]; // event chain to call
                                 if (tit.getID() & eTokenName)
                                 {
                                     vt->setValueTimer(values[0], values[1], values[2], tit.getTokenlc());
@@ -2408,7 +2421,7 @@ protected:
             }
 
             // timer variable is the only one that must have an assignment
-            if (!vt->hasData() && (vt->getType() == variableType::eVarTypeTimer))
+            if ((vt->getType() == variableType::eVarTypeTimer) && !vt->getTimerEventName().length())
             {
                 errors.setError(m_line,"timer variable invalid format");
             }

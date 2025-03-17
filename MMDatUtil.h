@@ -181,14 +181,15 @@ namespace MMUtil
         return removeLeadingWhite(str).empty();
     }
 
-    // check that string starts with alpha and only contains alpha/digits
+    // check that string starts with alpha and only contains alpha/digits/underbar
+    // NOTE underbar is allowed in the name
     static inline bool isAlphaNumericName(std::string_view str)
     {
         if ((str.size() > 0) && std::isalpha((unsigned char)str[0]))
         {
             for (std::size_t i = 1; i < str.size(); i++)
             {
-                if (!std::isalnum((unsigned char)str[i]))
+                if (!std::isalnum((unsigned char)str[i]) && (str[i] != '_'))
                     return false;
             }
             return true;

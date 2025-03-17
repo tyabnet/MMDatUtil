@@ -1000,6 +1000,7 @@ int wmain(int , wchar_t ** )   // ignore all passed in parameters
         {
             scrEngine.getErrors().printWarnings();
         }
+
         wprintf(L"  Replacing outmap script. %d lines total\n", outscriptlen);
 
         wprintf(L"  Writing temporary outmap: \"%s\"",tempOut.get().wstring().c_str());

@@ -1,0 +1,864 @@
+#.####################### TyabFontScript ##############################
+#. TyabFontScript.scr (c) 2023 Tyab All Rights Reserved
+#pragma TyabScriptIncDate vy.m.d.g 
+# useful utilities for display of text characters
+
+# currently only 3x5 numerics and A-Z alpha supported
+# conversion chart. PI01 to Char to draw
+#
+#  0  0
+#  1  1
+#  2  2
+#  3  3
+#  4  4
+#  5  5
+#  6  6
+#  7  7
+#  8  8
+#  9  9
+# 10  A
+# 11  B
+# 12  C
+# 13  D
+# 14  E
+# 15  F
+# 16  G
+# 17  H
+# 18  I
+# 19  J
+# 20  K
+# 21  L
+# 22  M
+# 23  N
+# 24  O
+# 25  P
+# 26  Q
+# 27  R
+# 28  S
+# 28  T
+# 28  U
+# 28  V
+# 28  W
+# 28  X
+# 28  Y
+# 28  Z
+
+
+intarray TyFnt3x5   # actual font
+
+# PY1, PX1 = lower left corner of draw
+# PY2, PX2 = upper right corner of draw
+# PY3, PY4 = location of font upper left point
+# PI01 = number to draw 0 - 9, or 10-15 for A-F
+# PI02 = off tileid (0 to not draw off tiles)
+# PI03 = on tileid  (0 to not draw on tiles)
+# PI04 = row DY per pixel (-1,0,1)
+# PI05 = row DX per pixel (-1,0,1)
+# PI06 = col DY per pixel (-1,0,1)
+# PI07 = col DX per pixel (-1,0,1)
+# callers should have read in tiles if using 0 id's
+#
+TyabDraw3x5Value::TI07=PI01*15;           # index into character data
+TI03=0;                 # relative Y change each row
+TI04=0;                 # relative X change each row
+L01=0;                  # row loop
+TyDr3x5YL;              # draw the character
+# - queue draw the result
+TI01=PI02;
+((TyLavaOrWater[TI01]==1))TyFntDrawQueue; # background is water or lava
+TI01=PI03;
+((TyLavaOrWater[TI01]==1))TyFntDrawQueue;  # foreground is water or lava
+TI02=TyLavaOrWater[PI02]+TyLavaOrWater[PI03];
+TI01=TyNeg1;               # everything but water and lava
+((TI02==0))[TyFntDraw][TyFntMaybeDraw];
+
+TyFntMaybeDraw::((TI02<2))TyFntDrawQueue;  # one of the values is not water or lava so draw it
+
+TyFntDrawQueue::RI02=PI01;   # save PI01
+PI01=TI01;                   #tile type to draw
+TyabQueueDrawRect;           # queue draw
+PI01=RI02;                   #restore PI01
+
+TyFntDraw::RI02=PI01;   # save PI01
+PI01=0;                 # tile type to draw
+TyabDrawRect;           # queue draw
+PI01=RI02;              # restore PI01
+
+TyDr3x5YL::L02=0;       # col loop
+TI05=TI03;              # Y change as col loop
+TI06=TI04;              # X change as col loop
+TyDr3x5XL;              # loop X
+TI03+=PI04;             # update relative row
+TI04+=PI05;             # update relative col
+L01+=1;
+((L01<5))TyDr3x5YL;     # loop rows
+
+TyDr3x5XL::((TyFnt3x5[TI07]==0))[iPI01=PI02][iPI01=PI03];  #get off or on tileid
+iPY1=PY3+TI05;
+iPX1=PX3+TI06;
+((iPI01>0))iTyabSetTile; #only change if not 0
+TI05+=PI06;             # update row per col
+TI06+=PI07;             # update col per col
+TI07+=1;                # next character id index
+L02+=1;
+((L02<3))TyDr3x5XL;     # loop rows
+
+# -- init pattern for 3x5 numeric characters
+TyabInit3x5Fnt::;
+#   XXX    111
+#   X.X    101
+#   X.X    101
+#   X.X    101
+#   XXX    111
+TyFnt3x5[0]=1;
+TyFnt3x5[1]=1;
+TyFnt3x5[2]=1;
+TyFnt3x5[3]=1;
+TyFnt3x5[4]=0;
+TyFnt3x5[5]=1;
+TyFnt3x5[6]=1;
+TyFnt3x5[7]=0;
+TyFnt3x5[8]=1;
+TyFnt3x5[9]=1;
+TyFnt3x5[10]=0;
+TyFnt3x5[11]=1;
+TyFnt3x5[12]=1;
+TyFnt3x5[13]=1;
+TyFnt3x5[14]=1;
+#
+#   XX.    110
+#   .X.    010
+#   .X.    010
+#   .X.    010
+#   XXX    111
+TyFnt3x5[15]=1;
+TyFnt3x5[16]=1;
+TyFnt3x5[17]=0;
+TyFnt3x5[18]=0;
+TyFnt3x5[19]=1;
+TyFnt3x5[20]=0;
+TyFnt3x5[21]=0;
+TyFnt3x5[22]=1;
+TyFnt3x5[23]=0;
+TyFnt3x5[24]=0;
+TyFnt3x5[25]=1;
+TyFnt3x5[26]=0;
+TyFnt3x5[27]=1;
+TyFnt3x5[28]=1;
+TyFnt3x5[29]=1;
+#
+#   XXX    111
+#   ..x    001
+#   XXX    111
+#   X..    100
+#   XXX    111
+TyFnt3x5[30]=1;
+TyFnt3x5[31]=1;
+TyFnt3x5[32]=1;
+TyFnt3x5[33]=0;
+TyFnt3x5[34]=0;
+TyFnt3x5[35]=1;
+TyFnt3x5[36]=1;
+TyFnt3x5[37]=1;
+TyFnt3x5[38]=1;
+TyFnt3x5[39]=1;
+TyFnt3x5[40]=0;
+TyFnt3x5[41]=0;
+TyFnt3x5[42]=1;
+TyFnt3x5[43]=1;
+TyFnt3x5[44]=1;
+#
+#   XXX    111
+#   ..X    001
+#   XXX    111
+#   ..X    001
+#   XXX    111
+TyFnt3x5[45]=1;
+TyFnt3x5[46]=1;
+TyFnt3x5[47]=1;
+TyFnt3x5[48]=0;
+TyFnt3x5[49]=0;
+TyFnt3x5[50]=1;
+TyFnt3x5[51]=1;
+TyFnt3x5[52]=1;
+TyFnt3x5[53]=1;
+TyFnt3x5[54]=0;
+TyFnt3x5[55]=0;
+TyFnt3x5[56]=1;
+TyFnt3x5[57]=1;
+TyFnt3x5[58]=1;
+TyFnt3x5[59]=1;
+#
+#   X.X    101
+#   X.X    101
+#   XXX    111
+#   ..X    001
+#   ..X    001
+TyFnt3x5[60]=1;
+TyFnt3x5[61]=0;
+TyFnt3x5[62]=1;
+TyFnt3x5[63]=1;
+TyFnt3x5[64]=0;
+TyFnt3x5[65]=1;
+TyFnt3x5[66]=1;
+TyFnt3x5[67]=1;
+TyFnt3x5[68]=1;
+TyFnt3x5[69]=0;
+TyFnt3x5[70]=0;
+TyFnt3x5[71]=1;
+TyFnt3x5[72]=0;
+TyFnt3x5[73]=0;
+TyFnt3x5[74]=1;
+#
+#   XXX    111
+#   X..    100
+#   XXX    111
+#   ..X    001
+#   XXX    111
+TyFnt3x5[75]=1;
+TyFnt3x5[76]=1;
+TyFnt3x5[77]=1;
+TyFnt3x5[78]=1;
+TyFnt3x5[79]=0;
+TyFnt3x5[80]=0;
+TyFnt3x5[81]=1;
+TyFnt3x5[82]=1;
+TyFnt3x5[83]=1;
+TyFnt3x5[84]=0;
+TyFnt3x5[85]=0;
+TyFnt3x5[86]=1;
+TyFnt3x5[87]=1;
+TyFnt3x5[88]=1;
+TyFnt3x5[89]=1;
+#
+#   XXX    111
+#   X..    100
+#   XXX    111
+#   X.X    101
+#   XXX    111
+TyFnt3x5[90]=1;
+TyFnt3x5[91]=1;
+TyFnt3x5[92]=1;
+TyFnt3x5[93]=1;
+TyFnt3x5[94]=0;
+TyFnt3x5[95]=0;
+TyFnt3x5[96]=1;
+TyFnt3x5[97]=1;
+TyFnt3x5[98]=1;
+TyFnt3x5[99]=1;
+TyFnt3x5[100]=0;
+TyFnt3x5[101]=1;
+TyFnt3x5[102]=1;
+TyFnt3x5[103]=1;
+TyFnt3x5[104]=1;
+#
+#   XXX    111
+#   ..X    001
+#   ..X    001
+#   ..X    001
+#   ..X    001
+TyFnt3x5[105]=1;
+TyFnt3x5[106]=1;
+TyFnt3x5[107]=1;
+TyFnt3x5[108]=0;
+TyFnt3x5[109]=0;
+TyFnt3x5[110]=1;
+TyFnt3x5[111]=0;
+TyFnt3x5[112]=0;
+TyFnt3x5[113]=1;
+TyFnt3x5[114]=0;
+TyFnt3x5[115]=0;
+TyFnt3x5[116]=1;
+TyFnt3x5[117]=0;
+TyFnt3x5[118]=0;
+TyFnt3x5[119]=1;
+#
+#   XXX    111
+#   X.X    101
+#   XXX    111
+#   X.X    101
+#   XXX    111
+TyFnt3x5[120]=1;
+TyFnt3x5[121]=1;
+TyFnt3x5[122]=1;
+TyFnt3x5[123]=1;
+TyFnt3x5[124]=0;
+TyFnt3x5[125]=1;
+TyFnt3x5[126]=1;
+TyFnt3x5[127]=1;
+TyFnt3x5[128]=1;
+TyFnt3x5[129]=1;
+TyFnt3x5[130]=0;
+TyFnt3x5[131]=1;
+TyFnt3x5[132]=1;
+TyFnt3x5[133]=1;
+TyFnt3x5[134]=1;
+#
+#   XXX    111
+#   X.X    101
+#   XXX    111
+#   ..X    001
+#   ..X    001
+TyFnt3x5[135]=1;
+TyFnt3x5[136]=1;
+TyFnt3x5[137]=1;
+TyFnt3x5[138]=1;
+TyFnt3x5[139]=0;
+TyFnt3x5[140]=1;
+TyFnt3x5[141]=1;
+TyFnt3x5[142]=1;
+TyFnt3x5[143]=1;
+TyFnt3x5[144]=0;
+TyFnt3x5[145]=0;
+TyFnt3x5[146]=1;
+TyFnt3x5[147]=0;
+TyFnt3x5[148]=0;
+TyFnt3x5[149]=1;
+#
+#   .X.    010
+#   X.X    101
+#   XXX    111
+#   X.X    101
+#   X.X    101
+TyFnt3x5[150]=0;
+TyFnt3x5[151]=1;
+TyFnt3x5[152]=0;
+TyFnt3x5[153]=1;
+TyFnt3x5[154]=0;
+TyFnt3x5[155]=1;
+TyFnt3x5[156]=1;
+TyFnt3x5[157]=1;
+TyFnt3x5[158]=1;
+TyFnt3x5[159]=1;
+TyFnt3x5[160]=0;
+TyFnt3x5[161]=1;
+TyFnt3x5[162]=1;
+TyFnt3x5[163]=0;
+TyFnt3x5[164]=1;
+#
+#   XX.    110
+#   X.X    101
+#   XX.    110
+#   X.X    101
+#   XX.    110
+TyFnt3x5[165]=1;
+TyFnt3x5[166]=1;
+TyFnt3x5[167]=0;
+TyFnt3x5[168]=1;
+TyFnt3x5[169]=0;
+TyFnt3x5[170]=1;
+TyFnt3x5[171]=1;
+TyFnt3x5[172]=1;
+TyFnt3x5[173]=0;
+TyFnt3x5[174]=1;
+TyFnt3x5[175]=0;
+TyFnt3x5[176]=1;
+TyFnt3x5[177]=1;
+TyFnt3x5[178]=1;
+TyFnt3x5[179]=0;
+#
+#   .XX    011
+#   X..    100
+#   X..    100
+#   X..    100
+#   .XX    011
+TyFnt3x5[180]=0;
+TyFnt3x5[181]=1;
+TyFnt3x5[182]=1;
+TyFnt3x5[183]=1;
+TyFnt3x5[184]=0;
+TyFnt3x5[185]=0;
+TyFnt3x5[186]=1;
+TyFnt3x5[187]=0;
+TyFnt3x5[188]=0;
+TyFnt3x5[189]=1;
+TyFnt3x5[190]=0;
+TyFnt3x5[191]=0;
+TyFnt3x5[192]=0;
+TyFnt3x5[193]=1;
+TyFnt3x5[194]=1;
+#
+#   XX.    110
+#   X.X    101
+#   X.X    101
+#   X.X    101
+#   XX.    110
+TyFnt3x5[195]=1;
+TyFnt3x5[196]=1;
+TyFnt3x5[197]=0;
+TyFnt3x5[198]=1;
+TyFnt3x5[199]=0;
+TyFnt3x5[200]=1;
+TyFnt3x5[201]=1;
+TyFnt3x5[202]=0;
+TyFnt3x5[203]=1;
+TyFnt3x5[204]=1;
+TyFnt3x5[205]=0;
+TyFnt3x5[206]=1;
+TyFnt3x5[207]=1;
+TyFnt3x5[208]=1;
+TyFnt3x5[209]=0;
+#
+#   .XX    011
+#   X..    100
+#   XXX    111
+#   X..    100
+#   .XX    011
+TyFnt3x5[210]=0;
+TyFnt3x5[211]=1;
+TyFnt3x5[212]=1;
+TyFnt3x5[213]=1;
+TyFnt3x5[214]=0;
+TyFnt3x5[215]=0;
+TyFnt3x5[216]=1;
+TyFnt3x5[217]=1;
+TyFnt3x5[218]=1;
+TyFnt3x5[219]=1;
+TyFnt3x5[220]=0;
+TyFnt3x5[221]=0;
+TyFnt3x5[222]=0;
+TyFnt3x5[223]=1;
+TyFnt3x5[224]=1;
+#
+#   .XX    011
+#   X..    100
+#   XXX    111
+#   X..    100
+#   X..    100
+TyFnt3x5[225]=0;
+TyFnt3x5[226]=1;
+TyFnt3x5[227]=1;
+TyFnt3x5[228]=1;
+TyFnt3x5[229]=0;
+TyFnt3x5[230]=0;
+TyFnt3x5[231]=1;
+TyFnt3x5[232]=1;
+TyFnt3x5[233]=1;
+TyFnt3x5[234]=1;
+TyFnt3x5[235]=0;
+TyFnt3x5[236]=0;
+TyFnt3x5[237]=1;
+TyFnt3x5[238]=0;
+TyFnt3x5[239]=0;
+#
+#   .XX    011
+#   X..    100
+#   XX.    110
+#   X.X    101
+#   XXX    111
+TyFnt3x5[240]=0;
+TyFnt3x5[241]=1;
+TyFnt3x5[242]=1;
+TyFnt3x5[243]=1;
+TyFnt3x5[244]=0;
+TyFnt3x5[245]=0;
+TyFnt3x5[246]=1;
+TyFnt3x5[247]=1;
+TyFnt3x5[248]=0;
+TyFnt3x5[249]=1;
+TyFnt3x5[250]=0;
+TyFnt3x5[251]=1;
+TyFnt3x5[252]=1;
+TyFnt3x5[253]=1;
+TyFnt3x5[254]=1;
+#
+#   X.X    101
+#   X.X    101
+#   XXX    111
+#   X.X    101
+#   X.X    101
+TyFnt3x5[255]=1;
+TyFnt3x5[256]=0;
+TyFnt3x5[257]=1;
+TyFnt3x5[258]=1;
+TyFnt3x5[259]=0;
+TyFnt3x5[260]=1;
+TyFnt3x5[261]=1;
+TyFnt3x5[262]=1;
+TyFnt3x5[263]=1;
+TyFnt3x5[264]=1;
+TyFnt3x5[265]=0;
+TyFnt3x5[266]=1;
+TyFnt3x5[267]=1;
+TyFnt3x5[268]=0;
+TyFnt3x5[269]=1;
+#
+#   XXX    111
+#   .X.    010
+#   .X.    010
+#   .X.    010
+#   XXX    111
+TyFnt3x5[270]=1;
+TyFnt3x5[271]=1;
+TyFnt3x5[272]=1;
+TyFnt3x5[273]=0;
+TyFnt3x5[274]=1;
+TyFnt3x5[275]=0;
+TyFnt3x5[276]=0;
+TyFnt3x5[277]=1;
+TyFnt3x5[278]=0;
+TyFnt3x5[279]=0;
+TyFnt3x5[280]=1;
+TyFnt3x5[281]=0;
+TyFnt3x5[282]=1;
+TyFnt3x5[283]=1;
+TyFnt3x5[284]=1;
+#
+#   XXX    111
+#   ..X    001
+#   ..X    001
+#   X.X    101
+#   .XX    011
+TyFnt3x5[285]=1;
+TyFnt3x5[286]=1;
+TyFnt3x5[287]=1;
+TyFnt3x5[288]=0;
+TyFnt3x5[289]=0;
+TyFnt3x5[290]=1;
+TyFnt3x5[291]=0;
+TyFnt3x5[292]=0;
+TyFnt3x5[293]=1;
+TyFnt3x5[294]=1;
+TyFnt3x5[295]=0;
+TyFnt3x5[296]=1;
+TyFnt3x5[297]=0;
+TyFnt3x5[298]=1;
+TyFnt3x5[299]=1;
+#
+#   X.X    101
+#   XX.    110
+#   X..    100
+#   XX.    110
+#   X.X    101
+TyFnt3x5[300]=1;
+TyFnt3x5[301]=0;
+TyFnt3x5[302]=1;
+TyFnt3x5[303]=1;
+TyFnt3x5[304]=1;
+TyFnt3x5[305]=0;
+TyFnt3x5[306]=1;
+TyFnt3x5[307]=0;
+TyFnt3x5[308]=0;
+TyFnt3x5[309]=1;
+TyFnt3x5[310]=1;
+TyFnt3x5[311]=0;
+TyFnt3x5[312]=1;
+TyFnt3x5[313]=0;
+TyFnt3x5[314]=1;
+#
+#   X..    100
+#   X..    100
+#   X..    100
+#   X..    100
+#   XXX    111
+TyFnt3x5[315]=1;
+TyFnt3x5[316]=0;
+TyFnt3x5[317]=0;
+TyFnt3x5[318]=1;
+TyFnt3x5[319]=0;
+TyFnt3x5[320]=0;
+TyFnt3x5[321]=1;
+TyFnt3x5[322]=0;
+TyFnt3x5[323]=0;
+TyFnt3x5[324]=1;
+TyFnt3x5[325]=0;
+TyFnt3x5[326]=0;
+TyFnt3x5[327]=1;
+TyFnt3x5[328]=1;
+TyFnt3x5[329]=1;
+#
+#   X.X    101
+#   XXX    111
+#   XXX    111
+#   X.X    101
+#   X.X    101
+TyFnt3x5[330]=1;
+TyFnt3x5[331]=0;
+TyFnt3x5[332]=1;
+TyFnt3x5[333]=1;
+TyFnt3x5[334]=1;
+TyFnt3x5[335]=1;
+TyFnt3x5[336]=1;
+TyFnt3x5[337]=1;
+TyFnt3x5[338]=1;
+TyFnt3x5[339]=1;
+TyFnt3x5[340]=0;
+TyFnt3x5[341]=1;
+TyFnt3x5[342]=1;
+TyFnt3x5[343]=0;
+TyFnt3x5[344]=1;
+#
+#   X.X    101
+#   X.X    101
+#   XXX    111
+#   XXX    111
+#   X.X    101
+TyFnt3x5[345]=1;
+TyFnt3x5[346]=0;
+TyFnt3x5[347]=1;
+TyFnt3x5[348]=1;
+TyFnt3x5[349]=0;
+TyFnt3x5[350]=1;
+TyFnt3x5[351]=1;
+TyFnt3x5[352]=1;
+TyFnt3x5[353]=1;
+TyFnt3x5[354]=1;
+TyFnt3x5[355]=1;
+TyFnt3x5[356]=1;
+TyFnt3x5[357]=1;
+TyFnt3x5[358]=0;
+TyFnt3x5[359]=1;
+#
+#   .X.    010
+#   X.X    101
+#   X.X    101
+#   X.X    101
+#   .X.    010
+TyFnt3x5[360]=0;
+TyFnt3x5[361]=1;
+TyFnt3x5[362]=0;
+TyFnt3x5[363]=1;
+TyFnt3x5[364]=0;
+TyFnt3x5[365]=1;
+TyFnt3x5[366]=1;
+TyFnt3x5[367]=0;
+TyFnt3x5[368]=1;
+TyFnt3x5[369]=1;
+TyFnt3x5[370]=0;
+TyFnt3x5[371]=1;
+TyFnt3x5[372]=0;
+TyFnt3x5[373]=1;
+TyFnt3x5[374]=0;
+#
+#   XX.    110
+#   X.X    101
+#   XX.    110
+#   X..    100
+#   X..    100
+TyFnt3x5[375]=1;
+TyFnt3x5[376]=1;
+TyFnt3x5[377]=0;
+TyFnt3x5[378]=1;
+TyFnt3x5[379]=0;
+TyFnt3x5[380]=1;
+TyFnt3x5[381]=1;
+TyFnt3x5[382]=1;
+TyFnt3x5[383]=0;
+TyFnt3x5[384]=1;
+TyFnt3x5[385]=0;
+TyFnt3x5[386]=0;
+TyFnt3x5[387]=1;
+TyFnt3x5[388]=0;
+TyFnt3x5[389]=0;
+#
+#   .X.    010
+#   X.X    101
+#   X.X    101
+#   XXX    111
+#   .XX    011
+TyFnt3x5[390]=0;
+TyFnt3x5[391]=1;
+TyFnt3x5[392]=0;
+TyFnt3x5[393]=1;
+TyFnt3x5[394]=0;
+TyFnt3x5[395]=1;
+TyFnt3x5[396]=1;
+TyFnt3x5[397]=0;
+TyFnt3x5[398]=1;
+TyFnt3x5[399]=1;
+TyFnt3x5[400]=1;
+TyFnt3x5[401]=1;
+TyFnt3x5[402]=0;
+TyFnt3x5[403]=1;
+TyFnt3x5[404]=1;
+#
+#   XX.    110
+#   X.X    101
+#   XX.    110
+#   XX.    110
+#   X.X    101
+TyFnt3x5[405]=1;
+TyFnt3x5[406]=1;
+TyFnt3x5[407]=0;
+TyFnt3x5[408]=1;
+TyFnt3x5[409]=0;
+TyFnt3x5[410]=1;
+TyFnt3x5[411]=1;
+TyFnt3x5[412]=1;
+TyFnt3x5[413]=0;
+TyFnt3x5[414]=1;
+TyFnt3x5[415]=1;
+TyFnt3x5[416]=0;
+TyFnt3x5[417]=1;
+TyFnt3x5[418]=0;
+TyFnt3x5[419]=1;
+#
+#   .XX    011
+#   X..    100
+#   .XX    011
+#   ..X    001
+#   XX.    110
+TyFnt3x5[420]=0;
+TyFnt3x5[421]=1;
+TyFnt3x5[422]=1;
+TyFnt3x5[423]=1;
+TyFnt3x5[424]=0;
+TyFnt3x5[425]=0;
+TyFnt3x5[426]=0;
+TyFnt3x5[427]=1;
+TyFnt3x5[428]=1;
+TyFnt3x5[429]=0;
+TyFnt3x5[430]=0;
+TyFnt3x5[431]=1;
+TyFnt3x5[432]=1;
+TyFnt3x5[433]=1;
+TyFnt3x5[434]=0;
+#
+#   XXX    111
+#   .X.    010
+#   .X.    010
+#   .X.    010
+#   .X.    010
+TyFnt3x5[435]=1;
+TyFnt3x5[436]=1;
+TyFnt3x5[437]=1;
+TyFnt3x5[438]=0;
+TyFnt3x5[439]=1;
+TyFnt3x5[440]=0;
+TyFnt3x5[441]=0;
+TyFnt3x5[442]=1;
+TyFnt3x5[443]=0;
+TyFnt3x5[444]=0;
+TyFnt3x5[445]=1;
+TyFnt3x5[446]=0;
+TyFnt3x5[447]=0;
+TyFnt3x5[448]=1;
+TyFnt3x5[449]=0;
+#
+#   X.X    101
+#   X.X    101
+#   X.X    101
+#   X.X    101
+#   XXX    111
+TyFnt3x5[450]=1;
+TyFnt3x5[451]=0;
+TyFnt3x5[452]=1;
+TyFnt3x5[453]=1;
+TyFnt3x5[454]=0;
+TyFnt3x5[455]=1;
+TyFnt3x5[456]=1;
+TyFnt3x5[457]=0;
+TyFnt3x5[458]=1;
+TyFnt3x5[459]=1;
+TyFnt3x5[460]=0;
+TyFnt3x5[461]=1;
+TyFnt3x5[462]=1;
+TyFnt3x5[463]=1;
+TyFnt3x5[464]=1;
+#
+#   X.X    101
+#   X.X    101
+#   X.X    101
+#   X.X    101
+#   .X.    010
+TyFnt3x5[465]=1;
+TyFnt3x5[466]=0;
+TyFnt3x5[467]=1;
+TyFnt3x5[468]=1;
+TyFnt3x5[469]=0;
+TyFnt3x5[470]=1;
+TyFnt3x5[471]=1;
+TyFnt3x5[472]=0;
+TyFnt3x5[473]=1;
+TyFnt3x5[474]=1;
+TyFnt3x5[475]=0;
+TyFnt3x5[476]=1;
+TyFnt3x5[477]=0;
+TyFnt3x5[478]=1;
+TyFnt3x5[479]=0;
+#
+#   X.X    101
+#   X.X    101
+#   XXX    111
+#   XXX    111
+#   XXX    111
+TyFnt3x5[480]=1;
+TyFnt3x5[481]=0;
+TyFnt3x5[482]=1;
+TyFnt3x5[483]=1;
+TyFnt3x5[484]=0;
+TyFnt3x5[485]=1;
+TyFnt3x5[486]=1;
+TyFnt3x5[487]=1;
+TyFnt3x5[488]=1;
+TyFnt3x5[489]=1;
+TyFnt3x5[490]=1;
+TyFnt3x5[491]=1;
+TyFnt3x5[492]=1;
+TyFnt3x5[493]=1;
+TyFnt3x5[494]=1;
+#
+#   X.X    101
+#   X.X    101
+#   .X.    010
+#   X.X    101
+#   X.X    101
+TyFnt3x5[495]=1;
+TyFnt3x5[496]=0;
+TyFnt3x5[497]=1;
+TyFnt3x5[498]=1;
+TyFnt3x5[499]=0;
+TyFnt3x5[500]=1;
+TyFnt3x5[501]=0;
+TyFnt3x5[502]=1;
+TyFnt3x5[503]=0;
+TyFnt3x5[504]=1;
+TyFnt3x5[505]=0;
+TyFnt3x5[506]=1;
+TyFnt3x5[507]=1;
+TyFnt3x5[508]=0;
+TyFnt3x5[509]=1;
+#
+#   X.X    101
+#   X.X    101
+#   .X.    010
+#   .X.    010
+#   .X.    010
+TyFnt3x5[510]=1;
+TyFnt3x5[511]=0;
+TyFnt3x5[512]=1;
+TyFnt3x5[513]=1;
+TyFnt3x5[514]=0;
+TyFnt3x5[515]=1;
+TyFnt3x5[516]=0;
+TyFnt3x5[517]=1;
+TyFnt3x5[518]=0;
+TyFnt3x5[519]=0;
+TyFnt3x5[520]=1;
+TyFnt3x5[521]=0;
+TyFnt3x5[522]=0;
+TyFnt3x5[523]=1;
+TyFnt3x5[524]=0;
+#
+#   XXX    111
+#   ..X    001
+#   .X.    010
+#   X..    100
+#   XXX    111
+TyFnt3x5[525]=1;
+TyFnt3x5[526]=1;
+TyFnt3x5[527]=1;
+TyFnt3x5[528]=0;
+TyFnt3x5[529]=0;
+TyFnt3x5[530]=1;
+TyFnt3x5[531]=0;
+TyFnt3x5[532]=1;
+TyFnt3x5[533]=0;
+TyFnt3x5[534]=1;
+TyFnt3x5[535]=0;
+TyFnt3x5[536]=0;
+TyFnt3x5[537]=1;
+TyFnt3x5[538]=1;
+TyFnt3x5[539]=1;
+
+#end of TyabFontScript.scr

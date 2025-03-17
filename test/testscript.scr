@@ -1,3 +1,5 @@
+  int blblah=2
+  
   init::;  # verify indenting is removed along with comment
       return;  
 
@@ -14,4 +16,7 @@
 #pragma include "testscript4.scr"
 #.-------------------------------------
     #. indent
+
+#pragma include "TyabGenericScript.scr"	
+	
 #.end --- testscript

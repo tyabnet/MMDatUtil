@@ -367,6 +367,7 @@ public:
     bool         m_bBigEndian     = false;  // if set output format is big endian, default false is little endian.
     bool         m_bBOM           = false;  // if set, output will have Byte Order Marker
     bool         m_bReadANSI      = false;  // if set, assume 8 byte input with no BOM is ANSI
+    bool         m_bOptimizeNames = false;  // if set optimize variable and event chain names
 }; // class CommandLineOptions
 
 
@@ -2220,7 +2221,108 @@ class MMMap
         return ms->getValue( slevelname );
     }
 
+    // way to process the block section and get event chains used 
+    class blockEvents
+    {
+    public:
+        class blockEventChain
+        {
+        public:
+            enum EventType
+            {
+                eUnknown,           // not defined
+                eExportToScript,    // script calls this event
+                eImportFromScript,  // block call this user defined event
+            };
 
+            blockEventChain() = default;
+
+            blockEventChain(InputLine const& iline, std::string const& name, std::string const& namelc, EventType type) :
+                m_line(iline),
+                m_name(name),
+                m_namelc(namelc),
+                m_type(type)
+            {}
+
+            EventType getType() const { return m_type; }
+            InputLine const &line() const { return m_line; }
+            std::string const &name() const { return m_name; }
+            std::string const &namelc() const { return m_namelc; }
+        protected:
+            InputLine   m_line;    // line defined in block system
+            std::string m_name;    // name of event chain
+            std::string m_namelc;  // name in lower case
+            EventType   m_type = EventType::eUnknown;
+        };
+
+        void processLine(InputLine const& iline)
+        {
+            std::string_view vline = iline.getLine();
+            std::string_view::size_type spos = 0;
+
+            const std::string_view tev = "TriggerEventChain";
+            const std::string_view ece = "EventCallEvent";
+
+            spos = vline.find(tev);   // see if this is a block event chain trigger
+            if (spos != std::string_view::npos)     // found - the last parameter is the event chain name
+            {
+                spos = vline.find_last_of(',');     // seperator of last parameter
+                if (spos == std::string_view::npos)
+                    return;                         // invalid format - ignore
+                std::string name(vline.substr(spos + 1));  // get the name
+                if (name.empty())
+                    return;
+
+                std::string namelc = MMUtil::toLower(name);
+                blockEventChain chain(iline, name, namelc, blockEventChain::eExportToScript);
+                m_blkChains.emplace(namelc,chain );
+            }
+            else
+            {
+                spos = vline.find(ece);   // see if this is a block event call event
+                if (spos != std::string_view::npos)     // found - the last parameter is the event chain name
+                {
+                    spos = vline.find_last_of(',');     // seperator of last parameter
+                    if (spos == std::string_view::npos)
+                        return;                         // invalid format - ignore
+                    std::string name(vline.substr(spos + 1));  // get the name
+                    if (name.empty())
+                        return;
+
+                    std::string namelc = MMUtil::toLower(name);
+                    blockEventChain chain(iline, name, namelc, blockEventChain::eImportFromScript);
+                    m_blkChains.emplace(namelc,chain );
+                }
+            }
+        }
+
+        std::unordered_map<std::string,blockEventChain> const & processLines(std::deque<InputLine> const& blockSection)
+        {
+            for (auto const& it : blockSection)
+            {
+                processLine( it );
+            }
+            return m_blkChains;
+        }
+
+    protected:
+        std::unordered_map<std::string,blockEventChain> m_blkChains;
+
+    };
+    
+    typedef std::unordered_map<std::string, blockEvents::blockEventChain> blockEvents_t;
+
+    blockEvents_t getBlockChains() const
+    {
+        blockEvents_t retMap;
+        const MapSection *ms = findMapSection(sblocks);
+        if (ms)
+        {
+            blockEvents Events;
+            retMap = Events.processLines( ms->getLines() );
+        }
+        return retMap;
+    }
 
 protected:
     void deleteSections()

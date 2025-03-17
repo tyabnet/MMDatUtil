@@ -373,6 +373,11 @@ class CommandLineParser
                     break;
                 }
 
+                case 38: // optimize script variables and chain names
+                {
+                    m_cmdOptions.m_bOptimizeNames = true;
+                }
+
 
                 } // switch 
             }
@@ -483,6 +488,7 @@ class CommandLineParser
         { L"-utf32le",        35 },
         { L"-utf32be",        36 },
         { L"-utf8",           37 },
+        { L"-soptnames",      38 }
     };
 
     std::wstring_view getStringParm(std::size_t i)
@@ -610,6 +616,7 @@ void help()
     wprintf(L"      -snocomment     remove all comments in script except #.\n");
     wprintf(L"      -sdefine        name=value   define script subsitution\n");
     wprintf(L"      -sdatefmt       format for TyabScript{Inc}Date, default \"y.m.d\"");
+    wprintf(L"      -soptnames      Optimize script variable and event chain names\n");
     wprintf(L"      -flattenabove   height, newheight. Heights > height set to newheight\n");
     wprintf(L"      -flattenbelow   height, newheight. Heights < height set to newheight\n");
     wprintf(L"      -flattenbetween low, high, value. low <= Heights <= high set to value\n");
@@ -957,11 +964,15 @@ int wmain(int , wchar_t ** )   // ignore all passed in parameters
             wprintf(L" Setting creator to: %s\n", Unicode::utf8_to_wstring(cmdParser.getOptions().m_creator).c_str());
         }
 
+        auto blockEvents = outMap.getBlockChains();
+
+
         ScriptEngine scrEngine;     // script processing engine
         scrEngine.setSize( outMap.getHeight(), outMap.getWidth() );
         scrEngine.setFileName( cmdParser.getOptions().m_srcscript );    // set script filename or empty
         scrEngine.addCmdDefines(cmdParser.getOptions(), outMap.getHeight(), outMap.getWidth(), outMap.getMapName() );
         scrEngine.loadScript( outMap.getScriptLines(), cmdParser.getOptions().m_sincdirs, cmdParser.getOptions().m_bReadANSI );
+        scrEngine.setBlockEvents( blockEvents );  // communmicate event chains used by block system
 
         if (!scrEngine.getErrors().emptyErrors())
         {
@@ -974,7 +985,10 @@ int wmain(int , wchar_t ** )   // ignore all passed in parameters
             scrEngine.getErrors().printWarnings();
         }
 
-        int outscriptlen = outMap.setScriptLines(scrEngine.processInputLines( cmdParser.getOptions().m_bScrFixSpace,  cmdParser.getOptions().m_bScrNoComments ));
+        int outscriptlen = outMap.setScriptLines(scrEngine.processInputLines(
+                        cmdParser.getOptions().m_bScrFixSpace,
+                        cmdParser.getOptions().m_bScrNoComments,
+                        cmdParser.getOptions().m_bOptimizeNames ));
 
         if (!scrEngine.getErrors().emptyErrors())
         {

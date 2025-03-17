@@ -3,6 +3,11 @@
 #pragma TyabScriptIncDate vy.m.d.g 
 #
 #.-------------------------------------
+#pragma define ttSolidRockRegular=38
+#pragma define ttHardRockRegular=34
+
+int i=$(ttSolidRockRegular)
+
 #pragma include "testscript3.scr"
 #.-------------------------------------
 #.end --- testscript2

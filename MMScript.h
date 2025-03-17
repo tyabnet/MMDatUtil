@@ -93,7 +93,8 @@ protected:
     const std::string kStr_dead                         = "dead";                            // Data Field Trigger, Trigger when object is dead.
     const std::string kStr_dirt                         = "dirt";                            // Macro, Tile ID of dirt (26).
     const std::string kStr_disable                      = "disable";                         // Event, Disable object.
-    const std::string kStr_docks                        = "docs";                            // Macro, Number of Docks.
+    const std::string kStr_docks                        = "docks";
+    const std::string kStr_drain                        = "drain";                           // event, int, number of crystals to drain
     const std::string kStr_drill                        = "drill";                           // Event / Trigger, Drill tile.
     const std::string kStr_drive                        = "drive";                           // Trigger, Trigger when vehicle over tile.
     const std::string kStr_driven                       = "driven";                          // Data Field Trigger|Trigger when a miner enters a vehicle.
@@ -230,6 +231,7 @@ protected:
     const std::string kStr_upgraded                     = "upgraded";                        // | Trigger | Not working, don't use. |`
     const std::string kStr_upgradestation               = "upgradestation";                  // | Macro | Number of Upgrade Stations. |
     const std::string kStr_unpause                      = "unpause";                         // | Event | Resumes the game if paused. |
+    const std::string kStr_variable                     = "variable";                        // | objective section reserved word |
     const std::string kStr_vehicle                      = "vehicle";                         // | Variable / Class | Vehicle object or trigger class. |
     const std::string kStr_vehicles                     = "vehicles";                        // | Macro | Number of vehicles. |
     const std::string kStr_VehicleCargoCarrier_C        = "VehicleCargoCarrier_C";           // | Collection | Cargo Carriers |
@@ -308,6 +310,7 @@ protected:
     const std::string kS_dirt                         = MMUtil::toLower( kStr_dirt                         );   // Macro, Tile ID of dirt (26).
     const std::string kS_disable                      = MMUtil::toLower( kStr_disable                      );   // Event, Disable object.
     const std::string kS_docks                        = MMUtil::toLower( kStr_docks                        );   // Macro, Number of Docks.
+    const std::string kS_drain                        = MMUtil::toLower( kStr_drain                        );   // event, int, number of crystals to drain
     const std::string kS_drill                        = MMUtil::toLower( kStr_drill                        );   // Event / Trigger, Drill tile.
     const std::string kS_drive                        = MMUtil::toLower( kStr_drive                        );   // Trigger, Trigger when vehicle over tile.
     const std::string kS_driven                       = MMUtil::toLower( kStr_driven                       );   // Data Field Trigger|Trigger when a miner enters a vehicle.
@@ -444,6 +447,7 @@ protected:
     const std::string kS_upgraded                     = MMUtil::toLower( kStr_upgraded                     );   // | Trigger | Not working, don't use. |
     const std::string kS_upgradestation               = MMUtil::toLower( kStr_upgradestation               );   // | Macro | Number of Upgrade Stations. |
     const std::string kS_unpause                      = MMUtil::toLower( kStr_unpause                      );   // | Event | Resumes the game if paused. |
+    const std::string kS_variable                     = MMUtil::toLower( kStr_variable                     );   // | objective section reserved word |
     const std::string kS_vehicle                      = MMUtil::toLower( kStr_vehicle                      );   // | Variable / Class | Vehicle object or trigger class. |
     const std::string kS_vehicles                     = MMUtil::toLower( kStr_vehicles                     );   // | Macro | Number of vehicles. |
     const std::string kS_VehicleCargoCarrier_C        = MMUtil::toLower( kStr_VehicleCargoCarrier_C        );   // | Collection | Cargo Carriers |
@@ -531,6 +535,7 @@ protected:
         { kS_dirt                         , kStr_dirt                         },   // Macro, Tile ID of dirt (26).
         { kS_disable                      , kStr_disable                      },   // Event, Disable object.
         { kS_docks                        , kStr_docks                        },   // Macro, Number of Docks.
+        { kS_drain                        , kStr_drain                        },   // event, int, number of crystals to drain
         { kS_drill                        , kStr_drill                        },   // Event / Trigger, Drill tile.
         { kS_drive                        , kStr_drive                        },   // Trigger, Trigger when vehicle over tile.
         { kS_driven                       , kStr_driven                       },   // Data Field Trigger|Trigger when a miner enters a vehicle.
@@ -667,6 +672,7 @@ protected:
         { kS_upgraded                     , kStr_upgraded                     },   // | Trigger | Not working, don't use. |
         { kS_upgradestation               , kStr_upgradestation               },   // | Macro | Number of Upgrade Stations. |
         { kS_unpause                      , kStr_unpause                      },   // | Event | Resumes the game if paused. |
+        { kS_variable                     , kStr_variable                     },   // | objective section reserved word |
         { kS_vehicle                      , kStr_vehicle                      },   // | Variable / Class | Vehicle object or trigger class. |
         { kS_vehicles                     , kStr_vehicles                     },   // | Macro | Number of vehicles. |
         { kS_VehicleCargoCarrier_C        , kStr_VehicleCargoCarrier_C        },   // | Collection | Cargo Carriers |
@@ -981,9 +987,12 @@ protected:
     static constexpr uint64_t eTokenBoolFalse      = 0x0000010000000000ull;  // also has eTokenInt set
     static constexpr uint64_t eTokenBoolTrue       = 0x0000020000000000ull;  // also has eTokenInt set
     static constexpr uint64_t eTokenArrowColor     = 0x0000040000000000ull;  // one of the arrow colors
-    static constexpr uint64_t eTokenOptional       = 0x4000000000000000ull;  // set if token is optional
-    static constexpr uint64_t eTokenIgnore         = 0x8000000000000000ull;  // if set ignore the token completely. When when ignorning invalid spaces
 
+    static constexpr uint64_t eTokenChainNoOptimize= 0x2000000000000000ull;  // set if token is chainname and it should not be optimized
+    static constexpr uint64_t eTokenOptional       = 0x4000000000000000ull;  // set if token is optional
+    static constexpr uint64_t eTokenIgnore         = 0x8000000000000000ull;  // if set ignore the token completely. Set when ignorning invalid spaces
+
+    // multiple owners so all access will be via a shared_ptr.
     class variableType
     {
     public:
@@ -1007,6 +1016,9 @@ protected:
         variableType(const std::string& name, varType type) : m_name(name), m_namelc(MMUtil::toLower(name)), m_type(type), m_count(1) {}
         ~variableType() = default;
 
+        void setLine( const InputLine &iline ) { m_line = iline; }
+        const InputLine &getLine() const { return m_line; }
+
         bool hasData() const { return m_hasValue; }
         void setValueString( const std::string &val ) { m_string = val; }
         void setValueTimer(float delay, float min, float max, const std::string& event)
@@ -1022,9 +1034,16 @@ protected:
         void setValueID( int id ) { m_id = id; m_hasValue = true; }
         void setValueBuilding( int row, int col ) { m_row = row; m_col = col; m_hasValue = true; }
 
+        std::string const& getTimerEventName() const
+        {
+            assert(m_type == varType::eVarTypeTimer);
+            return m_timerevent;
+        }
+
         int getType() const { return (int)m_type; }
         const std::string & getName() const { return m_name; }
         const std::string & getNamelc() const { return m_namelc; }
+        void setOptName( std::string &optname ) { m_optname = optname; }
 
         bool operator == (const variableType& rhs) const { return m_namelc == rhs.m_namelc; } // collections
         bool operator <  (const variableType& rhs) const { return m_namelc <  rhs.m_namelc; } // collections
@@ -1047,27 +1066,19 @@ protected:
             return false;
         }
 
-        // true if name has been optimized
-        bool isOptName() const
-        {
-            return m_optname.empty();
-        }
-
         // return ref to either original name or optimized name if it has one
-        const std::string & getOptName() const
-        {
-            return m_optname.empty() ? m_name : m_optname;
-        }
+        const std::string & getOptName() const { return m_optname; }
 
-        void intcount() { m_count++; }
+        void incCount() { m_count++; }
         int getCount() const { return m_count; }
 
 
     protected:
+        InputLine   m_line;       // line that defines variable. Used to generate warnings if never used
         std::string m_namelc;     // lower case name
         std::string m_name;       // original name may be mixed case
-        std::string m_optname;    // optimized name to write with
-        int         m_count = 0;  // number of references
+        std::string m_optname;    // optimized name, all instances of this variable will be written with this name
+        int         m_count = 0;  // number of references. Used for generation of new names
         varType     m_type = eVarTypeBool;  // defines type of variable
 
         // these are the types of = parameters
@@ -1085,7 +1096,7 @@ protected:
         bool        m_hasValue = false; // set to true if any of the above have data
     };
 
-    typedef std::shared_ptr<variableType> variableTypeSP;
+    typedef std::shared_ptr<variableType> variableTypeSP;   // all access is via the shared_ptr
     
 
     std::unordered_map<std::string,variableType::varType> m_varTypeMap = 
@@ -1111,7 +1122,7 @@ protected:
     {
     public:
 
-        // In addition the the entire collection, we duplicate into variable type collections.
+        // In addition to the entire collection, we duplicate into variable type collections.
         // This allows faster checks to identify duplicate variables to same object (which is an error)
         class userVariables
         {
@@ -1128,7 +1139,7 @@ protected:
             void add(const std::string& key, variableTypeSP& p)
             {
                 assert( key.empty() == false );
-                m_variables[p.get()->getType()].emplace( key, p );
+                m_variables[p->getType()].emplace( key, p );
             }
 
             bool contains(const std::string& key, variableType::varType type)
@@ -1136,28 +1147,33 @@ protected:
                 return m_variables[type].contains(MMUtil::toLower(key));
             }
 
-            variableType * find(const std::string& key, variableType::varType type)
+            variableTypeSP find(const std::string& key, variableType::varType type)
             {
                 auto it = m_variables[type].find(MMUtil::toLower(key));
-                return it->second.get();
+                return it->second;
             }
 
-            const variableType * find(const std::string& key, variableType::varType type) const
+            const variableTypeSP find(const std::string& key, variableType::varType type) const
             {
                 auto it = m_variables[type].find(MMUtil::toLower(key));
-                return it->second.get();
+                return it->second;
             }
 
             // compare this variable to the passed in one, and return true if the values are the same.
             // can return true only for miner, creature, vehicle, building variables
-            bool isValueDuplicated(const variableType * var) const
+            bool isValueDuplicated(const variableTypeSP &var) const
             {
                 for (auto const & it : m_variables[var->getType()])
                 {
-                    if (it.second.get()->isDuplicateValue(*var))
+                    if (it.second->isDuplicateValue(*var))
                         return true;
                 }
                 return false;
+            }
+
+            std::unordered_map<std::string, variableTypeSP> const& getTimerVars() const  // used to update ref counts for event chain names
+            {
+                return m_variables[variableType::eVarTypeTimer];
             }
         protected:
 
@@ -1170,7 +1186,7 @@ protected:
 
         void add(variableTypeSP& variable)
         {
-            const std::string & key = variable.get()->getNamelc();
+            const std::string & key = variable->getNamelc();
             if (!contains(key)) // have to check since it could already be a reported error
             {
                 m_allvariables.emplace(key,variable);
@@ -1178,32 +1194,43 @@ protected:
             }
         }
 
-        bool contains(const std::string& key)
+        bool contains(const std::string& key) const
         {
             return m_allvariables.contains( MMUtil::toLower(key) );
         }
 
-        variableType * find(const std::string& key)
+        variableTypeSP find(const std::string& key)
         {
             auto it = m_allvariables.find( MMUtil::toLower(key));
-            return it->second.get();
+            return it->second;
         }
 
-        const variableType * find(const std::string& key) const
+        const variableTypeSP find(const std::string& key) const
         {
             auto it = m_allvariables.find( MMUtil::toLower(key));
             if (it == m_allvariables.end())
                 return nullptr;
-            return it->second.get();
+            return it->second;
+        }
+
+        std::string getOptName(const std::string& key) const
+        {
+            auto it = m_allvariables.find( MMUtil::toLower(key));
+            if (it != m_allvariables.end())
+                return it->second->getOptName();
+            return std::string();
         }
 
         // used to determine for miner, vehicle, building, creature if the value is already assigned.
         // return true if it already exists. false if not duplicated
-        bool isValueDuplicated(const variableType * variable) const
+        bool isValueDuplicated(const variableTypeSP & variable) const
         {
             return m_typevariables.isValueDuplicated( variable );
 
         }
+
+        std::unordered_map<std::string, variableTypeSP> const & allVariables() const { return m_allvariables; }
+        std::unordered_map<std::string, variableTypeSP> const & getTimerVars() const { return m_typevariables.getTimerVars(); }
 
     protected:
         std::unordered_map<std::string, variableTypeSP> m_allvariables;
@@ -1211,6 +1238,8 @@ protected:
     };
 
 
+    // multiple owners during name optimization so all access is via shared_ptr
+    // similar to variableType, but used to hold event chain names
     class eventChainName
     {
     public:
@@ -1218,24 +1247,27 @@ protected:
         eventChainName(const std::string& name) : m_name(name), m_namelc(MMUtil::toLower(name)), m_count(1) {}
         ~eventChainName() = default;
 
+        void setLine( const InputLine &iline ) { m_line = iline; }
+        const InputLine &getLine() const { return m_line; }
+
         void incCount() { m_count++; }
         int  getCount() const { return m_count; }
         void setOptName( const std::string &optname ) { m_optname = optname; }
 
-        // true if name has been optimized
-        bool isOptName() const
-        {
-            return m_optname.empty();
-        }
-
-        const std::string& getOptName() const { return m_optname.empty() ? m_name : m_optname; }
+        const std::string& getOptName() const { return m_optname; }
+        const std::string& getName()    const { return m_name; }
+        const std::string& getNamelc()  const { return m_namelc; }
 
     protected:
+        InputLine   m_line;      // generate warnings if not referenced
         std::string m_name;      // original name
         std::string m_namelc;    // lower case version of name
         std::string m_optname;   // optimized name
         int         m_count = 0; // number of times name is used
     };
+
+    typedef std::shared_ptr<eventChainName> eventChainNameSP;
+
 
     class allEventChainNames
     {
@@ -1249,38 +1281,32 @@ protected:
         }
 
         // increment the count if it already exists, or add a new one
-        void add(const std::string& name)
+        void add(const std::string& name, InputLine const &iline )
         {
             std::string namelc = MMUtil::toLower(name);
-            auto it = m_eventchainnames.find( MMUtil::toLower(name));
-            if (it != m_eventchainnames.end())
-            {
-                (*it).second.incCount();
-            }
-            else
-            {
-                m_eventchainnames.emplace(namelc,eventChainName(name));
-            }
+            assert(m_eventchainnames.contains(namelc) == false);
+
+            eventChainNameSP pName = std::make_shared<eventChainName>(name);
+            pName->setLine( iline );
+            m_eventchainnames.emplace(namelc,pName);
         }
 
-        // true if name has been optimized
-        bool isOptName(const std::string& name) const
+        void incCount(const std::string& name)
         {
-            auto it = m_eventchainnames.find( MMUtil::toLower(name));
+            auto it = m_eventchainnames.find( MMUtil::toLower(name) );
+            assert(it != m_eventchainnames.end());
             if (it != m_eventchainnames.end())
             {
-                return (*it).second.isOptName();
+                (*it).second->incCount();
             }
-            return false;
         }
-
 
         void setOptName(const std::string& name, const std::string& optName)
         {
             auto it = m_eventchainnames.find( MMUtil::toLower(name));
             if (it != m_eventchainnames.end())
             {
-                (*it).second.setOptName( optName );
+                (*it).second->setOptName( optName );
             }
         }
 
@@ -1290,15 +1316,21 @@ protected:
             auto it = m_eventchainnames.find( MMUtil::toLower(name));
             if (it != m_eventchainnames.end())
             {
-                return (*it).second.getOptName();
+                return (*it).second->getOptName();
             }
             return std::string();
         }
 
+        eventChainNameSP find(std::string str)
+        {
+            auto it = m_eventchainnames.find(MMUtil::toLower(str));
+            return it->second;
+        }
 
+        std::unordered_map<std::string, eventChainNameSP> const &allChainNames() const { return m_eventchainnames; }
 
     protected:
-        std::unordered_map<std::string, eventChainName> m_eventchainnames;
+        std::unordered_map<std::string, eventChainNameSP> m_eventchainnames;
     };
 
     class ScriptToken   // TODO needs to hold more info - not sure what that will be
@@ -1730,7 +1762,7 @@ protected:
                             break;
                         }
 
-                        case '$':   // possible start of macro. Format is $(macro)$. macro is only alpha/digits, must start with alpha
+                        case '$':   // possible start of macro. Format is $(macro). macro is only alpha/digits, must start with alpha
                         {
                             std::size_t endpos;
                             std::string macro;
@@ -1797,8 +1829,10 @@ protected:
         }
 
         // build line from the parsed tokens
-        std::string serialize_out( const ScriptEngine & se, bool bNoComments ) const
+        // set bSkip to true to ignore this line, caller will ignore
+        std::string serialize_out( const ScriptEngine & se, bool bNoComments, bool bOptimizeNames, bool &bSkip ) const
         {
+            bSkip = false;
             std::string str;
             std::size_t len = m_line.getLine().length();
             str.reserve( len ? len : 256 );
@@ -1809,17 +1843,18 @@ protected:
                 if (it.getID() & eTokenVariable) // token is some sort of user variable, it may be renamed
                 {
                     const allUserVariables & var = se.getUserVariables();
-                    const variableType * vt = var.find(it.getToken());
-                    if (vt->isOptName())
-                        str += vt->getOptName();       // replace with generated optimized name
+                    std::string optname = var.getOptName(it.getToken());
+                    if (!optname.empty() && bOptimizeNames)
+                        str += optname;       // replace with generated optimized name
                     else
                         str += it.getToken();          // keep case used in this instance
                 }
                 else if (it.getID() & eTokenEventChain) // token is an event chain name
                 {
                     const allEventChainNames & var = se.getEventChainNames();
-                    if (var.isOptName(it.getToken()))
-                        str += var.getOptName(it.getToken());
+                    std::string optname = var.getOptName( it.getToken() );
+                    if (!(it.getID() & eTokenChainNoOptimize) && !optname.empty() && bOptimizeNames)
+                        str += optname;
                     else
                         str += it.getToken();          // keep case used in this instance
                 }
@@ -1827,11 +1862,15 @@ protected:
                 else if ((it.getID() & eTokenComment) && bNoComments && isIgnorableComment(it.getTokenlc()))
                     continue;
                 else if ((it.getID() & eTokenCommentLine) && bNoComments && isIgnorableComment(it.getTokenlc()))
+                {
+                    bSkip = true;   // full line comment, we must exclude them from the output since they turn into empty strings
                     continue;
+                }
                 else
                     str += it.getToken();
             }
-
+            if (!str.empty() && bSkip)  // should never happen
+                bSkip = false;          // return what it has
             str.shrink_to_fit();
             return str;
         }
@@ -1897,6 +1936,161 @@ protected:
                 }
             }
         }
+
+        // process the tokens, see if this is a variable declaration. if so return true, if not return false
+        // errors can be filled in if invalid, caller checks for any errors added.
+        // spaces can be removed if bFixSpace
+        // vars is updated as complete declarations are detected.
+        void processEventChainName(ScriptEngine& se, allEventChainNames& eventchainnames, bool bFixSpace, ErrorWarning& errors)
+        {
+            if (m_processed)    // line has been processed, don't process again.
+                return;
+            if (m_tokens.empty())  // should never happen
+                return;
+
+            std::size_t index = 0;
+            if (!getNextToken((size_t)((intmax_t)(-1)), index))    // start at beginning - find first non-ignored token
+                return;               // no more tokens, not a variable line
+
+            ScriptToken &it = m_tokens[index];  // get first usable token
+            if ((index <= 1) && (it.getID() & eTokenName))  // have token, see if it is one of the variable types (bool, int, float, string, intarrray, miner, building, vehicle, creature, arrow, timer)
+            {
+                assert(it.getTokenlc().empty() == false);
+                assert(it.getToken().empty() == false);
+
+                // an event chain name is a unique name followed by :: See if the next non-space token is ::
+                size_t nameindex = index;  // save index of possible event chain name
+
+                if (!getNextToken(index, index))    // move to next token
+                    return;                         // no more tokens, not an event chain name
+
+                if (processSpaces(m_tokens[index], bFixSpace, 0, errors))   // skip spaces that are fixed
+                    if (!getNextToken(index, index))    // move to next token
+                        return;                         // no more tokens, not an event chain name
+                // see if token is ::
+                if (!(m_tokens[index].getID() & eTokenDColon))
+                    return;                         // not event chain name
+
+                // found :: Set flag so later processing will skip everything prior to the ::
+                m_eventchain = true;    // found :: treat as event chain name def even if error
+
+                if (se.isReservedEvent(m_tokens[nameindex].getToken()))   // cannot be a reserved word
+                {
+                    errors.setError(m_line,"Event Chain name is reserved word");
+                    return;
+                }
+
+                if (eventchainnames.contains(m_tokens[nameindex].getToken())) // check for duplicate
+                {
+                    errors.setError(m_line,"Event Chain already defined");
+                    return;
+                }
+                eventchainnames.add(m_tokens[nameindex].getToken(), m_line );
+                // set token type as event chain name  (allows name optimization)
+                m_tokens[nameindex].orID(eTokenEventChain);
+
+                if (m_tokens[nameindex].getTokenlc() == se.kS_init) // init is not to be optimized
+                    m_tokens[nameindex].orID(eTokenChainNoOptimize);
+                else if (m_tokens[nameindex].getTokenlc() == se.kS_tick) // tick is not to be optimized
+                    m_tokens[nameindex].orID(eTokenChainNoOptimize);
+
+            }
+        }
+
+        void identifyTokens(ScriptEngine& se, bool bFixSpace, ErrorWarning& errors)
+        {
+            if (m_processed)    // line has been processed, don't process again.
+                return;
+            if (m_tokens.empty())  // should never happen
+                return;
+
+            auto vars = se.getUserVariables();
+            auto chains = se.getEventChainNames();
+
+            std::size_t index = 0;
+            if (!getNextToken((size_t)((intmax_t)(-1)), index))    // start at beginning - find first non-ignored token
+                return;
+
+            if (m_eventchain)  // this line has been identified as one that contains an event chain name, it has the :: token.
+            {
+                assert(m_tokens[index].getID() & eTokenEventChain);
+                if (!getNextToken(index, index))    // move to next token
+                    return;                         // no more tokens, not an event chain name
+                assert(m_tokens[index].getID() & eTokenDColon);   // we have already done space fixing, so this must be the double colon
+
+                // there must be one more token after the double colon,
+                if (!getNextToken(index, index))    // move to next token
+                {
+                    errors.setError(m_line, "Missing semi-colon after EventChain name double colon.");
+                    return;
+                }
+                if (processSpaces(m_tokens[index], bFixSpace, 0, errors))
+                {
+                    if (!getNextToken(index, index))    // move to next token
+                    {
+                        errors.setError(m_line, "Missing semi-colon after EventChain name double colon.");
+                        return;
+                    }
+                }
+                // index is now at the next token. It cannot be a comment (missing semi-colon)
+                if (m_tokens[index].getID() & eTokenComment)
+                {
+                    errors.setError(m_line, "Missing semi-colon after EventChain name double colon.");
+                    return;
+                }
+                if (m_tokens[index].getID() & eTokenSemi)  // event chain has no event on the decleration line, nothing but comments are allowed next.
+                {
+                    if (!getNextToken(index, index))  // end of line and no comment
+                    {
+                        m_processed = true;
+                    }
+                    else if (m_tokens[index].getID() && eTokenComment)
+                    {
+                        m_processed = true;
+                    }
+                    else
+                    {
+                        errors.setError(m_line, "Nothing allowed after semi-colon except a comment");
+                    }
+                    return;
+                }
+                // index is now at the first token after ;
+            }
+            // index is at the first non-space token. Parse the rest of the line.
+            // look for eTokenName and see if it is a reserved word. If so bring some of those bits in.
+            // If not, then see if it matches either the eventchain names or variable names and set those bits if so.
+            for (;;)  // process remaining tokens in line
+            {
+                if ((m_tokens[index].getID() & eTokenName) && !(m_tokens[index].getID() & (eTokenVariable | eTokenEventChain)))  // not yet assigned unknown tokens
+                {
+                    // see if token is reserved word, if so use those bits
+                    std::string const &str = m_tokens[index].getToken();
+                    if (se.isReservedEvent(str))  // excluded init and tick
+                    {
+                        // TODO need to figure out how to do generic event syntax checking...
+                    }
+                    else if (vars.contains(str))
+                    {
+                        m_tokens[index].orID(eTokenVariable);   // token is a user defined variable
+                        auto it = vars.find(str);
+                        it->incCount();
+                    }
+                    else if (chains.contains(str))
+                    {
+                        m_tokens[index].orID(eTokenEventChain);   // token is an event chain name
+                        auto it = chains.find(str);
+                        it->incCount();
+                    }
+                }
+                if (!getNextToken(index,index))         // move to next token
+                    break;                              // no tokens left, done
+                if (processSpaces(m_tokens[index],bFixSpace,0,errors))  // if a space and we can fix, ignore it
+                    if (!getNextToken(index,index))                     // was a space, move to next token
+                        break;                          // no tokens left, done
+            }
+        }
+
+
 
     protected:
         bool isIgnorableComment(const std::string& str) const
@@ -1996,34 +2190,36 @@ protected:
                 return;
             }
 
-            ScriptToken & it = m_tokens[index];
-            if (!(it.getID() & eTokenName))
+            ScriptToken & nameToken = m_tokens[index];
+            if (!(nameToken.getID() & eTokenName))
             {
-                errors.setError(m_line, std::string("invalid variable name: ") + it.getToken());
+                errors.setError(m_line, std::string("invalid variable name: ") + nameToken.getToken());
                 return;
             }
 
-            if (se.isReservedVar(it.getTokenlc()))
+            if (se.isReservedVar(nameToken.getTokenlc()))
             {
-                errors.setError(m_line, std::string("variable name is reserved keyword: ") + it.getTokenlc());
+                errors.setError(m_line, std::string("variable name is reserved keyword: ") + nameToken.getTokenlc());
                 return;
             }
 
-            if (vars.contains(it.getTokenlc()))
+            if (vars.contains(nameToken.getTokenlc()))
             {
-                errors.setError(m_line,std::string("Duplicate variable name: ") + it.getToken());
+                errors.setError(m_line,std::string("Duplicate variable name: ") + nameToken.getToken());
                 return;
             }
 
-            if (se.getEventChainNames().contains(it.getTokenlc()))
+            if (se.getEventChainNames().contains(nameToken.getTokenlc()))
             {
-                errors.setError(m_line,std::string("Variable name duplicates EventChain name")+ it.getTokenlc());
+                errors.setError(m_line,std::string("Variable name duplicates EventChain name: ")+ nameToken.getTokenlc());
                 return;
             }
 
             // variable name is valid, and not already in use. start building the variable data
-            variableTypeSP vtsp(std::make_shared<variableType>(it.getToken(), type)); // the shared pointer is what is added to collections
-            variableType * vt = vtsp.get();     // actual data
+            // variable data is owned by itself, all access is via shared_ptr so ownership is never an issue and multiple collections may have it
+            variableTypeSP vt(std::make_shared<variableType>(nameToken.getToken(), type)); // everyone only has a shared_ptr to it
+            vt->setLine(m_line);            // save line defining
+            nameToken.orID(se.eTokenVariable);     // name is a variable name, allows optimization
 
             if (getNextToken(index,index))   // there is another token
             {
@@ -2048,7 +2244,7 @@ protected:
                     }
                     if (index < m_tokens.size())  // have more tokens
                     {
-                        it = m_tokens[index];
+                        ScriptToken & it = m_tokens[index];
                         switch (vt->getType())
                         {
                         case variableType::eVarTypeBool:
@@ -2126,15 +2322,19 @@ protected:
 
                             if (processfloats(index, values, 3, bFixSpace, errors))
                             {
-                                it = m_tokens[index];
-                                if (it.getID() & eTokenName)
+                                ScriptToken &tit = m_tokens[index];
+                                if (tit.getID() & eTokenName)
                                 {
-                                    vt->setValueTimer(values[0], values[1], values[2], it.getTokenlc());
-                                    if (!se.isReservedVar(it.getTokenlc()))
+                                    vt->setValueTimer(values[0], values[1], values[2], tit.getTokenlc());
+                                    if (!se.isReservedVar(tit.getTokenlc()))
+                                    {
+                                        // last token is event chain name. Set type for later optimization
+                                        tit.orID(eTokenEventChain);   // it is an event chain name
                                         break;
+                                    }
                                     else
                                     {
-                                        errors.setError(m_line,"timer eventchain name is reserved word");
+                                        errors.setError(m_line,"timer event chain name is reserved word");
                                     }
                                 }
 
@@ -2152,13 +2352,12 @@ protected:
 
                                 if (getNextTokenNoSpaces(index,index,bFixSpace,errors))    // have another token
                                 {
-                                    it = m_tokens[index];
-                                    if (it.getID() == eTokenComma)
+                                    if (m_tokens[index].getID() == eTokenComma)
                                     {
                                         if (getNextTokenNoSpaces(index, index, bFixSpace, errors))
                                         {
-                                            it = m_tokens[index];
-                                            if ((it.getID() & eTokenInt) && !(it.getID() & (eTokenBoolFalse | eTokenBoolTrue)))
+                                            ScriptToken &tit = m_tokens[index];
+                                            if ((tit.getID() & eTokenInt) && !(it.getID() & (eTokenBoolFalse | eTokenBoolTrue)))
                                             {
                                                 col = std::stoi(it.getTokenlc());
                                                 vt->setValueBuilding(row,col);
@@ -2214,7 +2413,7 @@ protected:
                 errors.setError(m_line,"timer variable invalid format");
             }
 
-            vars.add( vtsp );  // add the variable even if we had errors.
+            vars.add( vt );  // add the variable even if we had errors.
 
         }
 
@@ -2307,7 +2506,7 @@ protected:
                 newindex = 0;   // first time start at 0
             else
                 newindex = index + 1;  // else move to next token
-            for (;newindex < m_tokens.size() && !(m_tokens[newindex].getID() & eTokenIgnore); newindex++) // if ignored, move to next token
+            for (;newindex < m_tokens.size() && (m_tokens[newindex].getID() & eTokenIgnore); newindex++) // if ignored, move to next token
                 ;
 
             return (newindex >=m_tokens.size()) ? false : true;
@@ -2325,7 +2524,7 @@ protected:
             return newindex < m_tokens.size();
         }
 
-        void processAssignmentTokenID(const ScriptToken& it, variableType* vt, const allUserVariables& vars, ErrorWarning& errors, const std::string &typeName )
+        void processAssignmentTokenID(const ScriptToken& it, variableTypeSP & vt, const allUserVariables& vars, ErrorWarning& errors, const std::string &typeName )
         {
             if (it.getID() & (eTokenFloat))
             {
@@ -2377,7 +2576,7 @@ protected:
 
         InputLine               m_line;                // holds the line, linenumber, filename
         std::deque<ScriptToken> m_tokens;              // parsed tokens for this line
-        bool                    m_eventchain = false;  // true = this line starts an event chain. TODO most likely will need a shared pointer to some data about chain.
+        bool                    m_eventchain = false;  // true = this line starts an event chain.
         bool                    m_processed = false;   // set to true when line has been completely processed
     };
 
@@ -2443,7 +2642,7 @@ public:
         return 0;
     }
 
-    std::deque<InputLine> processInputLines( bool bFixSpace, bool bNoComments )
+    std::deque<InputLine> processInputLines( bool bFixSpace, bool bNoComments, bool bOptimizeNames )
     {
         std::deque<InputLine> output;
 
@@ -2458,20 +2657,60 @@ public:
         if (!m_errors.emptyErrors())    // have errors, return empty output
             return output;
 
-        // 
-        // 
-        //
+        // prior to pass 2 need to add those event chains defined by the block system, and they cannot be optimized
+        // also those chains called by the block system need to be properly tagged as non optimizable
+        std::unordered_set<std::string> optIgnore;
+
+        processBlockChains( m_blockEvents, m_eventChainNames, optIgnore );
+        if (!m_errors.emptyErrors())    // have errors, return empty output
+            return output;
+
+        if (!optIgnore.contains(kS_init)) optIgnore.insert(kS_init);
+        if (!optIgnore.contains(kS_tick)) optIgnore.insert(kS_tick);
+
+        // pass 2 is looking at all lines, adding token info (eventchain, variable) and types if reserved word.
+        // also builds usage counts for variables and event chain names
+        // spaces inside of lines are removed here
+        pass2Processing( bFixSpace );
+        if (!m_errors.emptyErrors())    // have errors, return empty output
+            return output;
+
+        // todo any more processing or syntax checking
+
         // end processing.
+
+        // build new names for user variables and event chain names based on usage
+        if (bOptimizeNames)
+            optimizeNames(optIgnore);
 
         // now generate the output. have each line serialize itself out, make into a new InputLine for output
         int linenum = 1;
         std::string filename;       // blank filename for output
 
+        bool bLastBlank = false;
         for (auto const & it : m_scriptlines)
         {
-            output.push_back(InputLine(it.serialize_out(*this, bNoComments),linenum++,filename));
+            bool bSkip = false;
+            std::string str = it.serialize_out(*this, bNoComments, bOptimizeNames, bSkip);
+            if (!bSkip) // will be true if removing full line comments
+            {
+                if (str.empty() && bNoComments)     // if removing comments, we also remove duplicate blank lines
+                {
+                    if (bLastBlank)
+                        continue;   // skip duplicate blank line
+                    bLastBlank = true;  // first blank line, remember
+                }
+                else
+                    bLastBlank = false;  // not a blank line
+                output.push_back(InputLine(str, linenum++, filename));
+            }
         }
         return output;
+    }
+
+    void setBlockEvents(MMMap::blockEvents_t const& blockEvents)
+    {
+        m_blockEvents = blockEvents;
     }
 
 protected:
@@ -2498,8 +2737,108 @@ protected:
 
             it.processVariableDecleration( *this, m_variableNames, bFixSpace, m_errors );
 
-            //it.processEventChainName( *this, m_eventChainNames, bFixSpace, m_errors );
+            it.processEventChainName( *this, m_eventChainNames, bFixSpace, m_errors );
         }
+
+        // now we need to make sure ref counts are correct. Timer variables reference an event chain. If the chain is not defined, issue a warning.
+        // TODO we need block processing so a timer is able to call a block event directly, and blocks can call an event chain directly
+        for (auto const & it : m_variableNames.getTimerVars())
+        {
+            const std::string &TimerEventChainName = it.second->getTimerEventName();
+            assert(TimerEventChainName.empty() == false);
+
+            if (m_eventChainNames.contains(TimerEventChainName))
+            {
+                m_eventChainNames.incCount(TimerEventChainName);
+            }
+            else
+            {
+                m_errors.setWarning(it.second->getLine(),"Timer event chain name does not exist - timer has no effect");
+            }
+        }
+    }
+
+    void pass2Processing(bool bFixSpace)
+    {
+        for (auto& it : m_scriptlines)
+        {
+            it.identifyTokens( *this, bFixSpace, m_errors );
+
+        }
+    }
+
+    // optIgnore are event chain names to ignore for optimization
+    void processBlockChains(MMMap::blockEvents_t const &blockEvents, allEventChainNames & eventChainNames, std::unordered_set<std::string> & optIgnore )
+    {
+        for (auto it : blockEvents)
+        {
+            MMMap::blockEvents::blockEventChain const &chain = it.second;
+            if (chain.getType() == MMMap::blockEvents::blockEventChain::eExportToScript)  // this chain is callable by script, block defines it
+            {
+                std::string namelc = chain.namelc();  // 
+                bool bAdd = true;
+                if (!MMUtil::isAlphaNumericName(namelc))
+                {
+                    bAdd = false;
+                    m_errors.setWarning(chain.line(), "Invalid Block exported Script name - cannot be called by script");
+                }
+                if (isReservedEvent(namelc))
+                {
+                    bAdd = false;
+                    m_errors.setError(chain.line(), "Block exported Script name is reserved word - cannot be called by script");
+                }
+                if (eventChainNames.contains(namelc))
+                {
+                    bAdd = false;
+                    m_errors.setError(chain.line(), "Block exported script name is already defined in script");
+                }
+                if (bAdd)      // ok to add
+                {
+                    eventChainNames.add(chain.name(), chain.line());
+                    optIgnore.insert(namelc);
+                }
+            }
+            else if (chain.getType() == MMMap::blockEvents::blockEventChain::eImportFromScript)  // script name defined in script callable by block system
+            {
+                // these names can themselves be a single event - not an event chain. Check for that
+                // if it has a paramter: then it must be a reserved var
+
+                std::string namelc = chain.namelc();
+                std::string::size_type pos = namelc.find(':');
+                if (pos != std::string::npos)   // has parameters, must be a reserved word
+                {
+                    std::string subname = namelc.substr(0,pos);
+                    if (subname.empty())
+                    {
+                        m_errors.setWarning(chain.line(),"Invalid block event");
+                    }
+                    else
+                    {
+                        if (!isReservedVar(subname))
+                        {
+                            m_errors.setError(chain.line(),"Unknown block event - it will have no effect");
+                        }
+                    }
+                }
+                else if (!MMUtil::isAlphaNumericName(namelc))  // invalid name format
+                {
+                    m_errors.setWarning(chain.line(),"Invalid block event name, block has no effect");
+                }
+                else if (!isReservedEvent(namelc))  // not reserved word, so it must be a chain defined in our script
+                {
+                    if (!eventChainNames.contains(namelc))
+                    {
+                        m_errors.setWarning(chain.line(), "Block event chain is undefined in script - block has no effect");
+                    }
+                    else   // its all good. Inc the count and tag as non-optimizable
+                    {
+                        eventChainNames.incCount(chain.name());
+                        optIgnore.insert(namelc);
+                    }
+                }
+            }
+        }
+
     }
 
     // this is recursive. The passed in filename is to be loaded and lines added to input lines.
@@ -2817,15 +3156,116 @@ protected:
 protected:
     // walk the event chain and variable names, ignore init and tick, sort in order of reference,
     // and generate new names that are as short as possible
-    void optimizeNames()
+    void optimizeNames(std::unordered_set<std::string> const &optIgnore)
     {
+        class EventChainOrVariableName
+        {
+          public:
+            EventChainOrVariableName() = default;
+            EventChainOrVariableName(variableTypeSP& var)     : m_pVar(var) {}
+            EventChainOrVariableName(eventChainNameSP& chain) : m_pChain(chain) {}
 
+            void setSP(variableTypeSP& var) { m_pVar = var; }
+            void setSP(eventChainNameSP& chain) { m_pChain = chain; }
+
+            ~EventChainOrVariableName() = default;
+
+            bool operator < (const EventChainOrVariableName& rhs) const   // used to sort. Inverted so we get descending
+            {
+                return getCount() > rhs.getCount(); // invert to get decending
+            }
+            bool operator == (const EventChainOrVariableName& rhs) const   // having both < and == gives strong ordering
+            {
+                return getCount() == rhs.getCount();
+            }
+
+            int getCount() const
+            {
+                if (m_pVar != nullptr)
+                {
+                    return m_pVar->getCount();
+                }
+                else if (m_pChain != nullptr)
+                {
+                    return m_pChain->getCount();
+                }
+                else
+                    return 0;
+            }
+            bool isVar()   const { return m_pVar != nullptr; }
+            bool isChain() const { return m_pChain != nullptr; }
+
+            std::string getNamelc() const
+            {
+                std::string name;
+                if (m_pVar != nullptr)
+                {
+                    name = m_pVar->getNamelc();
+                }
+                else if (m_pChain != nullptr)
+                {
+                    name = m_pChain->getNamelc();
+                }
+            }
+
+            void setOptName(std::string& optname)
+            {
+                if (m_pVar != nullptr)
+                {
+                    m_pVar->setOptName( optname );
+                }
+                else if (m_pChain != nullptr)
+                {
+                    m_pChain->setOptName( optname );
+                }
+
+            }
+
+        protected:
+            variableTypeSP   m_pVar   = nullptr;
+            eventChainNameSP m_pChain = nullptr;
+
+        };
+
+        // build an array of EventChainOrVariableName's and sort, and assign new optimized names.
+        auto vars = getUserVariables();
+        auto chains = getEventChainNames();
+
+        size_t count = vars.allVariables().size() + chains.allChainNames().size();
+        std::vector<EventChainOrVariableName> names;    // where we put names for sorting
+        names.reserve( count );                         // prevent reallocations
+
+        // TODO - if timer make sure to increment the name of the called eventchain (if does not exist, that is a warning)
+        // the chain name may be one defined in block area
+        // load up all the names
+        for (auto const & it : vars.allVariables())  // all variables
+        {
+            auto sp = it.second;
+            names.push_back( EventChainOrVariableName(sp) );
+        }
+
+        for (auto const & it : chains.allChainNames())  // all names that are allowed to be optimized
+        {
+            auto sp = it.second;
+            if (!optIgnore.contains(sp->getNamelc()))   // check exclusion list (init,tick,block system names)
+                names.push_back( EventChainOrVariableName(sp) );
+        }
+
+        std::sort( names.begin(), names.end() );    // sort in decending order
+
+        // now assign optimized names
+        std::string optname;    // start at beginning
+        for (auto & it : names)
+        {
+            optname = nextOptimizedName(optname);
+            it.setOptName(optname);                 // will set the optimized name into the correct data
+        }
     }
 
 
     // given the last optimized name returned give the next one. Start with nullstr to start from beginning
-    // names are a-z if single length. z wraps to a0
-    // 2 or more length are alpha followed by 0-9 or a-z. Thus az wraps to b0, zz wraps to a00
+    // first character is a-z only. Additional characters are 0-9,a-z.
+    // Thus a-z -> a0-az -> b0->bz, etc, zz -> a00, etc
     // internal recrusive generate next name.
     std::string iNextName(const std::string& name ) const
     {
@@ -2884,13 +3324,13 @@ protected:
     allEventChainNames             m_eventChainNames;  // all event chain names
     allUserVariables               m_variableNames;    // all variable names
 
+    MMMap::blockEvents_t           m_blockEvents;    // data about event chains from block system
+
     ErrorWarning                   m_errors;
     Defines                        m_defines;      // user macros
 
     int                            m_rows = 0;
     int                            m_cols = 0;
-
-
 };
 
 

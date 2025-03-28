@@ -181,13 +181,13 @@ namespace MMUtil
         return removeLeadingWhite(str).empty();
     }
 
-    // check that string starts with alpha and only contains alpha/digits/underbar
-    // NOTE underbar is allowed in the name
+    // check that string starts with alpha/underbar and only contains alpha/digits/underbar
     static inline bool isAlphaNumericName(std::string_view str)
     {
-        if ((str.size() > 0) && std::isalpha((unsigned char)str[0]))
+        size_t len = str.length();
+        if ((len > 0) && (std::isalpha((unsigned char)str[0]) || (str[0]=='_')))
         {
-            for (std::size_t i = 1; i < str.size(); i++)
+            for (std::size_t i = 1; i < len; i++)
             {
                 if (!std::isalnum((unsigned char)str[i]) && (str[i] != '_'))
                     return false;
@@ -281,6 +281,20 @@ namespace MMUtil
         return valid;
     }
 
+    static std::string to_string_hex(int32_t val)
+    {
+        std::string retval;
+        do {
+            char digit = (char) val & 0xf;    // get lower digit
+            char ch = (digit < 10) ? '0'+digit : 'a'+digit-10;
+            retval = ch + retval;
+            val >>= 4;  // next higher hex digit
+        }
+        while (val);
+        return retval;
+    }
+
+
 };  // namespace MMUtil
 
 
@@ -369,6 +383,7 @@ public:
     bool         m_bBOM           = false;  // if set, output will have Byte Order Marker
     bool         m_bReadANSI      = false;  // if set, assume 8 byte input with no BOM is ANSI
     bool         m_bOptimizeNames = false;  // if set optimize variable and event chain names
+    bool         m_bOptimizeBlank = false;
 }; // class CommandLineOptions
 
 

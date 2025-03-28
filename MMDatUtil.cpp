@@ -378,6 +378,11 @@ class CommandLineParser
                     m_cmdOptions.m_bOptimizeNames = true;
                 }
 
+                case 39: // remove blank script lines
+                {
+                    m_cmdOptions.m_bOptimizeBlank = true;
+                }
+
 
                 } // switch 
             }
@@ -488,7 +493,8 @@ class CommandLineParser
         { L"-utf32le",        35 },
         { L"-utf32be",        36 },
         { L"-utf8",           37 },
-        { L"-soptnames",      38 }
+        { L"-soptnames",      38 },
+        { L"-soptblank",      39 }
     };
 
     std::wstring_view getStringParm(std::size_t i)
@@ -617,6 +623,7 @@ void help()
     wprintf(L"      -sdefine        name=value   define script subsitution\n");
     wprintf(L"      -sdatefmt       format for TyabScript{Inc}Date, default \"y.m.d\"");
     wprintf(L"      -soptnames      Optimize script variable and event chain names\n");
+    wprintf(L"      -soptblank      Remove script blank lines\n");
     wprintf(L"      -flattenabove   height, newheight. Heights > height set to newheight\n");
     wprintf(L"      -flattenbelow   height, newheight. Heights < height set to newheight\n");
     wprintf(L"      -flattenbetween low, high, value. low <= Heights <= high set to value\n");
@@ -988,7 +995,9 @@ int wmain(int , wchar_t ** )   // ignore all passed in parameters
         int outscriptlen = outMap.setScriptLines(scrEngine.processInputLines(
                         cmdParser.getOptions().m_bScrFixSpace,
                         cmdParser.getOptions().m_bScrNoComments,
-                        cmdParser.getOptions().m_bOptimizeNames ));
+                        cmdParser.getOptions().m_bOptimizeNames,
+                        cmdParser.getOptions().m_bOptimizeBlank
+            ));
 
         if (!scrEngine.getErrors().emptyErrors())
         {

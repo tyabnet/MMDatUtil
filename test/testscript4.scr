@@ -2,4 +2,11 @@
 #. testscript4.scr (c) 2024 Tyab All Rights Reserved
 #pragma TyabScriptIncDate vy.m.d.g 
 #
+#pragma define MyVar1=$(TyabUniqueName)
+#pragma define MyVar2=$( MyVar1)More
+#pragma define mychain1=$(  TyabUniqueName  )
+int $( myvar2 )=42
+$(   mychain1  )::;
+$(   myvar2  )=24;
+
 #.end --- testscript4

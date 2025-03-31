@@ -752,8 +752,6 @@ int wmain(int , wchar_t ** )   // ignore all passed in parameters
     MMMap srcMap;
     MMMap outMap;
 
-    //ScriptFile scriptFile;
-    //ScriptProcessor sfProcess;  // used to process scripts
 
     // get srcmap if we want one
     if (!cmdParser.getOptions().m_srcmap.empty())
@@ -782,10 +780,6 @@ int wmain(int , wchar_t ** )   // ignore all passed in parameters
             srcMap.getErrors().printErrors();
             return 1;
         }
-        if (!srcMap.getErrors().emptyWarnings())
-        {
-            srcMap.getErrors().printWarnings();
-        }
 
         wprintf(L"  Rows: %d  Columns: %d  Total lines: %d\n", srcMap.getHeight(), srcMap.getWidth(), srcMap.getNumLinesRead());
 
@@ -805,13 +799,42 @@ int wmain(int , wchar_t ** )   // ignore all passed in parameters
             cmdParser.getOptions().m_ecol = srcMap.getWidth() - 1;
         }
         srcMap.getErrors().printWarnings();     // display any warnings
+    }
 
-        //ScriptProcessor sp;
-        //sp.setScriptFile(srcMap.getScript());  // copies the script, does raw parsing
+    // if no output map, we still want to scan scripts
+    if (cmdParser.getOptions().m_outmap.empty())
+    {
+        ScriptEngine scrEngine;     // script processing engine
+        scrEngine.setSize(srcMap.getHeight(), srcMap.getWidth());
+        scrEngine.setFileName(cmdParser.getOptions().m_srcscript);    // set script filename or empty
+        scrEngine.addCmdDefines(cmdParser.getOptions(), srcMap.getHeight(), srcMap.getWidth(), srcMap.getMapName());
+        scrEngine.loadScript(srcMap.getScriptLines(), cmdParser.getOptions().m_sincdirs, cmdParser.getOptions().m_bReadANSI);
+        scrEngine.collectObjectiveVars(srcMap.getObjectiveLines());
+        scrEngine.collectBlockEventChains(srcMap.getBlockLines());
+
+        if (!scrEngine.getErrors().emptyErrors())
+        {
+            scrEngine.getErrors().printErrors();
+            return 1;
+        }
+
+        scrEngine.processInputLines(
+            cmdParser.getOptions().m_bScrFixSpace, false );
+
+        if (!scrEngine.getErrors().emptyErrors())
+        {
+            scrEngine.getErrors().printErrors();
+            return 1;
+        }
+        scrEngine.getErrors().printWarnings();
+
+        ScriptEngine::ScriptNameStats stats = scrEngine.getScriptNameStats();
+        wprintf(L"  Script Info. Variables: %d, Event Chains: %d\n",(int)stats.m_numvars, (int)stats.m_numchains);
+
     }
 
     // have an output map
-    if (!cmdParser.getOptions().m_outmap.empty())
+    else
     {
         outMap.setFileName(cmdParser.getOptions().m_outmap);
         bool bExists = outMap.fexists();
@@ -838,8 +861,6 @@ int wmain(int , wchar_t ** )   // ignore all passed in parameters
         {
             return 1;   // error working with temp file.
         }
-
-
 
         // tempOutMap is a temp file and can be used.
         // two cases. If using -eraseoutmap then copy the srcmap.
@@ -971,15 +992,13 @@ int wmain(int , wchar_t ** )   // ignore all passed in parameters
             wprintf(L" Setting creator to: %s\n", Unicode::utf8_to_wstring(cmdParser.getOptions().m_creator).c_str());
         }
 
-        auto blockEvents = outMap.getBlockChains();
-
-
         ScriptEngine scrEngine;     // script processing engine
         scrEngine.setSize( outMap.getHeight(), outMap.getWidth() );
         scrEngine.setFileName( cmdParser.getOptions().m_srcscript );    // set script filename or empty
         scrEngine.addCmdDefines(cmdParser.getOptions(), outMap.getHeight(), outMap.getWidth(), outMap.getMapName() );
         scrEngine.loadScript( outMap.getScriptLines(), cmdParser.getOptions().m_sincdirs, cmdParser.getOptions().m_bReadANSI );
-        scrEngine.setBlockEvents( blockEvents );  // communmicate event chains used by block system
+        scrEngine.collectObjectiveVars( outMap.getObjectiveLines() );
+        scrEngine.collectBlockEventChains( outMap.getBlockLines() );
 
         if (!scrEngine.getErrors().emptyErrors())
         {
@@ -987,17 +1006,10 @@ int wmain(int , wchar_t ** )   // ignore all passed in parameters
             return 1;
         }
 
-        if (!scrEngine.getErrors().emptyWarnings())
-        {
-            scrEngine.getErrors().printWarnings();
-        }
-
-        int outscriptlen = outMap.setScriptLines(scrEngine.processInputLines(
-                        cmdParser.getOptions().m_bScrFixSpace,
-                        cmdParser.getOptions().m_bScrNoComments,
-                        cmdParser.getOptions().m_bOptimizeNames,
-                        cmdParser.getOptions().m_bOptimizeBlank
-            ));
+        scrEngine.processInputLines(
+            cmdParser.getOptions().m_bScrFixSpace,
+            cmdParser.getOptions().m_bOptimizeNames
+        );
 
         if (!scrEngine.getErrors().emptyErrors())
         {
@@ -1005,10 +1017,21 @@ int wmain(int , wchar_t ** )   // ignore all passed in parameters
             return 1;
         }
 
-        if (!scrEngine.getErrors().emptyWarnings())
+        ScriptEngine::ScriptNameStats stats = scrEngine.getScriptNameStats();
+        wprintf(L"  Script Info. Variables: %d, Event Chains: %d\n",(int)stats.m_numvars, (int)stats.m_numchains);
+
+        int outscriptlen = outMap.setScriptLines(scrEngine.buildOutputLines(
+            cmdParser.getOptions().m_bScrNoComments,
+            cmdParser.getOptions().m_bOptimizeNames,
+            cmdParser.getOptions().m_bOptimizeBlank
+        ));
+
+        if (!scrEngine.getErrors().emptyErrors())
         {
-            scrEngine.getErrors().printWarnings();
+            scrEngine.getErrors().printErrors();
+            return 1;
         }
+        scrEngine.getErrors().printWarnings();
 
         wprintf(L"  Replacing outmap script. %d lines total\n", outscriptlen);
 

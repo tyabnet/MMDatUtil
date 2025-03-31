@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <string>
 #include <vector>
+#include <list>
 #include <unordered_set>
 #include <unordered_map>
 #include <cassert>
@@ -38,6 +39,26 @@ public:
     int getCols() const { return m_cols; }
 
 protected:
+    // generic storage for a name that must not be optimized. Used by objectives and blocks sections
+    class noOptimizeName
+    {
+    public:
+        noOptimizeName() = default;
+        noOptimizeName(InputLine const& iline, std::string const& name)
+            : m_iline(iline), m_name(name), m_namelc(MMUtil::toLower(name))
+        {}
+
+        InputLine   const &iline()  const { return m_iline; }
+        std::string const &name()   const { return m_name; }
+        std::string const &namelc() const { return m_namelc; }
+
+    protected:
+        InputLine   m_iline;      // line referenced in .dat file
+        std::string m_name;       // name used in line
+        std::string m_namelc;     // lower case version of name, use this for key
+    };
+
+
     bool isReservedWord(const std::string& key)
     {
         return isReservedVar( key );
@@ -49,6 +70,7 @@ protected:
     const std::string kStr_arrow                        = "arrow";                           // variable type
     const std::string kStr_Barrier_C                    = "Barrier_C";                       // collection, building
     const std::string kStr_Bat                          = "Bat";                             // collection, creature
+    const std::string kStr_Bat_C                        = "Bat_C";                           // collection, creature
     const std::string kStr_black                        = "black";                           // arrow color
     const std::string kStr_blue                         = "blue";                            // arrow color
     const std::string kStr_A                            = "A";                               // emerge direction
@@ -71,9 +93,12 @@ protected:
     const std::string kStr_BuildingUpgradeStation_C     = "BuildingUpgradeStation_C";        // collection, building
     const std::string kStr_built                        = "built";                           // data field trigger
     const std::string kStr_canteen                      = "canteen";                         // macro, int, number of Canteens.
+    const std::string kStr_Canteen_C                    = "Canteen_C";                       // macro, int, number of Canteens.
     const std::string kStr_cargocarrier                 = "cargocarrier";                    // macro, int number of Cargo Carriers.
+    const std::string kStr_CargoCarrier_C               = "CargoCarrier_C";                  // macro, int number of Cargo Carriers.
     const std::string kStr_change                       = "change";                          // trigger
     const std::string kStr_chromecrusher                = "chromecrusher";                   // macro int, number of Chrome Crushers
+    const std::string kStr_ChromeCrusher_C              = "ChromeCrusher_C";                 // macro int, number of Chrome Crushers
     const std::string kStr_click                        = "click";                           // Data Field Trigger
     const std::string kStr_clock                        = "clock";                           // macro, float, return game time
     const std::string kStr_col                          = "col";                             // Data Field int, object column
@@ -94,7 +119,8 @@ protected:
     const std::string kStr_dead                         = "dead";                            // Data Field Trigger, Trigger when object is dead.
     const std::string kStr_dirt                         = "dirt";                            // Macro, Tile ID of dirt (26).
     const std::string kStr_disable                      = "disable";                         // Event, Disable object.
-    const std::string kStr_docks                        = "docks";
+    const std::string kStr_docks                        = "docks";                           // Macro, int, number of docks
+    const std::string kStr_Docks_C                      = "Docks_C";                         // Macro, int, number of docks
     const std::string kStr_drain                        = "drain";                           // event, int, number of crystals to drain
     const std::string kStr_drill                        = "drill";                           // Event / Trigger, Drill tile.
     const std::string kStr_drive                        = "drive";                           // Trigger, Trigger when vehicle over tile.
@@ -116,8 +142,10 @@ protected:
     const std::string kStr_flee                         = "flee";                            // | Event | Monster flees |
     const std::string kStr_float                        = "float";                           // | Variable | Floating point number. |
     const std::string kStr_geologicalcenter             = "geologicalcenter";                // | Macro | Number of Geological Centers. |
+    const std::string kStr_GeologicalCenter_C           = "GeologicalCenter_C";              // | Macro | Number of Geological Centers. |
     const std::string kStr_get                          = "get";                             // | Macro | Get tile ID., get(row)(col) |
     const std::string kStr_granitegrinder               = "granitegrinder";                  // | Macro | Number of Granite Grinders. |
+    const std::string kStr_GraniteGrinder_C             = "GraniteGrinder_C";                // | Macro | Number of Granite Grinders. |
     const std::string kStr_green                        = "green";                           // | Color | Arrow colors. |
     const std::string kStr_hard_rock                    = "hard_rock";                       // | Macro | Tile ID of hard rock(34). |
     const std::string kStr_heal                         = "heal";                            // | Event | Heal object. |
@@ -128,9 +156,11 @@ protected:
     const std::string kStr_hostiles                     = "hostiles";                        // | Macro | Number of hostile creatures. |
     const std::string kStr_hover                        = "hover";                           // | Trigger | Trigger when mouse is over a tile. |
     const std::string kStr_hoverscout                   = "hoverscout";                      // | Macro | Number of Hover Scouts. |
+    const std::string kStr_HoverScout_C                 = "HoverScout_C";                    // | Macro | Number of Hover Scouts. |
     const std::string kStr_hp                           = "hp";                              // | Data Field | Object hitpoints.Same has health. |
     const std::string kStr_hurt                         = "hurt";                            // | Data Field Trigger | Trigger when object takes damage. |
     const std::string kStr_IceMonster                   = "IceMonster";                      // | Collection | Ice Monsters. |
+    const std::string kStr_IceMonster_C                 = "IceMonster_C";                    // | Collection | Ice Monsters. |
     const std::string kStr_id                           = "id";                              // | Data Field | Object ID. |
     const std::string kStr_if                           = "if";                              // | Occurance | single time trigger. |
     const std::string kStr_init                         = "init";                            // | Event Chain | First event called after map load.
@@ -147,16 +177,20 @@ protected:
     const std::string kStr_lastvehicle                  = "lastvehicle";                     // | Macro | Last vehicle that activated a trigger. |
     const std::string kStr_lava                         = "lava";                            // | Macro | Tile ID of lava(6). |
     const std::string kStr_LavaMonster                  = "LavaMonster";                     // | Collection | Lava Monsters. |
+    const std::string kStr_LavaMonster_C                = "LavaMonster_C";                   // | Collection | Lava Monsters. |
     const std::string kStr_level                        = "level";                           // | Data Field | Returns upgrade level of the building. |
     const std::string kStr_light                        = "light";                           // | Parameter | enable / disable parameter. |
     const std::string kStr_lights                       = "lights";                          // | Parameter | same as light. |
     const std::string kStr_LMLC                         = "LMLC";                            // | Macro | Number of Large Mobile Laser Cutters. |
+    const std::string kStr_LMLC_C                       = "LMLC_C";                          // | Macro | Number of Large Mobile Laser Cutters. |
     const std::string kStr_loaderdozer                  = "loaderdozer";                     // | Macro | Number of Loader Dozers. |
+    const std::string kStr_LoaderDozer_C                = "LoaderDozer_C";                   // | Macro | Number of Loader Dozers. |
     const std::string kStr_loose_rock                   = "loose_rock";                      // | Macro | Tile ID of loose rock(30). |
     const std::string kStr_lose                         = "lose";                            // | Event | Lose the map. |
     const std::string kStr_miner                        = "miner";                           // | Variable / Class | Miner object or class. |
     const std::string kStr_miners                       = "miners";                          // | Macro | Miners discovered or active. |
     const std::string kStr_mininglaser                  = "mininglaser";                     // | Macro | Number of Geological Centers. |
+    const std::string kStr_MiningLaser_C                = "MiningLaser_C";                   // | Macro | Number of Geological Centers. |
     const std::string kStr_monsters                     = "monsters";                        // | Macro | Number of monsters. |
     const std::string kStr_msg                          = "msg";                             // | Event | Display a message to user. |
     const std::string kStr_N                            = "N";                               // | Emerge Direction | North. |
@@ -168,6 +202,7 @@ protected:
     const std::string kStr_ore                          = "ore";                             // | Macro | Ore count. |
     const std::string kStr_Ore_C                        = "Ore_C";                           // | Collection | All ore. |
     const std::string kStr_orerefinery                  = "orerefinery";                     // | Macro | Number of Ore Refineries. |
+    const std::string kStr_OreRefinery_C                = "OreRefinery_C";                   // | Macro | Number of Ore Refineries. |
     const std::string kStr_ore_seam                     = "ore_seam";                        // | Macro | Tile ID of an ore seam(46). |
     const std::string kStr_pan                          = "pan";                             // | Event | Pan camera. |
     const std::string kStr_pause                        = "pause";                           // | Event | Pauses the game. |
@@ -177,9 +212,11 @@ protected:
     const std::string kStr_poweroff                     = "poweroff";                        // | Data Field Trigger | Trigger when power is deactivated for a building.
     const std::string kStr_poweron                      = "poweron";                         // | Data Field Trigger | Trigger when power is activated for a building.
     const std::string kStr_powerstation                 = "powerstation";                    // | Macro | Number of Power Stations. |
+    const std::string kStr_PowerStation_C               = "PowerStation_C";                  // | Macro | Number of Power Stations. |
     const std::string kStr_progress_path                = "progress_path";                   // | Macro | Tile id of a progress path(13). |
     const std::string kStr_qmsg                         = "qmsg";                            // | Event | Display message to user. |
     const std::string kStr_rapidrider                   = "rapidrider";                      // | Macro | Number of Rapid Riders. |
+    const std::string kStr_RapidRider_C                 = "RapidRider_C";                    // | Macro | Number of Rapid Riders. |
     const std::string kStr_random                       = "random";                          // | Macro | return random number, random(low)(high) |
     const std::string kStr_RechargeSeamGoal_C           = "RechargeSeamGoal_C";              // | Collection | Visible recharge seams. |
     const std::string kStr_red                          = "red";                             // | Color | Arrow colors. |
@@ -189,6 +226,7 @@ protected:
     const std::string kStr_resume                       = "resume";                          // | Event | Same as unpause. |
     const std::string kStr_return                       = "return";                          // | Event | return event |                          
     const std::string kStr_RockMonster                  = "RockMonster";                     // | Collection | Rock Monsters. |
+    const std::string kStr_RockMonster_C                = "RockMonster_C";                   // | Collection | Rock Monsters. |
     const std::string kStr_row                          = "row";                             // | Data Field | Object row. |
     const std::string kStr_S                            = "S";                               // | Emerge Direction | South. |
     const std::string kStr_save                         = "save";                            // | Event | Save last miner that activated a trigger into a variable. |
@@ -198,12 +236,17 @@ protected:
     const std::string kStr_shake                        = "shake";                           // | Event | Shake camera. |
     const std::string kStr_showarrow                    = "showarrow";                       // | Event | Show arrow object. |
     const std::string kStr_SlimySlug                    = "SlimySlug";                       // | Collection | Slimy Slugs. |
+    const std::string kStr_SlimySlug_C                  = "SlimySlug_C";                     // | Collection | Slimy Slugs. |
     const std::string kStr_slug_hole                    = "slug_hole";                       // | Macro | Tile id of slimy slug hole(12). |
     const std::string kStr_slugs                        = "slugs";                           // | Macro | Number of slimy slugs. |
     const std::string kStr_smalldigger                  = "smalldigger";                     // | Macro | Number of Small Diggers. |
+    const std::string kStr_SmallDigger_C                = "SmallDigger_C";                   // | Macro | Number of Small Diggers. |
     const std::string kStr_SmallSpider                  = "SmallSpider";                     // | Collection | Small Spiders. |
+    const std::string kStr_SmallSpider_C                = "SmallSpider_C";                   // | Collection | Small Spiders. |
     const std::string kStr_smalltransporttruck          = "smalltransporttruck";             // | Macro | Number of Small Transport Trucks. |
+    const std::string kStr_SmallTransportTruck_C        = "SmallTransportTruck_C";           // | Macro | Number of Small Transport Trucks. |
     const std::string kStr_SMLC                         = "SMLC";                            // | Macro | Number of Small Mobile Laser Cutters |
+    const std::string kStr_SMLC_C                       = "SMLC_C";                          // | Macro | Number of Small Mobile Laser Cutters |
     const std::string kStr_solid_rock                   = "solid_rock";                      // | Macro | Tile ID of solid rock(38). |
     const std::string kStr_sound                        = "sound";                           // | Event | Play.ogg file. |
     const std::string kStr_spawncap                     = "spawncap";                        // | Event | Config random spawn. |
@@ -218,21 +261,28 @@ protected:
     const std::string kStr_studs                        = "studs";                           // | Macro | Building Stud count. |
     const std::string kStr_string                       = "string";                          // | Variable | Text. |
     const std::string kStr_superteleport                = "superteleport";                   // | Macro | Number of Super Teleports. |
+    const std::string kStr_SuperTeleport_C              = "SuperTeleport_C";                 // | Macro | Number of Super Teleports. |
     const std::string kStr_supportstation               = "supportstation";                  // | Macro | Number of Support Stations. |
+    const std::string kStr_SupportStation_C             = "SupportStation_C";                // | Macro | Number of Support Stations. |
     const std::string kStr_teleportpad                  = "teleportpad";                     // | Macro | Numbewr of Teleport Pads. |
+    const std::string kStr_TeleportPad_C                = "TeleportPad_C";                   // | Macro | Numbewr of Teleport Pads. |
     const std::string kStr_tick                         = "tick";                            // | Event Chain | Called on every engine tick.Not recommended. |
     const std::string kStr_tile                         = "tile";                            // | Data Field | TileID for objectt. |
     const std::string kStr_tileid                       = "tileid";                          // | Data Field | same as tile. |
     const std::string kStr_time                         = "time";                            // | Macro / Trigger | Game time or trigger. |
     const std::string kStr_timer                        = "timer";                           // | Variable | Timer object. |
     const std::string kStr_toolstore                    = "toolstore";                       // | Macro | Returns number of toolstores. |
+    const std::string kStr_Toolstore_C                  = "Toolstore_C";                     // | Macro | Returns number of toolstores. |
     const std::string kStr_true                         = "true";                            // | bool value or 1.
     const std::string kStr_truewait                     = "truewait";                        // | Event | Suspend event chain for real user time period. |
     const std::string kStr_tunnelscout                  = "tunnelscout";                     // | Macro | Number of Tunnel Scouts. |
+    const std::string kStr_TunnelScout_C                = "TunnelScout_C";                   // | Macro | Number of Tunnel Scouts. |
     const std::string kStr_tunneltransport              = "tunneltransport";                 // | Macro | Number of Tunnel Transports. |
+    const std::string kStr_TunnelTransport_C            = "TunnelTransport_C";               // | Macro | Number of Tunnel Transports. |
     const std::string kStr_upgrade                      = "upgrade";                         // | Trigger when vehicle is upgraded. |
     const std::string kStr_upgraded                     = "upgraded";                        // | Trigger | Not working, don't use. |`
     const std::string kStr_upgradestation               = "upgradestation";                  // | Macro | Number of Upgrade Stations. |
+    const std::string kStr_UpgradeStation_C             = "UpgradeStation_C";                // | Macro | Number of Upgrade Stations. |
     const std::string kStr_unpause                      = "unpause";                         // | Event | Resumes the game if paused. |
     const std::string kStr_variable                     = "variable";                        // | objective section reserved word |
     const std::string kStr_vehicle                      = "vehicle";                         // | Variable / Class | Vehicle object or trigger class. |
@@ -269,6 +319,7 @@ protected:
     const std::string kS_arrow                        = MMUtil::toLower( kStr_arrow                        );   // variable type
     const std::string kS_Barrier_C                    = MMUtil::toLower( kStr_Barrier_C                    );   // collection, building
     const std::string kS_Bat                          = MMUtil::toLower( kStr_Bat                          );   // collection, creature
+    const std::string kS_Bat_C                        = MMUtil::toLower( kStr_Bat_C                        );   // collection, creature
     const std::string kS_black                        = MMUtil::toLower( kStr_black                        );   // arrow color
     const std::string kS_blue                         = MMUtil::toLower( kStr_blue                         );   // arrow color
     const std::string kS_bool                         = MMUtil::toLower( kStr_bool                         );   // variable type
@@ -290,9 +341,12 @@ protected:
     const std::string kS_BuildingUpgradeStation_C     = MMUtil::toLower( kStr_BuildingUpgradeStation_C     );   // collection, building
     const std::string kS_built                        = MMUtil::toLower( kStr_built                        );   // data field trigger
     const std::string kS_canteen                      = MMUtil::toLower( kStr_canteen                      );   // macro, int, number of Canteens.
+    const std::string kS_Canteen_C                    = MMUtil::toLower( kStr_Canteen_C                    );   // macro, int, number of Canteens.
     const std::string kS_cargocarrier                 = MMUtil::toLower( kStr_cargocarrier                 );   // macro, int number of Cargo Carriers.
+    const std::string kS_CargoCarrier_C               = MMUtil::toLower( kStr_CargoCarrier_C               );   // macro, int number of Cargo Carriers.
     const std::string kS_change                       = MMUtil::toLower( kStr_change                       );   // trigger
     const std::string kS_chromecrusher                = MMUtil::toLower( kStr_chromecrusher                );   // macro int, number of Chrome Crushers
+    const std::string kS_ChromeCrusher_C              = MMUtil::toLower( kStr_ChromeCrusher_C              );   // macro int, number of Chrome Crushers
     const std::string kS_click                        = MMUtil::toLower( kStr_click                        );   // Data Field Trigger
     const std::string kS_clock                        = MMUtil::toLower( kStr_clock                        );   // macro, float, return game time
     const std::string kS_col                          = MMUtil::toLower( kStr_col                          );   // Data Field int, object column
@@ -314,6 +368,7 @@ protected:
     const std::string kS_dirt                         = MMUtil::toLower( kStr_dirt                         );   // Macro, Tile ID of dirt (26).
     const std::string kS_disable                      = MMUtil::toLower( kStr_disable                      );   // Event, Disable object.
     const std::string kS_docks                        = MMUtil::toLower( kStr_docks                        );   // Macro, Number of Docks.
+    const std::string kS_Docks_C                      = MMUtil::toLower( kStr_Docks_C                      );   // Macro, Number of Docks.
     const std::string kS_drain                        = MMUtil::toLower( kStr_drain                        );   // event, int, number of crystals to drain
     const std::string kS_drill                        = MMUtil::toLower( kStr_drill                        );   // Event / Trigger, Drill tile.
     const std::string kS_drive                        = MMUtil::toLower( kStr_drive                        );   // Trigger, Trigger when vehicle over tile.
@@ -335,8 +390,10 @@ protected:
     const std::string kS_flee                         = MMUtil::toLower( kStr_flee                         );   // | Event | Monster flee | Monster variable |
     const std::string kS_float                        = MMUtil::toLower( kStr_float                        );   // | Variable | Floating point number. |
     const std::string kS_geologicalcenter             = MMUtil::toLower( kStr_geologicalcenter             );   // | Macro | Number of Geological Centers. |
+    const std::string kS_GeologicalCenter_C           = MMUtil::toLower( kStr_GeologicalCenter_C           );   // | Macro | Number of Geological Centers. |
     const std::string kS_get                          = MMUtil::toLower( kStr_get                          );   // | Macro | Get tile ID. |
     const std::string kS_granitegrinder               = MMUtil::toLower( kStr_granitegrinder               );   // | Macro | Number of Granite Grinders. |
+    const std::string kS_GraniteGrinder_C             = MMUtil::toLower( kStr_GraniteGrinder_C             );   // | Macro | Number of Granite Grinders. |
     const std::string kS_green                        = MMUtil::toLower( kStr_green                        );   // | Color | Arrow colors. |
     const std::string kS_hard_rock                    = MMUtil::toLower( kStr_hard_rock                    );   // | Macro | Tile ID of hard rock(34). |
     const std::string kS_heal                         = MMUtil::toLower( kStr_heal                         );   // | Event | Heal object. |
@@ -347,9 +404,11 @@ protected:
     const std::string kS_hostiles                     = MMUtil::toLower( kStr_hostiles                     );   // | Macro | Number of hostile creatures. |
     const std::string kS_hover                        = MMUtil::toLower( kStr_hover                        );   // | Trigger | Trigger when mouse is over a tile. |
     const std::string kS_hoverscout                   = MMUtil::toLower( kStr_hoverscout                   );   // | Macro | Number of Hover Scouts. |
+    const std::string kS_HoverScout_C                 = MMUtil::toLower( kStr_HoverScout_C                 );   // | Macro | Number of Hover Scouts. |
     const std::string kS_hp                           = MMUtil::toLower( kStr_hp                           );   // | Data Field | Object hitpoints.Same has health. |
     const std::string kS_hurt                         = MMUtil::toLower( kStr_hurt                         );   // | Data Field Trigger | Trigger when object takes damage. |
     const std::string kS_IceMonster                   = MMUtil::toLower( kStr_IceMonster                   );   // | Collection | Ice Monsters. |
+    const std::string kS_IceMonster_C                 = MMUtil::toLower( kStr_IceMonster_C                 );   // | Collection | Ice Monsters. |
     const std::string kS_id                           = MMUtil::toLower( kStr_id                           );   // | Data Field | Object ID. |
     const std::string kS_if                           = MMUtil::toLower( kStr_if                           );   // | Occurance | single time trigger. |
     const std::string kS_init                         = MMUtil::toLower( kStr_init                         );   // | Event Chain | First event called after map load.
@@ -366,16 +425,20 @@ protected:
     const std::string kS_lastvehicle                  = MMUtil::toLower( kStr_lastvehicle                  );   // | Macro | Last vehicle that activated a trigger. |
     const std::string kS_lava                         = MMUtil::toLower( kStr_lava                         );   // | Macro | Tile ID of lava(6). |
     const std::string kS_LavaMonster                  = MMUtil::toLower( kStr_LavaMonster                  );   // | Collection | Lava Monsters. |
+    const std::string kS_LavaMonster_C                = MMUtil::toLower( kStr_LavaMonster_C                );   // | Collection | Lava Monsters. |
     const std::string kS_level                        = MMUtil::toLower( kStr_level                        );   // | Data Field | Returns upgrade level of the building. |
     const std::string kS_light                        = MMUtil::toLower( kStr_light                        );   // | Parameter | enable / disable parameter. |
     const std::string kS_lights                       = MMUtil::toLower( kStr_lights                       );   // | Parameter | same as light. |
     const std::string kS_LMLC                         = MMUtil::toLower( kStr_LMLC                         );   // | Macro | Number of Large Mobile Laser Cutters. |
+    const std::string kS_LMLC_C                       = MMUtil::toLower( kStr_LMLC_C                       );   // | Macro | Number of Large Mobile Laser Cutters. |
     const std::string kS_loaderdozer                  = MMUtil::toLower( kStr_loaderdozer                  );   // | Macro | Number of Loader Dozers. |
+    const std::string kS_LoaderDozer_C                = MMUtil::toLower( kStr_LoaderDozer_C                );   // | Macro | Number of Loader Dozers. |
     const std::string kS_loose_rock                   = MMUtil::toLower( kStr_loose_rock                   );   // | Macro | Tile ID of loose rock(30). |
     const std::string kS_lose                         = MMUtil::toLower( kStr_lose                         );   // | Event | Lose the map. |
     const std::string kS_miner                        = MMUtil::toLower( kStr_miner                        );   // | Variable / Class | Miner object or class. |
     const std::string kS_miners                       = MMUtil::toLower( kStr_miners                       );   // | Macro | Miners discovered or active. |
     const std::string kS_mininglaser                  = MMUtil::toLower( kStr_mininglaser                  );   // | Macro | Number of Mining Lasers. |
+    const std::string kS_MiningLaser_C                = MMUtil::toLower( kStr_MiningLaser_C                );   // | Macro | Number of Mining Lasers. |
     const std::string kS_monsters                     = MMUtil::toLower( kStr_monsters                     );   // | Macro | Number of monsters. |
     const std::string kS_msg                          = MMUtil::toLower( kStr_msg                          );   // | Event | Display a message to user. |
     const std::string kS_N                            = MMUtil::toLower( kStr_N                            );   // | Emerge Direction | North. |
@@ -387,6 +450,7 @@ protected:
     const std::string kS_ore                          = MMUtil::toLower( kStr_ore                          );   // | Macro | Ore count. |
     const std::string kS_Ore_C                        = MMUtil::toLower( kStr_Ore_C                        );   // | Collection | All ore. |
     const std::string kS_orerefinery                  = MMUtil::toLower( kStr_orerefinery                  );   // | Macro | Number of Ore Refineries. |
+    const std::string kS_OreRefinery_C                = MMUtil::toLower( kStr_OreRefinery_C                );   // | Macro | Number of Ore Refineries. |
     const std::string kS_ore_seam                     = MMUtil::toLower( kStr_ore_seam                     );   // | Macro | Tile ID of an ore seam(46). |
     const std::string kS_pan                          = MMUtil::toLower( kStr_pan                          );   // | Event | Pan camera. |
     const std::string kS_pause                        = MMUtil::toLower( kStr_pause                        );   // | Event | Pauses the game. |
@@ -396,10 +460,12 @@ protected:
     const std::string kS_poweroff                     = MMUtil::toLower( kStr_poweroff                     );   // | Data Field Trigger | Trigger when power is deactivated for a building.
     const std::string kS_poweron                      = MMUtil::toLower( kStr_poweron                      );   // | Data Field Trigger | Trigger when power is activated for a building.
     const std::string kS_powerstation                 = MMUtil::toLower( kStr_powerstation                 );   // | Macro | Number of Power Stations. |
+    const std::string kS_PowerStation_C               = MMUtil::toLower( kStr_PowerStation_C               );   // | Macro | Number of Power Stations. |
     const std::string kS_progress_path                = MMUtil::toLower( kStr_progress_path                );   // | Macro | Tile id of a progress path(13). |
     const std::string kS_qmsg                         = MMUtil::toLower( kStr_qmsg                         );   // | Event | Display message to user. |
     const std::string kS_random                       = MMUtil::toLower( kStr_random                       );   // | Macro | return random number, random(low)(high) |
     const std::string kS_rapidrider                   = MMUtil::toLower( kStr_rapidrider                   );   // | Macro | Number of Rapid Riders. |
+    const std::string kS_RapidRider_C                 = MMUtil::toLower( kStr_RapidRider_C                 );   // | Macro | Number of Rapid Riders. |
     const std::string kS_RechargeSeamGoal_C           = MMUtil::toLower( kStr_RechargeSeamGoal_C           );   // | Collection | Visible recharge seams. |
     const std::string kS_red                          = MMUtil::toLower( kStr_red                          );   // | Color | Arrow colors. |
     const std::string kS_reinforce                    = MMUtil::toLower( kStr_reinforce                    );   // | Trigger | Trigger when wall is reinforced. |
@@ -408,6 +474,7 @@ protected:
     const std::string kS_resume                       = MMUtil::toLower( kStr_resume                       );   // | Event | Same as unpause. |
     const std::string kS_return                       = MMUtil::toLower( kStr_return                       );   // | Event | return event |
     const std::string kS_RockMonster                  = MMUtil::toLower( kStr_RockMonster                  );   // | Collection | Rock Monsters. |
+    const std::string kS_RockMonster_C                = MMUtil::toLower( kStr_RockMonster_C                );   // | Collection | Rock Monsters. |
     const std::string kS_row                          = MMUtil::toLower( kStr_row                          );   // | Data Field | Object row. |
     const std::string kS_S                            = MMUtil::toLower( kStr_S                            );   // | Emerge Direction | South. |
     const std::string kS_save                         = MMUtil::toLower( kStr_save                         );   // | Event | Save last miner that activated a trigger into a variable. |
@@ -417,12 +484,17 @@ protected:
     const std::string kS_shake                        = MMUtil::toLower( kStr_shake                        );   // | Event | Shake camera. |
     const std::string kS_showarrow                    = MMUtil::toLower( kStr_showarrow                    );   // | Event | Show arrow object. |
     const std::string kS_SlimySlug                    = MMUtil::toLower( kStr_SlimySlug                    );   // | Collection | Slimy Slugs. |
+    const std::string kS_SlimySlug_C                  = MMUtil::toLower( kStr_SlimySlug_C                  );   // | Collection | Slimy Slugs. |
     const std::string kS_slug_hole                    = MMUtil::toLower( kStr_slug_hole                    );   // | Macro | Tile id of slimy slug hole(12). |
     const std::string kS_slugs                        = MMUtil::toLower( kStr_slugs                        );   // | Macro | Number of slimy slugs. |
     const std::string kS_smalldigger                  = MMUtil::toLower( kStr_smalldigger                  );   // | Macro | Number of Small Diggers. |
+    const std::string kS_SmallDigger_C                = MMUtil::toLower( kStr_SmallDigger_C                );   // | Macro | Number of Small Diggers. |
     const std::string kS_SmallSpider                  = MMUtil::toLower( kStr_SmallSpider                  );   // | Collection | Small Spiders. |
+    const std::string kS_SmallSpider_C                = MMUtil::toLower( kStr_SmallSpider_C                );   // | Collection | Small Spiders. |
     const std::string kS_smalltransporttruck          = MMUtil::toLower( kStr_smalltransporttruck          );   // | Macro | Number of Small Transport Trucks. |
+    const std::string kS_SmallTransportTruck_C        = MMUtil::toLower( kStr_SmallTransportTruck_C        );   // | Macro | Number of Small Transport Trucks. |
     const std::string kS_SMLC                         = MMUtil::toLower( kStr_SMLC                         );   // | Macro | Number of Small Mobile Laser Cutters |
+    const std::string kS_SMLC_C                       = MMUtil::toLower( kStr_SMLC_C                       );   // | Macro | Number of Small Mobile Laser Cutters |
     const std::string kS_solid_rock                   = MMUtil::toLower( kStr_solid_rock                   );   // | Macro | Tile ID of solid rock(38). |
     const std::string kS_sound                        = MMUtil::toLower( kStr_sound                        );   // | Event | Play.ogg file. |
     const std::string kS_spawncap                     = MMUtil::toLower( kStr_spawncap                     );   // | Event | Config random spawn. |
@@ -437,21 +509,28 @@ protected:
     const std::string kS_studs                        = MMUtil::toLower( kStr_studs                        );   // | Macro | Building Stud count. |
     const std::string kS_string                       = MMUtil::toLower( kStr_string                       );   // | Variable | Text. |
     const std::string kS_superteleport                = MMUtil::toLower( kStr_superteleport                );   // | Macro | Number of Super Teleports. |
+    const std::string kS_SuperTeleport_C              = MMUtil::toLower( kStr_SuperTeleport_C              );   // | Macro | Number of Super Teleports. |
     const std::string kS_supportstation               = MMUtil::toLower( kStr_supportstation               );   // | Macro | Number of Support Stations. |
+    const std::string kS_SupportStation_C             = MMUtil::toLower( kStr_SupportStation_C             );   // | Macro | Number of Support Stations. |
     const std::string kS_teleportpad                  = MMUtil::toLower( kStr_teleportpad                  );   // | Macro | Numbewr of Teleport Pads. |
+    const std::string kS_TeleportPad_C                = MMUtil::toLower( kStr_TeleportPad_C                );   // | Macro | Numbewr of Teleport Pads. |
     const std::string kS_tick                         = MMUtil::toLower( kStr_tick                         );   // | Event Chain | Called on every engine tick.Not recommended. |
     const std::string kS_tile                         = MMUtil::toLower( kStr_tile                         );   // | Data Field | TileID for objectt. |
     const std::string kS_tileid                       = MMUtil::toLower( kStr_tileid                       );   // | Data Field | same as tile. |
     const std::string kS_time                         = MMUtil::toLower( kStr_time                         );   // | Macro / Trigger | Game time or trigger. |
     const std::string kS_timer                        = MMUtil::toLower( kStr_timer                        );   // | Variable | Timer object. |
     const std::string kS_toolstore                    = MMUtil::toLower( kStr_toolstore                    );   // | Macro | Returns number of toolstores. |
+    const std::string kS_Toolstore_C                  = MMUtil::toLower( kStr_Toolstore_C                  );   // | Macro | Returns number of toolstores. |
     const std::string kS_true                         = MMUtil::toLower( kStr_true                         );   // | bool value or 1. |
     const std::string kS_truewait                     = MMUtil::toLower( kStr_truewait                     );   // | Event | Suspend event chain for real user time period. |
     const std::string kS_tunnelscout                  = MMUtil::toLower( kStr_tunnelscout                  );   // | Macro | Number of Tunnel Scouts. |
+    const std::string kS_TunnelScout_C                = MMUtil::toLower( kStr_TunnelScout_C                );   // | Macro | Number of Tunnel Scouts. |
     const std::string kS_tunneltransport              = MMUtil::toLower( kStr_tunneltransport              );   // | Macro | Number of Tunnel Transports. |
+    const std::string kS_TunnelTransport_C            = MMUtil::toLower( kStr_TunnelTransport_C            );   // | Macro | Number of Tunnel Transports. |
     const std::string kS_upgrade                      = MMUtil::toLower( kStr_upgrade                      );   // | Trigger when vehicle is upgraded. |
     const std::string kS_upgraded                     = MMUtil::toLower( kStr_upgraded                     );   // | Trigger | Not working, don't use. |
     const std::string kS_upgradestation               = MMUtil::toLower( kStr_upgradestation               );   // | Macro | Number of Upgrade Stations. |
+    const std::string kS_UpgradeStation_C             = MMUtil::toLower( kStr_UpgradeStation_C             );   // | Macro | Number of Upgrade Stations. |
     const std::string kS_unpause                      = MMUtil::toLower( kStr_unpause                      );   // | Event | Resumes the game if paused. |
     const std::string kS_variable                     = MMUtil::toLower( kStr_variable                     );   // | objective section reserved word |
     const std::string kS_vehicle                      = MMUtil::toLower( kStr_vehicle                      );   // | Variable / Class | Vehicle object or trigger class. |
@@ -497,6 +576,7 @@ protected:
         { kS_arrow                        , kStr_arrow                        },   // variable type
         { kS_Barrier_C                    , kStr_Barrier_C                    },   // collection, building
         { kS_Bat                          , kStr_Bat                          },   // collection, creature
+        { kS_Bat_C                        , kStr_Bat_C                        },   // collection, creature
         { kS_black                        , kStr_black                        },   // arrow color
         { kS_blue                         , kStr_blue                         },   // arrow color
         { kS_bool                         , kStr_bool                         },   // variable type
@@ -518,9 +598,12 @@ protected:
         { kS_BuildingUpgradeStation_C     , kStr_BuildingUpgradeStation_C     },   // collection, building
         { kS_built                        , kStr_built                        },   // data field trigger
         { kS_canteen                      , kStr_canteen                      },   // macro, int, number of Canteens.
+        { kS_Canteen_C                    , kStr_Canteen_C                    },   // macro, int, number of Canteens.
         { kS_cargocarrier                 , kStr_cargocarrier                 },   // macro, int number of Cargo Carriers.
+        { kS_CargoCarrier_C               , kStr_CargoCarrier_C               },   // macro, int number of Cargo Carriers.
         { kS_change                       , kStr_change                       },   // trigger
         { kS_chromecrusher                , kStr_chromecrusher                },   // macro int, number of Chrome Crushers
+        { kS_ChromeCrusher_C              , kStr_ChromeCrusher_C              },   // macro int, number of Chrome Crushers
         { kS_click                        , kStr_click                        },   // Data Field Trigger
         { kS_clock                        , kStr_clock                        },   // macro, float, return game time
         { kS_col                          , kStr_col                          },   // Data Field int, object column
@@ -542,6 +625,7 @@ protected:
         { kS_dirt                         , kStr_dirt                         },   // Macro, Tile ID of dirt (26).
         { kS_disable                      , kStr_disable                      },   // Event, Disable object.
         { kS_docks                        , kStr_docks                        },   // Macro, Number of Docks.
+        { kS_Docks_C                      , kStr_Docks_C                      },   // Macro, Number of Docks.
         { kS_drain                        , kStr_drain                        },   // event, int, number of crystals to drain
         { kS_drill                        , kStr_drill                        },   // Event / Trigger, Drill tile.
         { kS_drive                        , kStr_drive                        },   // Trigger, Trigger when vehicle over tile.
@@ -563,8 +647,10 @@ protected:
         { kS_flee                         , kStr_flee                         },   // | Event | Monster flees | Monster ID |
         { kS_float                        , kStr_float                        },   // | Variable | Floating point number. |
         { kS_geologicalcenter             , kStr_geologicalcenter             },   // | Macro | Number of Geological Centers. |
+        { kS_GeologicalCenter_C           , kStr_GeologicalCenter_C           },   // | Macro | Number of Geological Centers. |
         { kS_get                          , kStr_get                          },   // | Macro | Get tile ID. |
         { kS_granitegrinder               , kStr_granitegrinder               },   // | Macro | Number of Granite Grinders. |
+        { kS_GraniteGrinder_C             , kStr_GraniteGrinder_C             },   // | Macro | Number of Granite Grinders. |
         { kS_green                        , kStr_green                        },   // | Color | Arrow colors. |
         { kS_hard_rock                    , kStr_hard_rock                    },   // | Macro | Tile ID of hard rock(34). |
         { kS_heal                         , kStr_heal                         },   // | Event | Heal object. |
@@ -575,9 +661,11 @@ protected:
         { kS_hostiles                     , kStr_hostiles                     },   // | Macro | Number of hostile creatures. |
         { kS_hover                        , kStr_hover                        },   // | Trigger | Trigger when mouse is over a tile. |
         { kS_hoverscout                   , kStr_hoverscout                   },   // | Macro | Number of Hover Scouts. |
+        { kS_HoverScout_C                 , kStr_HoverScout_C                 },   // | Macro | Number of Hover Scouts. |
         { kS_hp                           , kStr_hp                           },   // | Data Field | Object hitpoints.Same has health. |
         { kS_hurt                         , kStr_hurt                         },   // | Data Field Trigger | Trigger when object takes damage. |
         { kS_IceMonster                   , kStr_IceMonster                   },   // | Collection | Ice Monsters. |
+        { kS_IceMonster_C                 , kStr_IceMonster_C                 },   // | Collection | Ice Monsters. |
         { kS_id                           , kStr_id                           },   // | Data Field | Object ID. |
         { kS_if                           , kStr_if                           },   // | Occurance | single time trigger. |
         { kS_init                         , kStr_init                         },   // | Event Chain | First event called after map load.
@@ -594,16 +682,20 @@ protected:
         { kS_lastvehicle                  , kStr_lastvehicle                  },   // | Macro | Last vehicle that activated a trigger. |
         { kS_lava                         , kStr_lava                         },   // | Macro | Tile ID of lava(6). |
         { kS_LavaMonster                  , kStr_LavaMonster                  },   // | Collection | Lava Monsters. |
+        { kS_LavaMonster_C                , kStr_LavaMonster_C                },   // | Collection | Lava Monsters. |
         { kS_level                        , kStr_level                        },   // | Data Field | Returns upgrade level of the building. |
         { kS_light                        , kStr_light                        },   // | Parameter | enable / disable parameter. |
         { kS_lights                       , kStr_lights                       },   // | Parameter | same as light. |
         { kS_LMLC                         , kStr_LMLC                         },   // | Macro | Number of Large Mobile Laser Cutters. |
+        { kS_LMLC_C                       , kStr_LMLC_C                       },   // | Macro | Number of Large Mobile Laser Cutters. |
         { kS_loaderdozer                  , kStr_loaderdozer                  },   // | Macro | Number of Loader Dozers. |
+        { kS_LoaderDozer_C                , kStr_LoaderDozer_C                },   // | Macro | Number of Loader Dozers. |
         { kS_loose_rock                   , kStr_loose_rock                   },   // | Macro | Tile ID of loose rock(30). |
         { kS_lose                         , kStr_lose                         },   // | Event | Lose the map. |
         { kS_miner                        , kStr_miner                        },   // | Variable / Class | Miner object or class. |
         { kS_miners                       , kStr_miners                       },   // | Macro | Miners discovered or active. |
         { kS_mininglaser                  , kStr_mininglaser                  },   // | Macro | Number of Mining Lasers. |
+        { kS_MiningLaser_C                , kStr_MiningLaser_C                },   // | Macro | Number of Mining Lasers. |
         { kS_monsters                     , kStr_monsters                     },   // | Macro | Number of monsters. |
         { kS_msg                          , kStr_msg                          },   // | Event | Display a message to user. |
         { kS_N                            , kStr_N                            },   // | Emerge Direction | North. |
@@ -615,6 +707,7 @@ protected:
         { kS_ore                          , kStr_ore                          },   // | Macro | Ore count. |
         { kS_Ore_C                        , kStr_Ore_C                        },   // | Collection | All ore. |
         { kS_orerefinery                  , kStr_orerefinery                  },   // | Macro | Number of Ore Refineries. |
+        { kS_OreRefinery_C                , kStr_OreRefinery_C                },   // | Macro | Number of Ore Refineries. |
         { kS_ore_seam                     , kStr_ore_seam                     },   // | Macro | Tile ID of an ore seam(46). |
         { kS_pan                          , kStr_pan                          },   // | Event | Pan camera. |
         { kS_pause                        , kStr_pause                        },   // | Event | Pauses the game. |
@@ -624,10 +717,12 @@ protected:
         { kS_poweroff                     , kStr_poweroff                     },   // | Data Field Trigger | Trigger when power is deactivated for a building.
         { kS_poweron                      , kStr_poweron                      },   // | Data Field Trigger | Trigger when power is activated for a building.
         { kS_powerstation                 , kStr_powerstation                 },   // | Macro | Number of Power Stations. |
+        { kS_PowerStation_C               , kStr_PowerStation_C               },   // | Macro | Number of Power Stations. |
         { kS_progress_path                , kStr_progress_path                },   // | Macro | Tile id of a progress path(13). |
         { kS_qmsg                         , kStr_qmsg                         },   // | Event | Display message to user. |
         { kS_random                       , kStr_random                       },   // | Macro | return random number, random(low)(high) |
         { kS_rapidrider                   , kStr_rapidrider                   },   // | Macro | Number of Rapid Riders. |
+        { kS_RapidRider_C                 , kStr_RapidRider_C                 },   // | Macro | Number of Rapid Riders. |
         { kS_RechargeSeamGoal_C           , kStr_RechargeSeamGoal_C           },   // | Collection | Visible recharge seams. |
         { kS_red                          , kStr_red                          },   // | Color | Arrow colors. |
         { kS_reinforce                    , kStr_reinforce                    },   // | Trigger | Trigger when wall is reinforced. |
@@ -636,6 +731,7 @@ protected:
         { kS_resume                       , kStr_resume                       },   // | Event | Same as unpause. |
         { kS_return                       , kStr_return                       },   // | Event | return event |
         { kS_RockMonster                  , kStr_RockMonster                  },   // | Collection | Rock Monsters. |
+        { kS_RockMonster_C                , kStr_RockMonster_C                },   // | Collection | Rock Monsters. |
         { kS_row                          , kStr_row                          },   // | Data Field | Object row. |
         { kS_S                            , kStr_S                            },   // | Emerge Direction | South. |
         { kS_save                         , kStr_save                         },   // | Event | Save last miner that activated a trigger into a variable. |
@@ -645,12 +741,17 @@ protected:
         { kS_shake                        , kStr_shake                        },   // | Event | Shake camera. |
         { kS_showarrow                    , kStr_showarrow                    },   // | Event | Show arrow object. |
         { kS_SlimySlug                    , kStr_SlimySlug                    },   // | Collection | Slimy Slugs. |
+        { kS_SlimySlug_C                  , kStr_SlimySlug_C                  },   // | Collection | Slimy Slugs. |
         { kS_slug_hole                    , kStr_slug_hole                    },   // | Macro | Tile id of slimy slug hole(12). |
         { kS_slugs                        , kStr_slugs                        },   // | Macro | Number of slimy slugs. |
         { kS_smalldigger                  , kStr_smalldigger                  },   // | Macro | Number of Small Diggers. |
+        { kS_SmallDigger_C                , kStr_SmallDigger_C                },   // | Macro | Number of Small Diggers. |
         { kS_SmallSpider                  , kStr_SmallSpider                  },   // | Collection | Small Spiders. |
+        { kS_SmallSpider_C                , kStr_SmallSpider_C                },   // | Collection | Small Spiders. |
         { kS_smalltransporttruck          , kStr_smalltransporttruck          },   // | Macro | Number of Small Transport Trucks. |
+        { kS_SmallTransportTruck_C        , kStr_SmallTransportTruck_C        },   // | Macro | Number of Small Transport Trucks. |
         { kS_SMLC                         , kStr_SMLC                         },   // | Macro | Number of Small Mobile Laser Cutters |
+        { kS_SMLC_C                       , kStr_SMLC_C                       },   // | Macro | Number of Small Mobile Laser Cutters |
         { kS_solid_rock                   , kStr_solid_rock                   },   // | Macro | Tile ID of solid rock(38). |
         { kS_sound                        , kStr_sound                        },   // | Event | Play.ogg file. |
         { kS_spawncap                     , kStr_spawncap                     },   // | Event | Config random spawn. |
@@ -665,21 +766,28 @@ protected:
         { kS_studs                        , kStr_studs                        },   // | Macro | Building Stud count. |
         { kS_string                       , kStr_string                       },   // | Variable | Text. |
         { kS_superteleport                , kStr_superteleport                },   // | Macro | Number of Super Teleports. |
+        { kS_SuperTeleport_C              , kStr_SuperTeleport_C              },   // | Macro | Number of Super Teleports. |
         { kS_supportstation               , kStr_supportstation               },   // | Macro | Number of Support Stations. |
+        { kS_SupportStation_C             , kStr_SupportStation_C             },   // | Macro | Number of Support Stations. |
         { kS_teleportpad                  , kStr_teleportpad                  },   // | Macro | Numbewr of Teleport Pads. |
+        { kS_TeleportPad_C                , kStr_TeleportPad_C                },   // | Macro | Numbewr of Teleport Pads. |
         { kS_tick                         , kStr_tick                         },   // | Event Chain | Called on every engine tick.Not recommended. |
         { kS_tile                         , kStr_tile                         },   // | Data Field | TileID for objectt. |
         { kS_tileid                       , kStr_tileid                       },   // | Data Field | same as tile. |
         { kS_time                         , kStr_time                         },   // | Macro / Trigger | Game time or trigger. |
         { kS_timer                        , kStr_timer                        },   // | Variable | Timer object. |
         { kS_toolstore                    , kStr_toolstore                    },   // | Macro | Returns number of toolstores. |
+        { kS_Toolstore_C                  , kStr_Toolstore_C                  },   // | Macro | Returns number of toolstores. |
         { kS_true                         , kStr_true                         },   // | bool value or 1. |
         { kS_truewait                     , kStr_truewait                     },   // | Event | Suspend event chain for real user time period. |
         { kS_tunnelscout                  , kStr_tunnelscout                  },   // | Macro | Number of Tunnel Scouts. |
+        { kS_TunnelScout_C                , kStr_TunnelScout_C                },   // | Macro | Number of Tunnel Scouts. |
         { kS_tunneltransport              , kStr_tunneltransport              },   // | Macro | Number of Tunnel Transports. |
+        { kS_TunnelTransport_C            , kStr_TunnelTransport_C            },   // | Macro | Number of Tunnel Transports. |
         { kS_upgrade                      , kStr_upgrade                      },   // | Trigger when vehicle is upgraded. |
         { kS_upgraded                     , kStr_upgraded                     },   // | Trigger | Not working, don't use. |
         { kS_upgradestation               , kStr_upgradestation               },   // | Macro | Number of Upgrade Stations. |
+        { kS_UpgradeStation_C             , kStr_UpgradeStation_C             },   // | Macro | Number of Upgrade Stations. |
         { kS_unpause                      , kStr_unpause                      },   // | Event | Resumes the game if paused. |
         { kS_variable                     , kStr_variable                     },   // | objective section reserved word |
         { kS_vehicle                      , kStr_vehicle                      },   // | Variable / Class | Vehicle object or trigger class. |
@@ -720,6 +828,7 @@ protected:
         { kS_air                          , eMacroFlagReturnNumeric },   // macro int, amount of air
         { kS_Barrier_C                    , eMacroFlagReturnNumeric },   // collection, building
         { kS_Bat                          , eMacroFlagReturnNumeric },   // collection, creature
+        { kS_Bat_C                        , eMacroFlagReturnNumeric },   // collection, creature
         { kS_building_path                , eMacroFlagReturnNumeric },   // macro int, number of objects
         { kS_BuildingCanteen_C            , eMacroFlagReturnNumeric },   // collection, building
         { kS_BuildingDocks_C              , eMacroFlagReturnNumeric },   // collection, building
@@ -736,8 +845,11 @@ protected:
         { kS_BuildingToolStore_C          , eMacroFlagReturnNumeric },   // collection, building
         { kS_BuildingUpgradeStation_C     , eMacroFlagReturnNumeric },   // collection, building
         { kS_canteen                      , eMacroFlagReturnNumeric },   // macro, int, number of Canteens.
+        { kS_Canteen_C                    , eMacroFlagReturnNumeric },   // macro, int, number of Canteens.
         { kS_cargocarrier                 , eMacroFlagReturnNumeric },   // macro, int number of Cargo Carriers.
+        { kS_CargoCarrier_C               , eMacroFlagReturnNumeric },   // macro, int number of Cargo Carriers.
         { kS_chromecrusher                , eMacroFlagReturnNumeric },   // macro int, number of Chrome Crushers
+        { kS_ChromeCrusher_C              , eMacroFlagReturnNumeric },   // macro int, number of Chrome Crushers
         { kS_clock                        , eMacroFlagReturnNumeric },   // macro, float, return game time
         { kS_CreatureBat_C                , eMacroFlagReturnNumeric },   // collection, creature
         { kS_CreatureIceMonster_C         , eMacroFlagReturnNumeric },   // collection, creature
@@ -750,6 +862,7 @@ protected:
         { kS_crystal_seam                 , eMacroFlagReturnNumeric },   // macro, int, id of crystal seam always 42
         { kS_crystals                     , eMacroFlagReturnNumeric },   // macro, int, number of stored crystals
         { kS_docks                        , eMacroFlagReturnNumeric },   // Macro, Number of Docks.
+        { kS_Docks_C                      , eMacroFlagReturnNumeric },   // Macro, Number of Docks.
         { kS_Dynamite_C                   , eMacroFlagReturnNumeric },   // Collection, All dynamite outside of toolstore.
         { kS_electricfence                , eMacroFlagReturnNumeric },   // Macro, Number of Fences.
         { kS_ElectricFence_C              , eMacroFlagReturnNumeric },   // Macro | Number of Fence objects.Not a collection. |
@@ -758,19 +871,26 @@ protected:
         { kS_erosionscale                 , eMacroFlagReturnNumeric },   // | Macro | Global erosion scale factor |
         { kS_false                        , eMacroFlagReturnNumeric },   // | Macro | returns false or 0 as numeric |
         { kS_geologicalcenter             , eMacroFlagReturnNumeric },   // | Macro | Number of Geological Centers. |
+        { kS_GeologicalCenter_C           , eMacroFlagReturnNumeric },   // | Macro | Number of Geological Centers. |
         { kS_get                          , eMacroFlagReturnNumeric | eMacroFlag2Param },   // | Macro | Get tile ID. |
         { kS_granitegrinder               , eMacroFlagReturnNumeric },   // | Macro | Number of Granite Grinders. |
+        { kS_GraniteGrinder_C             , eMacroFlagReturnNumeric },   // | Macro | Number of Granite Grinders. |
         { kS_hard_rock                    , eMacroFlagReturnNumeric },   // | Macro | Tile ID of hard rock(34). |
         { kS_hostiles                     , eMacroFlagReturnNumeric },   // | Macro | Number of hostile creatures. |
         { kS_hoverscout                   , eMacroFlagReturnNumeric },   // | Macro | Number of Hover Scouts. |
+        { kS_HoverScout_C                 , eMacroFlagReturnNumeric },   // | Macro | Number of Hover Scouts. |
         { kS_IceMonster                   , eMacroFlagReturnNumeric },   // | Collection | Ice Monsters. |
+        { kS_IceMonster_C                 , eMacroFlagReturnNumeric },   // | Collection | Ice Monsters. |
         { kS_lava                         , eMacroFlagReturnNumeric },   // | Macro | Tile ID of lava(6). |
         { kS_LavaMonster                  , eMacroFlagReturnNumeric },   // | Collection | Lava Monsters. |
+        { kS_LavaMonster_C                , eMacroFlagReturnNumeric },   // | Collection | Lava Monsters. |
         { kS_LMLC                         , eMacroFlagReturnNumeric },   // | Macro | Number of Large Mobile Laser Cutters. |
+        { kS_LMLC_C                       , eMacroFlagReturnNumeric },   // | Macro | Number of Large Mobile Laser Cutters. |
         { kS_loaderdozer                  , eMacroFlagReturnNumeric },   // | Macro | Number of Loader Dozers. |
         { kS_loose_rock                   , eMacroFlagReturnNumeric },   // | Macro | Tile ID of loose rock(30). |
         { kS_miners                       , eMacroFlagReturnNumeric },   // | Macro | Miners discovered or active. |
         { kS_mininglaser                  , eMacroFlagReturnNumeric },   // | Macro | Number of Geological Centers. |
+        { kS_MiningLaser_C                , eMacroFlagReturnNumeric },   // | Macro | Number of Geological Centers. |
         { kS_monsters                     , eMacroFlagReturnNumeric },   // | Macro | Number of monsters. |
         { kS_NavModifierLava_C            , eMacroFlagReturnNumeric },   // | Collection | Amount of lava tiles. | NavModifierLava_C | Collection | Amount of lava tiles. |
         { kS_NavModifierPowerPath_C       , eMacroFlagReturnNumeric },   // | Collection | Amount of Power Path tiles, any type.NavModifierPowerPath_C | Collection | Amount of Power Path tiles, any type.Only finished patOnly finished paths. |
@@ -779,32 +899,48 @@ protected:
         { kS_ore                          , eMacroFlagReturnNumeric },   // | Macro | Ore count. |
         { kS_Ore_C                        , eMacroFlagReturnNumeric },   // | Collection | All ore. |
         { kS_orerefinery                  , eMacroFlagReturnNumeric },   // | Macro | Number of Ore Refineries. |
+        { kS_OreRefinery_C                , eMacroFlagReturnNumeric },   // | Macro | Number of Ore Refineries. |
         { kS_ore_seam                     , eMacroFlagReturnNumeric },   // | Macro | Tile ID of an ore seam(46). |
         { kS_powerstation                 , eMacroFlagReturnNumeric },   // | Macro | Number of Power Stations. |
+        { kS_PowerStation_C               , eMacroFlagReturnNumeric },   // | Macro | Number of Power Stations. |
         { kS_progress_path                , eMacroFlagReturnNumeric },   // | Macro | Tile id of a progress path(13). |
         { kS_random                       , eMacroFlagReturnNumeric | eMacroFlag2Param },   // | Macro | return random number, random(low)(high) |
         { kS_rapidrider                   , eMacroFlagReturnNumeric },   // | Macro | Number of Rapid Riders. |
+        { kS_RapidRider_C                 , eMacroFlagReturnNumeric },   // | Macro | Number of Rapid Riders. |
         { kS_RechargeSeamGoal_C           , eMacroFlagReturnNumeric },   // | Collection | Visible recharge seams. |
         { kS_RockMonster                  , eMacroFlagReturnNumeric },   // | Collection | Rock Monsters. |
+        { kS_RockMonster_C                , eMacroFlagReturnNumeric },   // | Collection | Rock Monsters. |
         { kS_SlimySlug                    , eMacroFlagReturnNumeric },   // | Collection | Slimy Slugs. |
+        { kS_SlimySlug_C                  , eMacroFlagReturnNumeric },   // | Collection | Slimy Slugs. |
         { kS_slug_hole                    , eMacroFlagReturnNumeric },   // | Macro | Tile id of slimy slug hole(12). |
         { kS_slugs                        , eMacroFlagReturnNumeric },   // | Macro | Number of slimy slugs. |
         { kS_smalldigger                  , eMacroFlagReturnNumeric },   // | Macro | Number of Small Diggers. |
+        { kS_SmallDigger_C                , eMacroFlagReturnNumeric },   // | Macro | Number of Small Diggers. |
         { kS_SmallSpider                  , eMacroFlagReturnNumeric },   // | Collection | Small Spiders. |
+        { kS_SmallSpider_C                , eMacroFlagReturnNumeric },   // | Collection | Small Spiders. |
         { kS_smalltransporttruck          , eMacroFlagReturnNumeric },   // | Macro | Number of Small Transport Trucks. |
+        { kS_SmallTransportTruck_C        , eMacroFlagReturnNumeric },   // | Macro | Number of Small Transport Trucks. |
         { kS_SMLC                         , eMacroFlagReturnNumeric },   // | Macro | Number of Small Mobile Laser Cutters |
+        { kS_SMLC_C                       , eMacroFlagReturnNumeric },   // | Macro | Number of Small Mobile Laser Cutters |
         { kS_solid_rock                   , eMacroFlagReturnNumeric },   // | Macro | Tile ID of solid rock(38). |
         { kS_Stud_C                       , eMacroFlagReturnNumeric },   // | Collection | All building studs. |
         { kS_studs                        , eMacroFlagReturnNumeric },   // | Macro | Building Stud count. |
         { kS_superteleport                , eMacroFlagReturnNumeric },   // | Macro | Number of Super Teleports. |
+        { kS_SuperTeleport_C              , eMacroFlagReturnNumeric },   // | Macro | Number of Super Teleports. |
         { kS_supportstation               , eMacroFlagReturnNumeric },   // | Macro | Number of Support Stations. |
+        { kS_SupportStation_C             , eMacroFlagReturnNumeric },   // | Macro | Number of Support Stations. |
         { kS_teleportpad                  , eMacroFlagReturnNumeric },   // | Macro | Numbewr of Teleport Pads. |
+        { kS_TeleportPad_C                , eMacroFlagReturnNumeric },   // | Macro | Numbewr of Teleport Pads. |
         { kS_time                         , eMacroFlagReturnNumeric },   // | Macro / Trigger | Game time or trigger. |
         { kS_toolstore                    , eMacroFlagReturnNumeric },   // | Macro | Returns number of toolstores. |
+        { kS_Toolstore_C                  , eMacroFlagReturnNumeric },   // | Macro | Returns number of toolstores. |
         { kS_true                         , eMacroFlagReturnNumeric },   // | Macro | returns true or 1 as numeric |
         { kS_tunnelscout                  , eMacroFlagReturnNumeric },   // | Macro | Number of Tunnel Scouts. |
+        { kS_TunnelScout_C                , eMacroFlagReturnNumeric },   // | Macro | Number of Tunnel Scouts. |
         { kS_tunneltransport              , eMacroFlagReturnNumeric },   // | Macro | Number of Tunnel Transports. |
+        { kS_TunnelTransport_C            , eMacroFlagReturnNumeric },   // | Macro | Number of Tunnel Transports. |
         { kS_upgradestation               , eMacroFlagReturnNumeric },   // | Macro | Number of Upgrade Stations. |
+        { kS_UpgradeStation_C             , eMacroFlagReturnNumeric },   // | Macro | Number of Upgrade Stations. |
         { kS_vehicles                     , eMacroFlagReturnNumeric },   // | Macro | Number of vehicles. |
         { kS_VehicleCargoCarrier_C        , eMacroFlagReturnNumeric },   // | Collection | Cargo Carriers |
         { kS_VehicleChromeCrusher_C       , eMacroFlagReturnNumeric },   // | Collection | Chrome Crushers |
@@ -1329,6 +1465,16 @@ protected:
             return m_allvariables.contains( MMUtil::toLower(key) );
         }
 
+        void incCount(const std::string& name)
+        {
+            auto it =  m_allvariables.find( MMUtil::toLower(name) );
+            assert(it !=  m_allvariables.end());
+            if (it !=  m_allvariables.end())
+            {
+                (*it).second->incCount();
+            }
+        }
+
         variableTypeSP find(const std::string& key)
         {
             auto it = m_allvariables.find( MMUtil::toLower(key));
@@ -1358,6 +1504,9 @@ protected:
             return m_typevariables.isValueDuplicated( variable );
 
         }
+
+        size_t size() const { return m_allvariables.size(); }
+
 
         std::unordered_map<std::string, variableTypeSP> const & allVariables() const { return m_allvariables; }
         std::unordered_map<std::string, variableTypeSP> const & getTimerVars() const { return m_typevariables.getTimerVars(); }
@@ -1458,6 +1607,9 @@ protected:
         }
 
         std::unordered_map<std::string, eventChainNameSP> const &allChainNames() const { return m_eventchainnames; }
+
+        size_t size() const { return m_eventchainnames.size(); }
+
 
     protected:
         std::unordered_map<std::string, eventChainNameSP> m_eventchainnames;
@@ -2251,38 +2403,40 @@ public:
         return 0;
     }
 
-    std::deque<InputLine> processInputLines( bool bFixSpace, bool bNoComments, bool bOptimizeNames, bool bOptimizeBlank )
+    void processInputLines(bool bFixSpace, bool bOptimizeNames)
     {
-        std::deque<InputLine> output;
 
         // pass 0 is tokenizing every line and processing pragmas (defines, includes, comments, etc)
         pass0Processing(bFixSpace);
 
         if (!m_errors.emptyErrors())    // have errors, return empty output
-            return output;
+            return;
 
         // pass 1 is collecting up all variables and event chain names
-        pass1Processing( bFixSpace );
+        pass1Processing(bFixSpace);
         if (!m_errors.emptyErrors())    // have errors, return empty output
-            return output;
+            return;
 
         // prior to pass 2 need to add those event chains defined by the block system, and they cannot be optimized
         // also those chains called by the block system need to be properly tagged as non optimizable
-        std::unordered_set<std::string> optIgnore;
+        std::unordered_set<std::string> optIgnore; // just the lower case name
 
-        processBlockChains( m_blockEvents, m_eventChainNames, optIgnore );
+        processTriggerEventChain(optIgnore);   // chains defined in block system
+        processEventCallEvent(optIgnore);      // variables or chains used by block system
+        processObjectiveVars(optIgnore);      // variables used by objective section need to be defined in script and cannot have names optimized
+
         if (!m_errors.emptyErrors())    // have errors, return empty output
-            return output;
+            return;
 
-        if (!optIgnore.contains(kS_init)) optIgnore.insert(kS_init);
-        if (!optIgnore.contains(kS_tick)) optIgnore.insert(kS_tick);
+        if (!optIgnore.contains(kS_init)) optIgnore.insert(kS_init);    // cannot optimize init chain name
+        if (!optIgnore.contains(kS_tick)) optIgnore.insert(kS_tick);    // cannot optimize tick chain name
 
         // pass 2 is looking at all lines, adding token info (eventchain, variable) and types if reserved word.
         // also builds usage counts for variables and event chain names
         // spaces inside of lines are removed here
-        pass2Processing( bFixSpace );
+        pass2Processing(bFixSpace);
         if (!m_errors.emptyErrors())    // have errors, return empty output
-            return output;
+            return;
 
         // todo any more processing or syntax checking
 
@@ -2292,7 +2446,12 @@ public:
         if (bOptimizeNames)
             optimizeNames(optIgnore);
 
-        // now generate the output. have each line serialize itself out, make into a new InputLine for output
+    }
+
+    std::deque<InputLine> buildOutputLines( bool bNoComments, bool bOptimizeNames, bool bOptimizeBlank )
+    {
+                // now generate the output. have each line serialize itself out, make into a new InputLine for output
+        std::deque<InputLine> output;
         int linenum = 1;
         std::string filename;       // blank filename for output
 
@@ -2320,11 +2479,6 @@ public:
             }
         }
         return output;
-    }
-
-    void setBlockEvents(MMMap::blockEvents_t const& blockEvents)
-    {
-        m_blockEvents = blockEvents;
     }
 
 protected:
@@ -2381,79 +2535,6 @@ protected:
         }
     }
 
-    // optIgnore are event chain names to ignore for optimization
-    void processBlockChains(MMMap::blockEvents_t const &blockEvents, allEventChainNames & eventChainNames, std::unordered_set<std::string> & optIgnore )
-    {
-        for (auto it : blockEvents)
-        {
-            MMMap::blockEvents::blockEventChain const &chain = it.second;
-            if (chain.getType() == MMMap::blockEvents::blockEventChain::eExportToScript)  // this chain is callable by script, block defines it
-            {
-                std::string namelc = chain.namelc();  // 
-                bool bAdd = true;
-                if (!MMUtil::isAlphaNumericName(namelc))
-                {
-                    bAdd = false;
-                    m_errors.setWarning(chain.line(), "Invalid Block exported Script name - cannot be called by script");
-                }
-                if (isReservedEvent(namelc))
-                {
-                    bAdd = false;
-                    m_errors.setError(chain.line(), "Block exported Script name is reserved word - cannot be called by script");
-                }
-                if (eventChainNames.contains(namelc))
-                {
-                    bAdd = false;
-                    m_errors.setError(chain.line(), "Block exported script name is already defined in script");
-                }
-                if (bAdd)      // ok to add
-                {
-                    eventChainNames.add(chain.name(), chain.line());
-                    optIgnore.insert(namelc);
-                }
-            }
-            else if (chain.getType() == MMMap::blockEvents::blockEventChain::eImportFromScript)  // script name defined in script callable by block system
-            {
-                // these names can themselves be a single event - not an event chain. Check for that
-                // if it has a paramter: then it must be a reserved var
-
-                std::string namelc = chain.namelc();
-                std::string::size_type pos = namelc.find(':');
-                if (pos != std::string::npos)   // has parameters, must be a reserved word
-                {
-                    std::string subname = namelc.substr(0,pos);
-                    if (subname.empty())
-                    {
-                        m_errors.setWarning(chain.line(),"Invalid block event");
-                    }
-                    else
-                    {
-                        if (!isReservedVar(subname))
-                        {
-                            m_errors.setError(chain.line(),"Unknown block event - it will have no effect");
-                        }
-                    }
-                }
-                else if (!MMUtil::isAlphaNumericName(namelc))  // invalid name format
-                {
-                    m_errors.setWarning(chain.line(),"Invalid block event name, block has no effect");
-                }
-                else if (!isReservedEvent(namelc))  // not reserved word, so it must be a chain defined in our script
-                {
-                    if (!eventChainNames.contains(namelc))
-                    {
-                        m_errors.setWarning(chain.line(), "Block event chain is undefined in script - block has no effect");
-                    }
-                    else   // its all good. Inc the count and tag as non-optimizable
-                    {
-                        eventChainNames.incCount(chain.name());
-                        optIgnore.insert(namelc);
-                    }
-                }
-            }
-        }
-
-    }
 
     // this is recursive. The passed in filename is to be loaded and lines added to input lines.
     // return false if unable to load file. Return true if file is loaded
@@ -2908,7 +2989,7 @@ protected:
                         break;
                     }
 
-                    case '.':   // this may be a dot not a number
+                    case '.':   // this may be a dot (datafield) not a number
                     case '0':
                     case '1':
                     case '2':
@@ -2927,9 +3008,9 @@ protected:
                         {
                             for (; (epos < commentpos) && std::isdigit((unsigned char)input[epos]); epos++)
                                 ;  // scan until first non-number
-                            if ((epos < commentpos) && (isalpha(input[epos] || (input[epos] == '_'))))  // we have an alpha, so treat as an name
+                            if ((epos < commentpos) && (isalpha((unsigned char)input[epos]) || (input[epos] == '_')))  // we have an alpha, so treat as an name
                             {
-                                for (epos++; epos < commentpos && (std::isalpha((unsigned char)input[epos]) || std::isdigit((unsigned char)input[epos]) || (input[epos] == '_')); epos++)
+                                for (epos++; epos < commentpos && (std::isalnum((unsigned char)input[epos]) || (input[epos] == '_')); epos++)
                                     ;
                                 token = input.substr(npos, epos - npos);
                                 parsedTokens.emplace_back(token, eTokenName);
@@ -3252,7 +3333,210 @@ protected:
         return parsedTokens;
     }
 
+    // input is the collecton of raw objective lines.
+    // scan and build a collection of every variable referenced.
+    // The same variable may be used mulitple times and thus have an entry per reference
+  public:
+    void collectObjectiveVars(std::deque<InputLine> const& objectives)
+    {
+        std::string variablekw = kS_variable + ':';     // variable: keyword
+
+        for (auto const& it : objectives)  // for each objective line
+        {
+            std::string linelc = MMUtil::toLower(it.getLine());
+
+            // looking for variable: If found, everything until / is part of the script conditional for the objective.
+            auto startpos = linelc.find(variablekw);
+            if (startpos != linelc.npos)    // found it
+            {
+                auto endpos = linelc.find('/',startpos+variablekw.length());
+                if (endpos != linelc.npos)
+                {
+                    startpos += variablekw.length();
+                    std::string objcond = linelc.substr(startpos,endpos-startpos);
+                    if (!objcond.empty())
+                    {
+                        std::deque<ScriptToken> tokens = rawParseLine(it, objcond, false, false, false, m_errors );
+                        for (auto const& tit : tokens)  // for all tokens.
+                        {
+                            if ((tit.getID() & eTokenName) && !isReservedVar(tit.getToken()))
+                            {
+                                 m_objectiveVars.emplace_back(it,tit.getToken());
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // input is collection of block section lines
+    // scan and build list of event chains used by blocks. There are two types,
+    // ones that are called by blocks into script, and ones called by script into blocks
+    // The ones called by script into the block system must all be unique and later
+    // when processed they are checked to ensure they are not defined by script
+    // The ones block uses to call into script can be any event - not just an event chain.
+    // Thus it is a script single event (one of which can be an eventchain), thus it can be references to script
+    // variables. Here we collect up every name reference, similar to collectObjectiveVars.
+    // 
+    void collectBlockEventChains(std::deque<InputLine> const& blocks)
+    {
+        collectTriggerEventChain( blocks );
+        collectEventCallEvent( blocks );
+    }
+
+    struct ScriptNameStats
+    {
+        size_t m_numvars = 0;
+        size_t m_numchains = 0;
+    };
+
+    ScriptNameStats getScriptNameStats()
+    {
+        ScriptNameStats stats;
+        stats.m_numvars = m_variableNames.size();
+        stats.m_numchains = m_eventChainNames.size();
+        return stats;
+    }
+
+
 protected:
+
+    // these are event chains defined by block system. It provides a way for script to call into block system
+    void collectTriggerEventChain(std::deque<InputLine> const& blocks)
+    {
+        constexpr std::string_view tev = "TriggerEventChain";
+
+        for (auto const& it : blocks)  // every block line
+        {
+            std::string_view line = it.getLine();
+            auto start = line.find(tev);
+            if (start != line.npos)
+            {
+                start = line.find_last_of(',');     // seperator of last parameter
+                if (start != line.npos)
+                {
+                    std::string name(MMUtil::removeLeadingAndTrailingWhite(line.substr(start + 1)));  // get the name
+                    if (!name.empty())
+                    {
+                        if (MMUtil::isAlphaNumericName(name))
+                        {
+                            // should be the name of a unique exported script.
+                            if (!isReservedVar(name))    // must not be reserved word
+                            {
+                                noOptimizeName nooptname(it, name);
+                                if (!m_blockTriggerEventChains.contains(nooptname.namelc()))
+                                {
+                                    m_blockTriggerEventChains.emplace(nooptname.namelc(), nooptname);
+                                }
+                                else
+                                    m_errors.setWarning(it, "Block section TriggerEventChain has duplicate exported event chain: " + name);
+                            }
+                            else
+                                m_errors.setWarning(it, "Block section TriggerEventChain name is reserved word: " + name);
+                        }
+                        else
+                            m_errors.setWarning(it,"Block section TriggerEventChain event chain name has invalid format");
+                    }
+                    else
+                        m_errors.setWarning(it,"Block section TriggerEventChain name is empty");
+                }
+                else
+                    m_errors.setWarning(it,"Block section TriggerEventChain has invalid format");
+            }
+        }
+    }
+
+    void collectEventCallEvent(std::deque<InputLine> const& blocks)
+    {
+        constexpr std::string_view tev = "EventCallEvent";
+
+        for (auto const& it : blocks)  // every block line
+        {
+            std::string_view line = it.getLine();
+            auto start = line.find(tev);
+            if (start != line.npos)
+            {
+                start = line.find_last_of(',');     // seperator of last parameter
+                if (start != line.npos)
+                {
+                    std::string name(line.substr(start + 1));  // get the name
+                    if (!name.empty())
+                    {
+                        // normally this is just an event chain name, but it can be any valid event. Thus it can use macros, variables, etc.
+                        // parse it up into tokens
+                        std::deque<ScriptToken> tokens = rawParseLine( it, name, false, false, false, m_errors);
+                        for (auto const& tit : tokens)
+                        {
+                            if ((tit.getID() & eTokenName) && !isReservedEvent(tit.getToken()))
+                                m_blockEventCallEvent.emplace_back(it,name);    // add name to list that must not be optimized
+                        }
+                    }
+                    else
+                    {
+                        m_errors.setWarning(it,"Block section EventCallEvent name is empty");
+                    }
+                }
+                else
+                {
+                    m_errors.setWarning(it,"Block section EventCallEvent has invalid format");
+                }
+            }
+        }
+    }
+
+    // process the block TriggerEventChains (chains defined by block system). Add as a defined chain or generate warning.
+    // in any case that name is not allowed to be optimized
+    void processTriggerEventChain(std::unordered_set<std::string>& noOptNames)
+    {
+        for (auto const& it : m_blockTriggerEventChains)
+        {
+            std::string const & name = it.second.name();      // name of event chain defined by block system
+            std::string const & namelc = it.second.namelc();  // lower case name
+            if (!noOptNames.contains(namelc))
+                noOptNames.insert(namelc);        // add  name to not optimize
+            if (!m_eventChainNames.contains(name))
+                m_eventChainNames.add(name,it.second.iline());  // add that name is defined
+            else
+                m_errors.setWarning(it.second.iline(),"Block section TriggerEventChain name is already defined in script: "+name);
+        }
+    }
+
+    // process the events called by block section. Usually these are event chains called, but they can be any event which can use variables also
+    // all of the items in this list must exist as defined chains or variables.
+    void processEventCallEvent(std::unordered_set<std::string>& noOptNames)
+    {
+        for (auto const& it : m_blockEventCallEvent)
+        {
+            std::string const & name = it.name();      // name of event chain defined by block system
+            std::string const & namelc = it.namelc();  // lower case name
+            if (!noOptNames.contains(namelc))
+                noOptNames.insert(namelc);        // add  name to not optimize
+            if (m_eventChainNames.contains(name))
+                m_eventChainNames.incCount(name);
+            else if (m_variableNames.contains(name))
+                m_variableNames.incCount(name);
+            else
+                m_errors.setWarning(it.iline(),"Block section EventCallEvent uses undefined script name: "+name);
+        }
+    }
+
+    void processObjectiveVars(std::unordered_set<std::string>& noOptNames)      // variables used by objective section need to be defined in script and cannot have names optimized
+    {
+        for (auto const& it : m_objectiveVars)
+        {
+            std::string const & name = it.name();      // name of event chain defined by block system
+            std::string const & namelc = it.namelc();  // lower case name
+            if (!noOptNames.contains(namelc))
+                noOptNames.insert(namelc);        // add  name to not optimize
+            if (m_variableNames.contains(name))
+                m_variableNames.incCount(name);
+            else
+                m_errors.setWarning(it.iline(),"Objectives section uses undefined variable: "+name);
+        }
+
+    }
+
 
     // look at line starting at pos (it is the first $ char). Return true if we have valid $(name) format.
     // error will be filled in if $( found but name is invalid or no closing ) and false returned
@@ -3421,17 +3705,16 @@ protected:
         auto vars = getUserVariables();
         auto chains = getEventChainNames();
 
-        size_t count = vars.allVariables().size() + chains.allChainNames().size();
+        size_t count = vars.size() + chains.size();
         std::vector<EventChainOrVariableName> names;    // where we put names for sorting
         names.reserve( count );                         // prevent reallocations
 
-        // TODO - if timer make sure to increment the name of the called eventchain (if does not exist, that is a warning)
-        // the chain name may be one defined in block area
-        // load up all the names
+        // load in all the names, but check to see if it is excluded first
         for (auto const & it : vars.allVariables())  // all variables
         {
             auto sp = it.second;
-            names.push_back( EventChainOrVariableName(sp) );
+            if (!optIgnore.contains(sp->getNamelc()))   // check exclusion list
+                names.push_back( EventChainOrVariableName(sp) );
         }
 
         for (auto const & it : chains.allChainNames())  // all names that are allowed to be optimized
@@ -3518,7 +3801,12 @@ protected:
     allEventChainNames             m_eventChainNames;  // all event chain names
     allUserVariables               m_variableNames;    // all variable names
 
-    MMMap::blockEvents_t           m_blockEvents;    // data about event chains from block system
+    // var and event chain names that are not optimized, used in objectives and block sections
+    std::list<noOptimizeName>                       m_objectiveVars;             // variables used in objective section
+    std::unordered_map<std::string, noOptimizeName> m_blockTriggerEventChains;   // unique
+    std::list<noOptimizeName>                       m_blockEventCallEvent;       // names defined in script (usually event chain but can be variables as part of any single event).
+
+//    MMMap::blockEvents_t           m_blockEvents;    // data about event chains from block system
 
     ErrorWarning                   m_errors;
     Defines                        m_defines;      // user macros

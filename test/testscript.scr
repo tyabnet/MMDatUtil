@@ -1,3 +1,7 @@
+  init::;  # verify indenting is removed along with comment
+    return;
+    sound:blah\bl01;  
+
   timer MyTimerObj=2,0.4,0.5,MyTimer
 
 int 0_var=42     # debug vars that start with numerics
@@ -6,9 +10,6 @@ int 0_var=42     # debug vars that start with numerics
 
   int blblah=2
   
-  init::;  # verify indenting is removed along with comment
-      return;  
-
   tick::;
       return;
 

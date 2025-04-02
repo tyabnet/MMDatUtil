@@ -179,6 +179,7 @@ protected:
     const std::string kStr_LavaMonster                  = "LavaMonster";                     // | Collection | Lava Monsters. |
     const std::string kStr_LavaMonster_C                = "LavaMonster_C";                   // | Collection | Lava Monsters. |
     const std::string kStr_level                        = "level";                           // | Data Field | Returns upgrade level of the building. |
+    const std::string kStr_levelup                      = "levelup";                         // | Data Field Trigger | Building leveled up. |
     const std::string kStr_light                        = "light";                           // | Parameter | enable / disable parameter. |
     const std::string kStr_lights                       = "lights";                          // | Parameter | same as light. |
     const std::string kStr_LMLC                         = "LMLC";                            // | Macro | Number of Large Mobile Laser Cutters. |
@@ -427,6 +428,7 @@ protected:
     const std::string kS_LavaMonster                  = MMUtil::toLower( kStr_LavaMonster                  );   // | Collection | Lava Monsters. |
     const std::string kS_LavaMonster_C                = MMUtil::toLower( kStr_LavaMonster_C                );   // | Collection | Lava Monsters. |
     const std::string kS_level                        = MMUtil::toLower( kStr_level                        );   // | Data Field | Returns upgrade level of the building. |
+    const std::string kS_levelup                      = MMUtil::toLower( kStr_levelup                      );   // | Data Field Trigger | Building upgraded. |
     const std::string kS_light                        = MMUtil::toLower( kStr_light                        );   // | Parameter | enable / disable parameter. |
     const std::string kS_lights                       = MMUtil::toLower( kStr_lights                       );   // | Parameter | same as light. |
     const std::string kS_LMLC                         = MMUtil::toLower( kStr_LMLC                         );   // | Macro | Number of Large Mobile Laser Cutters. |
@@ -684,6 +686,7 @@ protected:
         { kS_LavaMonster                  , kStr_LavaMonster                  },   // | Collection | Lava Monsters. |
         { kS_LavaMonster_C                , kStr_LavaMonster_C                },   // | Collection | Lava Monsters. |
         { kS_level                        , kStr_level                        },   // | Data Field | Returns upgrade level of the building. |
+        { kS_levelup                      , kStr_levelup                      },   // | Data Field Trigger| Buklding upgraded. |
         { kS_light                        , kStr_light                        },   // | Parameter | enable / disable parameter. |
         { kS_lights                       , kStr_lights                       },   // | Parameter | same as light. |
         { kS_LMLC                         , kStr_LMLC                         },   // | Macro | Number of Large Mobile Laser Cutters. |
@@ -1253,6 +1256,7 @@ protected:
     static constexpr uint64_t eTokenBoolFalse      = 0x0000010000000000ull;  // also has eTokenInt set
     static constexpr uint64_t eTokenBoolTrue       = 0x0000020000000000ull;  // also has eTokenInt set
     static constexpr uint64_t eTokenArrowColor     = 0x0000040000000000ull;  // one of the arrow colors
+    static constexpr uint64_t eTokenSoundPath      = 0x0000080000000000ull;  // token is a path
 
     static constexpr uint64_t eTokenChainNoOptimize= 0x2000000000000000ull;  // set if token is chainname and it should not be optimized
     static constexpr uint64_t eTokenOptional       = 0x4000000000000000ull;  // set if token is optional
@@ -2413,6 +2417,7 @@ public:
             return;
 
         // pass 1 is collecting up all variables and event chain names
+        // pass 1 also fixes sound: events, combining following paths into a single token
         pass1Processing(bFixSpace);
         if (!m_errors.emptyErrors())    // have errors, return empty output
             return;
@@ -2531,7 +2536,6 @@ protected:
         for (auto& it : m_scriptlines)
         {
             it.identifyTokens( *this, bFixSpace, m_errors );
-
         }
     }
 
@@ -2942,7 +2946,7 @@ protected:
                         parsedTokens.emplace_back(empty, empty, eTokenBlankLine);   // entire line is empty - it will terminate an event chain
                     }
                     else
-                        errors.setError(iline,"empty line has spaces. Use -sfixspace option to fix.");
+                        errors.setWarning(iline,"empty line has spaces. Use -sfixspace option to fix.");
                     break;
                 }
                 commentpos = inputLen;    // pretend we have a comment after end of line - this allows us to use this to stop parsing
@@ -2958,22 +2962,30 @@ protected:
                 uint8_t ch = input[npos];
                 if (std::isalpha((unsigned char)ch) || (ch == '_'))   // have an alpha char. Continue while more alpha or digits
                 {
-                    for (; epos < commentpos; epos++)
+                    if (isSoundPath(input, npos, epos, commentpos))
                     {
-                        if (!std::isdigit((unsigned char)input[epos]) && !std::isalpha((unsigned char)input[epos]) && (input[epos] != '_')) // this char ends the token
-                            break;
+                        token = input.substr(npos, epos-npos);
+                        parsedTokens.emplace_back(token,eTokenSoundPath);
                     }
-                    token = input.substr(npos, epos - npos);
-                    // check for special true/false, we treat them as int numeric constants
-                    std::string tokenlc = MMUtil::toLower(token);
-                    if (tokenlc == kS_false)
-                        parsedTokens.emplace_back(token, eTokenInt | eTokenBoolFalse);
-                    else if (tokenlc == kS_true)
-                        parsedTokens.emplace_back(token, eTokenInt | eTokenBoolTrue);
-                    else if (isColor(tokenlc))
-                        parsedTokens.emplace_back(token, eTokenArrowColor);
                     else
-                        parsedTokens.emplace_back(token, eTokenName);
+                    {
+                        for (; epos < commentpos; epos++)
+                        {
+                            if (!std::isalnum((unsigned char)input[epos]) && (input[epos] != '_')) // this char ends the token
+                                break;
+                        }
+                        token = input.substr(npos, epos - npos);
+                        // check for special true/false, we treat them as int numeric constants
+                        std::string tokenlc = MMUtil::toLower(token);
+                        if (tokenlc == kS_false)
+                            parsedTokens.emplace_back(token, eTokenInt | eTokenBoolFalse);
+                        else if (tokenlc == kS_true)
+                            parsedTokens.emplace_back(token, eTokenInt | eTokenBoolTrue);
+                        else if (isColor(tokenlc))
+                            parsedTokens.emplace_back(token, eTokenArrowColor);
+                        else
+                            parsedTokens.emplace_back(token, eTokenName);
+                    }
                 }
                 else
                 {
@@ -3004,8 +3016,15 @@ protected:
                         // because variables can start with a number, we need to scan to see if we only have numbers and at least one alpha.
                         // anything that is non-alpha before the alpha means a number. Once you see an alpha, continue with only
                         // alpha and numbers.
-                        if (ch != '.')
+                        if (ch != '.')  // .\ can be a path (not sure if MM even allows that but might as well support it)
                         {
+                            if (isSoundPath(input, npos, epos, commentpos))
+                            {
+                                token = input.substr(npos, epos-npos);
+                                parsedTokens.emplace_back(token,eTokenSoundPath);
+                                break;
+                            }
+
                             for (; (epos < commentpos) && std::isdigit((unsigned char)input[epos]); epos++)
                                 ;  // scan until first non-number
                             if ((epos < commentpos) && (isalpha((unsigned char)input[epos]) || (input[epos] == '_')))  // we have an alpha, so treat as an name
@@ -3243,7 +3262,7 @@ protected:
                             ;
                         if ((epos >= commentpos) || (input[epos] != '"'))   // missing ending quote
                         {
-                            ;   // we need to do some sort of error
+                            errors.setWarning(iline,"Missing ending double quote, string contents may be incorrect");
                         }
                         if (epos == npos)
                             token = "\"\"";
@@ -3292,6 +3311,17 @@ protected:
                         token = input.substr(npos, epos - npos);
                         parsedTokens.emplace_back(token, eUnknown);
                         break;
+                    }
+
+                    case '\\':   // single backslash. Path spec for sound: event. Can also start with . or a name\name
+                    {
+                        if (isSoundPath(input, npos, epos, commentpos))
+                        {
+                            token = input.substr(npos, epos-npos);
+                            parsedTokens.emplace_back(token,eTokenSoundPath);
+                            break;
+                        }
+                        // fall into default
                     }
 
                     default:  // no idea. Posssible a unicode variable name (TODO - does MM engine deal with this case?)
@@ -3368,6 +3398,37 @@ protected:
                 }
             }
         }
+    }
+
+    // start from npos, scan up to commentpos, return true if a path is found, epos will point to next char after path
+    // The only thing we allow to stop a path is a space or we hit commentpos
+    // if not a path, then don't change epos (it starts off equal to npos+1)
+    // to be a path it needs to have at least one \ character
+    // 
+    bool isSoundPath(std::string_view line, size_t npos, size_t& epos, size_t commentpos)
+    {
+        constexpr std::string_view notPath = "\",!=<>/*-+()[]:;."; // things that start other tokens that we don't allow to be part of path
+        int numBackslash = 0; // \ path separator
+        size_t endpos = npos;
+        for (; endpos < commentpos; endpos++)
+        {
+            unsigned char ch = (unsigned char)line[endpos];
+
+            if (std::isblank(ch))   // blanks end the path
+                break;
+            if (std::isalnum(ch))   // alpha and digits ok for paths
+                continue;
+            if (ch == '\\')         // found a path separator
+                numBackslash++;
+            else if (notPath.find(ch) != notPath.npos)
+                break;
+        }
+        if (numBackslash >= 1)      // some sort of path
+        {
+            epos = endpos;
+            return true;
+        }
+        return false;
     }
 
     // input is collection of block section lines
@@ -3620,7 +3681,7 @@ protected:
     // this defines the allowed first char of a token. Note it does not allow any non-ascii variable names
     bool isKnown(char ch)
     {
-        if (std::isdigit((unsigned char)ch) || std::isalpha((unsigned char)ch) || std::isblank((unsigned char)ch) || (ch == '_'))
+        if (std::isalnum((unsigned char)ch) || std::isblank((unsigned char)ch) || (ch == '_'))
             return true;
 
         std::size_t npos =

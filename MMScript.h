@@ -1247,7 +1247,7 @@ protected:
     static constexpr uint64_t eTokenNot            = 0x0000000080000000ull;  // !  mm engine does not support this currently, we will generate an error
     static constexpr uint64_t eTokenNotEqual       = 0x0000000100000000ull;  // !=
     static constexpr uint64_t eTokenComma          = 0x0000000200000000ull;  // ,
-    static constexpr uint64_t eTokenString         = 0x0000000400000000ull;  // string literal (was defined within quotes), quotes not part of string
+    static constexpr uint64_t eTokenString         = 0x0000000400000000ull;  // string literal defined with double quotes, quotes part of string
     static constexpr uint64_t eTokenComment        = 0x0000000800000000ull;  // contains comment and optional leading space prior to comment
     static constexpr uint64_t eTokenCommentLine    = 0x0000001000000000ull;  // entire line is comment, may have space in front
     static constexpr uint64_t eTokenBlankLine      = 0x0000002000000000ull;  // entire line is empty and not a comment. Will end event chain if within one
@@ -1257,6 +1257,9 @@ protected:
     static constexpr uint64_t eTokenBoolTrue       = 0x0000020000000000ull;  // also has eTokenInt set
     static constexpr uint64_t eTokenArrowColor     = 0x0000040000000000ull;  // one of the arrow colors
     static constexpr uint64_t eTokenSoundPath      = 0x0000080000000000ull;  // token is a path
+    static constexpr uint64_t eTokenNoQuoteString  = 0x0000100000000000ull;  // string token, no double quotes surrounding it
+    static constexpr uint64_t eTokenEventList      = 0x0000200000000000ull;  // ? preceding event for random selected event
+    static constexpr uint64_t eTokenFailedEmerge   = 0x0000400000000000ull;  // ~ preceding event for failed emerge event
 
     static constexpr uint64_t eTokenChainNoOptimize= 0x2000000000000000ull;  // set if token is chainname and it should not be optimized
     static constexpr uint64_t eTokenOptional       = 0x4000000000000000ull;  // set if token is optional
@@ -1638,6 +1641,7 @@ protected:
         const std::string & getTokenlc() const { return m_tokenlc; }
         uint64_t getID() const { return m_id; }
         void orID( uint64_t value ) { m_id |= value; }      // used to refine the token type during processing.
+        void removeID( uint64_t value ) { m_id &= ~value; } // mainly used to remove name for sound paths
 
     protected:
         std::string m_token;
@@ -1750,7 +1754,7 @@ protected:
         // errors can be filled in if invalid, caller checks for any errors added.
         // spaces can be removed if bFixSpace
         // vars is updated as complete declarations are detected.
-        void processVariableDecleration(const ScriptEngine& se, allUserVariables& vars, bool bFixSpace, ErrorWarning& errors)
+        void processVariableDecleration(ScriptEngine& se, allUserVariables& vars, bool bFixSpace, ErrorWarning& errors)
         {
             if (m_processed)    // line has been processed, don't process again.
                 return;
@@ -1758,7 +1762,7 @@ protected:
                 return;
 
             std::size_t index = 0;
-            if (!getNextToken((size_t)((intmax_t)(-1)), index))    // start at beginning - find first non-ignored token
+            if (!se.getNextToken(m_tokens,(size_t)((intmax_t)(-1)), index))    // start at beginning - find first non-ignored token
                 return;               // no more tokens, not a variable line
 
             ScriptToken &it = m_tokens[index];  // get first usable token
@@ -1787,7 +1791,7 @@ protected:
                 return;
 
             std::size_t index = 0;
-            if (!getNextToken((size_t)((intmax_t)(-1)), index))    // start at beginning - find first non-ignored token
+            if (!se.getNextToken(m_tokens,(size_t)((intmax_t)(-1)), index))    // start at beginning - find first non-ignored token
                 return;               // no more tokens, not a variable line
 
             ScriptToken &it = m_tokens[index];  // get first usable token
@@ -1799,12 +1803,9 @@ protected:
                 // an event chain name is a unique name followed by :: See if the next non-space token is ::
                 size_t nameindex = index;  // save index of possible event chain name
 
-                if (!getNextToken(index, index))    // move to next token
+                if (!se.getNextTokenProcessSpaces(m_tokens,index, index, bFixSpace, 0, m_line, errors))    // move to next token
                     return;                         // no more tokens, not an event chain name
 
-                if (processSpaces(m_tokens[index], bFixSpace, 0, errors))   // skip spaces that are fixed
-                    if (!getNextToken(index, index))    // move to next token
-                        return;                         // no more tokens, not an event chain name
                 // see if token is ::
                 if (!(m_tokens[index].getID() & eTokenDColon))
                     return;                         // not event chain name
@@ -1846,29 +1847,21 @@ protected:
             auto chains = se.getEventChainNames();
 
             std::size_t index = 0;
-            if (!getNextToken((size_t)((intmax_t)(-1)), index))    // start at beginning - find first non-ignored token
+            if (!se.getNextToken(m_tokens,(size_t)((intmax_t)(-1)), index))    // start at beginning - find first non-ignored token
                 return;
 
             if (m_eventchain)  // this line has been identified as one that contains an event chain name, it has the :: token.
             {
                 assert(m_tokens[index].getID() & eTokenEventChain);
-                if (!getNextToken(index, index))    // move to next token
+                if (!se.getNextToken(m_tokens,index, index))    // move to next token
                     return;                         // no more tokens, not an event chain name
                 assert(m_tokens[index].getID() & eTokenDColon);   // we have already done space fixing, so this must be the double colon
 
                 // there must be one more token after the double colon,
-                if (!getNextToken(index, index))    // move to next token
+                if (!se.getNextTokenProcessSpaces(m_tokens,index, index,bFixSpace,0,m_line,errors))    // move to next token
                 {
                     errors.setError(m_line, "Missing semi-colon after EventChain name double colon.");
                     return;
-                }
-                if (processSpaces(m_tokens[index], bFixSpace, 0, errors))
-                {
-                    if (!getNextToken(index, index))    // move to next token
-                    {
-                        errors.setError(m_line, "Missing semi-colon after EventChain name double colon.");
-                        return;
-                    }
                 }
                 // index is now at the next token. It cannot be a comment (missing semi-colon)
                 if (m_tokens[index].getID() & eTokenComment)
@@ -1878,7 +1871,7 @@ protected:
                 }
                 if (m_tokens[index].getID() & eTokenSemi)  // event chain has no event on the decleration line, nothing but comments are allowed next.
                 {
-                    if (!getNextToken(index, index))  // end of line and no comment
+                    if (!se.getNextToken(m_tokens, index, index))  // end of line and no comment
                     {
                         m_processed = true;
                     }
@@ -1924,15 +1917,10 @@ protected:
                         errors.setWarning(m_line,std::string("Unknown name: ") + str + " - undeclared variable or event chain");
                     }
                 }
-                if (!getNextToken(index,index))         // move to next token
+                if (!se.getNextTokenProcessSpaces(m_tokens, index,index, bFixSpace, 0, m_line, errors))         // move to next token
                     break;                              // no tokens left, done
-                if (processSpaces(m_tokens[index],bFixSpace,0,errors))  // if a space and we can fix, ignore it
-                    if (!getNextToken(index,index))                     // was a space, move to next token
-                        break;                          // no tokens left, done
-            }
+            } // for
         }
-
-
 
     protected:
         bool isIgnorableComment(const std::string& str) const
@@ -1948,85 +1936,17 @@ protected:
         }
 
 
-        // mask is 0 or eTokenSpace or (eTokenSpaces | eTokenSpace) bits.
-        // There is never a case where we have to have eTokenSpaces
-        // return true means to skip to next token since a space(s) were processed
-        bool processSpaces(ScriptToken& it, bool bFixSpace, uint64_t mask, ErrorWarning& errors)
-        {
-            if (it.getID() & (eTokenSpace | eTokenSpaces))  // token is some form of space
-            {
-                if (it.getID() & eTokenIgnore)           // already told to ignore this token
-                    return true;                         // ignore - tell caller to look at next token
-
-                if (mask & (eTokenSpace | eTokenSpaces)) // some sort of spacing is allowed
-                {
-                    if (!(mask & eTokenSpaces))          // multiple spaces not allowed
-                    {
-                        if (it.getID() & eTokenSpaces)  // single space allowed but have multiple spaces
-                        {
-                            if (bFixSpace)              // allowed to fix
-                            {
-                                if (mask & eTokenOptional)      // if space is optional, remove it if fixing
-                                    it.orID( eTokenIgnore );
-                                else
-                                    it.setToken(" ");       // change to single space
-                            }
-                            else
-                            {
-                                errors.setError(m_line, "Invalid spaces - only single space allowed");
-                            }
-                        }
-                    }
-                    else  // multiple spaces are allowed.
-                    {
-                        if (bFixSpace && (mask & eTokenOptional))  // if spaces are optional
-                            it.orID( eTokenIgnore );               // then remove them
-                    }
-                }
-                else    // spaces not allowed
-                {
-                    if (bFixSpace)              // allowed to fix
-                    {
-                        it.orID( eTokenIgnore );    // set ignore to comp
-                    }
-                    else
-                    {
-                        errors.setError(m_line, "spaces not allowed");
-                    }
-                }
-                return true;    // current token is a space
-            }
-
-            // token is not a space. If spaces are optional, then no error
-            if (mask & (eTokenSpace | eTokenSpaces)) // some sort of spacing is allowed/required
-            {
-                if (!(mask & eTokenOptional))     // space is required
-                {
-                    errors.setError(m_line, "Missing required space");
-                }
-            }
-            return false;   // token is not a space
-        }
-
-
         // index is the token for type. format is space name optional =value(s) depending on type of variable.
-        void processVariableDecl(variableType::varType type, std::size_t index, const ScriptEngine& se, allUserVariables& vars, bool bFixSpace, ErrorWarning& errors)
+        void processVariableDecl(variableType::varType type, std::size_t index, ScriptEngine& se, allUserVariables& vars, bool bFixSpace, ErrorWarning& errors)
         {
             m_processed = true;     // no matter what, line has now been processed
-            if (!getNextToken(index,index))
-            {
-                errors.setError(m_line, "missing space and variable name");
-                return;
-            }
-
-            // must have a space token
-            if (!processSpaces(m_tokens[index], bFixSpace, eTokenSpace | eTokenSpaces, errors))   // must have a space or multiple spaces allowed
+            if (!se.getNextTokenProcessSpaces(m_tokens,index,index, bFixSpace, eTokenSpace | eTokenSpaces, m_line, errors ))
             {
                 errors.setError(m_line, "missing space after variable decleration");
                 return;
             }
 
-            if (!getNextToken(index,index))
+            if (!se.getNextToken(m_tokens, index,index))
             {
                 errors.setError(m_line, "missing variable name");
                 return;
@@ -2063,13 +1983,8 @@ protected:
             vt->setLine(m_line);            // save line defining
             nameToken.orID(se.eTokenVariable);     // name is a variable name, allows optimization
 
-            if (getNextToken(index,index))   // there is another token
-            {
-                if (processSpaces(m_tokens[index], bFixSpace, eTokenSpace | eTokenSpaces | eTokenOptional, errors))   // optional space(s)
-                {
-                    getNextToken(index,index);
-                }
-            }
+            se.getNextTokenProcessSpaces(m_tokens,index,index, bFixSpace,eTokenSpace | eTokenSpaces | eTokenOptional,m_line,errors);   // there is another token
+
             if ((index < m_tokens.size()) && !(m_tokens[index].getID() & eTokenComment))  // have non-space, non-comment token
             {
                 // have a non-comment token.
@@ -2079,11 +1994,7 @@ protected:
                 }
                 else if (m_tokens[index].getID() & eTokenAssignment)  // only token allowed by all other variables is =
                 {
-                    if (getNextToken(index,index))   // there is anothere token
-                    {
-                        if (processSpaces(m_tokens[index], bFixSpace, eTokenSpace | eTokenSpaces | eTokenOptional, errors))   // optional space(s)
-                            getNextToken(index,index);
-                    }
+                    se.getNextTokenProcessSpaces(m_tokens,index,index, bFixSpace, eTokenSpace | eTokenSpaces | eTokenOptional, m_line, errors);   // there is anothere token
                     if (index < m_tokens.size())  // have more tokens
                     {
                         ScriptToken & it = m_tokens[index];
@@ -2162,7 +2073,7 @@ protected:
                             float values[3] = { 0 };
                             std::string eventchain;
 
-                            if (processfloats(index, values, 3, bFixSpace, errors))
+                            if (processfloats(se, index, values, 3, bFixSpace, errors))
                             {
                                 ScriptToken &tit = m_tokens[index]; // event chain to call
                                 if (tit.getID() & eTokenName)
@@ -2192,11 +2103,11 @@ protected:
                                 int col = 0;
                                 row = std::stoi(it.getTokenlc());
 
-                                if (getNextTokenNoSpaces(index,index,bFixSpace,errors))    // have another token
+                                if (se.getNextTokenProcessSpaces(m_tokens, index,index,bFixSpace,0, m_line, errors))    // have another token
                                 {
                                     if (m_tokens[index].getID() == eTokenComma)
                                     {
-                                        if (getNextTokenNoSpaces(index, index, bFixSpace, errors))
+                                        if (se.getNextTokenProcessSpaces(m_tokens, index, index, bFixSpace, 0, m_line, errors))
                                         {
                                             ScriptToken &tit = m_tokens[index];
                                             if ((tit.getID() & eTokenInt) && !(it.getID() & (eTokenBoolFalse | eTokenBoolTrue)))
@@ -2226,17 +2137,53 @@ protected:
                             errors.setError(m_line,"Invalid Building row,col");
                             break;
 
-                        case variableType::eVarTypeString:
-                            if (it.getID() & eTokenString)
+                        case variableType::eVarTypeString:  // string variables may have either quoted string, or unquoted. If unquoted, combine every following token into a single token.
+                            if (it.getID() & eTokenString)  // quoted string, save it with the quotes
                             {
                                 vt->setValueString( it.getToken() );
+                                bool bExtraStuff = false;
+                                for (size_t nextindex = index + 1; nextindex < m_tokens.size(); nextindex++)
+                                {
+                                    uint64_t id = m_tokens[nextindex].getID();
+                                    if (id & eTokenComment)   // comments still stop the processing
+                                        break;
+                                    m_tokens[nextindex].orID( eTokenNoQuoteString );
+                                    if (id & (eTokenIgnore | eTokenSpace | eTokenSpaces))
+                                        continue;
+                                    bExtraStuff = true;
+                                }
+                                if (bExtraStuff)
+                                    errors.setWarning(m_line,"Additional characters not part of string");
                             }
-                            else
-                                errors.setError(m_line,"invalid string");
+                            else    // another format supported is unquoted string. What we do here is combine every following token into a a single unquoted string token.
+                            {
+                                std::string unquotedString = m_tokens[index].getToken();  // get current token.
+                                m_tokens[index].orID( eTokenNoQuoteString );
+
+                                bool bEmbeddedQuoteString = false;
+                                size_t nextindex = index+1;
+                                for (; nextindex < m_tokens.size(); nextindex++)
+                                {
+                                    uint64_t id = m_tokens[nextindex].getID();
+                                    if (id & eTokenComment)   // comments still stop the processing
+                                        break;
+                                    if (id & eTokenIgnore)
+                                        continue;
+                                    if (id & eTokenString)
+                                        bEmbeddedQuoteString = true;                    // remember that there are embedded quoted strings
+
+                                    unquotedString += m_tokens[nextindex].getToken();
+                                    m_tokens[nextindex].orID( eTokenIgnore );   // these tokens are no longer used
+                                }
+                                m_tokens[index].setToken( unquotedString );     // now all of the tokens are merged into the single unquoted string.
+                                index = nextindex;
+                                if (bEmbeddedQuoteString)
+                                    errors.setWarning(m_line,"Embedded quoted strings - verify string contents.");
+                            }
                             break;
 
                         } // switch
-                        if (getNextTokenNoSpaces(index,index,bFixSpace,errors))
+                        if (se.getNextTokenProcessSpaces(m_tokens, index,index,bFixSpace,0, m_line, errors))
                         {
                             if (!(m_tokens[index].getID() & eTokenComment))
                                 errors.setError(m_line,"unexpected characters");
@@ -2257,33 +2204,6 @@ protected:
 
             vars.add( vt );  // add the variable even if we had errors.
 
-        }
-
-        // return true if another index exists, false if end of line. Skip all ignored
-        // input index: token index to start. Use -1 to start from beginning.
-        // output newindex: token index of token that is not already ignored
-        bool getNextToken(std::size_t index, std::size_t& newindex)
-        {
-            if ((intmax_t)index < 0)
-                newindex = 0;   // first time start at 0
-            else
-                newindex = index + 1;  // else move to next token
-            for (;newindex < m_tokens.size() && (m_tokens[newindex].getID() & eTokenIgnore); newindex++) // if ignored, move to next token
-                ;
-
-            return (newindex >=m_tokens.size()) ? false : true;
-        }
-
-        bool getNextTokenNoSpaces(std::size_t index, std::size_t& newindex, bool bFixSpace, ErrorWarning errors)
-        {
-            newindex = index;
-            do
-            {
-                if (!getNextToken(newindex, newindex))         // get next token
-                    break;
-            }
-            while (processSpaces(m_tokens[newindex], bFixSpace, 0, errors));   // spaces not allowed but fixing, they are removed
-            return newindex < m_tokens.size();
         }
 
         void processAssignmentTokenID(const ScriptToken& it, variableTypeSP & vt, const allUserVariables& vars, ErrorWarning& errors, const std::string &typeName )
@@ -2310,7 +2230,7 @@ protected:
         // look for the number of floats, fill in data with the values, fill in errors if any issue.
         // input returned pointing to index of last float
         // return true if no errors, return false if any issues.
-        bool processfloats(std::size_t& index, float* data, int numfloats, bool bFixSpace, ErrorWarning & errors)
+        bool processfloats(ScriptEngine &se, std::size_t& index, float* data, int numfloats, bool bFixSpace, ErrorWarning & errors)
         {
             int floatloop = 0;
             for (; floatloop < numfloats; floatloop++)
@@ -2319,7 +2239,7 @@ protected:
                 if (!(it.getID() & eTokenInt | eTokenFloat))
                     break;
                 data[floatloop] = stof(it.getTokenlc());
-                if (!getNextTokenNoSpaces(index, index, bFixSpace, errors))    // have another token
+                if (!se.getNextTokenProcessSpaces(m_tokens, index, index, bFixSpace, 0, m_line, errors))    // have another token
                     break;
 
                 if (!(m_tokens[index].getID() == eTokenComma))
@@ -2328,7 +2248,7 @@ protected:
                     break;
                 }
 
-                if (!getNextTokenNoSpaces(index, index, bFixSpace, errors))
+                if (!se.getNextTokenProcessSpaces(m_tokens, index, index, bFixSpace, 0, m_line, errors))
                     break;
             }
             return floatloop == numfloats;
@@ -2338,8 +2258,14 @@ protected:
 
         InputLine               m_line;                // holds the line, linenumber, filename
         std::deque<ScriptToken> m_tokens;              // parsed tokens for this line
+
         bool                    m_eventchain = false;  // true = this line starts an event chain.
+        bool                    m_event = false;       // true = event within an event chain.
+        bool                    m_eventlist = false;   // true = ? event part of event list 
+        bool                    m_failedEvent = false; // true = ~ event for failed emerge
         bool                    m_processed = false;   // set to true when line has been completely processed
+        bool                    m_variableDecl = false; // true = variable decleration
+        bool                    m_trigger = false;      // true = trigger defination
     };
 
 public:
@@ -2425,10 +2351,12 @@ public:
         // prior to pass 2 need to add those event chains defined by the block system, and they cannot be optimized
         // also those chains called by the block system need to be properly tagged as non optimizable
         std::unordered_set<std::string> optIgnore; // just the lower case name
+        optIgnore.reserve(64);                     // help prevent reallocations
 
         processTriggerEventChain(optIgnore);   // chains defined in block system
         processEventCallEvent(optIgnore);      // variables or chains used by block system
-        processObjectiveVars(optIgnore);      // variables used by objective section need to be defined in script and cannot have names optimized
+        processObjectiveVars(optIgnore);       // variables used by objective section need to be defined in script and cannot have names optimized
+        processBlockTimerVars(optIgnore);      // timer variables defined in block system
 
         if (!m_errors.emptyErrors())    // have errors, return empty output
             return;
@@ -2511,6 +2439,8 @@ protected:
             it.processVariableDecleration( *this, m_variableNames, bFixSpace, m_errors );
 
             it.processEventChainName( *this, m_eventChainNames, bFixSpace, m_errors );
+
+            //it.processSoundPath( *this, bFixSpace, m_errors );
         }
 
         // now we need to make sure ref counts are correct. Timer variables reference an event chain. If the chain is not defined, issue a warning.
@@ -2962,30 +2892,22 @@ protected:
                 uint8_t ch = input[npos];
                 if (std::isalpha((unsigned char)ch) || (ch == '_'))   // have an alpha char. Continue while more alpha or digits
                 {
-                    if (isSoundPath(input, npos, epos, commentpos))
+                    for (; epos < commentpos; epos++)
                     {
-                        token = input.substr(npos, epos-npos);
-                        parsedTokens.emplace_back(token,eTokenSoundPath);
+                        if (!std::isalnum((unsigned char)input[epos]) && (input[epos] != '_')) // this char ends the token
+                            break;
                     }
+                    token = input.substr(npos, epos - npos);
+                    // check for special true/false, we treat them as int numeric constants
+                    std::string tokenlc = MMUtil::toLower(token);
+                    if (tokenlc == kS_false)
+                        parsedTokens.emplace_back(token, eTokenInt | eTokenBoolFalse);
+                    else if (tokenlc == kS_true)
+                        parsedTokens.emplace_back(token, eTokenInt | eTokenBoolTrue);
+                    else if (isColor(tokenlc))
+                        parsedTokens.emplace_back(token, eTokenArrowColor);
                     else
-                    {
-                        for (; epos < commentpos; epos++)
-                        {
-                            if (!std::isalnum((unsigned char)input[epos]) && (input[epos] != '_')) // this char ends the token
-                                break;
-                        }
-                        token = input.substr(npos, epos - npos);
-                        // check for special true/false, we treat them as int numeric constants
-                        std::string tokenlc = MMUtil::toLower(token);
-                        if (tokenlc == kS_false)
-                            parsedTokens.emplace_back(token, eTokenInt | eTokenBoolFalse);
-                        else if (tokenlc == kS_true)
-                            parsedTokens.emplace_back(token, eTokenInt | eTokenBoolTrue);
-                        else if (isColor(tokenlc))
-                            parsedTokens.emplace_back(token, eTokenArrowColor);
-                        else
-                            parsedTokens.emplace_back(token, eTokenName);
-                    }
+                        parsedTokens.emplace_back(token, eTokenName);
                 }
                 else
                 {
@@ -3018,13 +2940,6 @@ protected:
                         // alpha and numbers.
                         if (ch != '.')  // .\ can be a path (not sure if MM even allows that but might as well support it)
                         {
-                            if (isSoundPath(input, npos, epos, commentpos))
-                            {
-                                token = input.substr(npos, epos-npos);
-                                parsedTokens.emplace_back(token,eTokenSoundPath);
-                                break;
-                            }
-
                             for (; (epos < commentpos) && std::isdigit((unsigned char)input[epos]); epos++)
                                 ;  // scan until first non-number
                             if ((epos < commentpos) && (isalpha((unsigned char)input[epos]) || (input[epos] == '_')))  // we have an alpha, so treat as an name
@@ -3313,16 +3228,20 @@ protected:
                         break;
                     }
 
-                    case '\\':   // single backslash. Path spec for sound: event. Can also start with . or a name\name
+                    case '?':  // random event list
                     {
-                        if (isSoundPath(input, npos, epos, commentpos))
-                        {
-                            token = input.substr(npos, epos-npos);
-                            parsedTokens.emplace_back(token,eTokenSoundPath);
-                            break;
-                        }
-                        // fall into default
+                        token = input.substr(npos,epos - npos);
+                        parsedTokens.emplace_back(token,eTokenEventList);
+                        break;
                     }
+
+                    case '~':  // failed emerge event
+                    {
+                        token = input.substr(npos,epos - npos);
+                        parsedTokens.emplace_back(token,eTokenFailedEmerge);
+                        break;
+                    }
+
 
                     default:  // no idea. Posssible a unicode variable name (TODO - does MM engine deal with this case?)
                     {
@@ -3400,37 +3319,6 @@ protected:
         }
     }
 
-    // start from npos, scan up to commentpos, return true if a path is found, epos will point to next char after path
-    // The only thing we allow to stop a path is a space or we hit commentpos
-    // if not a path, then don't change epos (it starts off equal to npos+1)
-    // to be a path it needs to have at least one \ character
-    // 
-    bool isSoundPath(std::string_view line, size_t npos, size_t& epos, size_t commentpos)
-    {
-        constexpr std::string_view notPath = "\",!=<>/*-+()[]:;."; // things that start other tokens that we don't allow to be part of path
-        int numBackslash = 0; // \ path separator
-        size_t endpos = npos;
-        for (; endpos < commentpos; endpos++)
-        {
-            unsigned char ch = (unsigned char)line[endpos];
-
-            if (std::isblank(ch))   // blanks end the path
-                break;
-            if (std::isalnum(ch))   // alpha and digits ok for paths
-                continue;
-            if (ch == '\\')         // found a path separator
-                numBackslash++;
-            else if (notPath.find(ch) != notPath.npos)
-                break;
-        }
-        if (numBackslash >= 1)      // some sort of path
-        {
-            epos = endpos;
-            return true;
-        }
-        return false;
-    }
-
     // input is collection of block section lines
     // scan and build list of event chains used by blocks. There are two types,
     // ones that are called by blocks into script, and ones called by script into blocks
@@ -3439,11 +3327,13 @@ protected:
     // The ones block uses to call into script can be any event - not just an event chain.
     // Thus it is a script single event (one of which can be an eventchain), thus it can be references to script
     // variables. Here we collect up every name reference, similar to collectObjectiveVars.
+    // also collect up timer variables defined in blocks
     // 
-    void collectBlockEventChains(std::deque<InputLine> const& blocks)
+    void collectBlockNames(std::deque<InputLine> const& blocks)
     {
         collectTriggerEventChain( blocks );
         collectEventCallEvent( blocks );
+        collectTimerVars( blocks );           // timer variables used in script
     }
 
     struct ScriptNameStats
@@ -3458,6 +3348,132 @@ protected:
         stats.m_numvars = m_variableNames.size();
         stats.m_numchains = m_eventChainNames.size();
         return stats;
+    }
+
+
+    // event sound processing.
+    // caller has identified this set of tokens as an event
+    // events could be in the block section, or in script as either a single line event or one of the conditional path.
+    // input are the tokens to look at, starting at the given start index
+    // look for sound: event. If found, tag tokens after : until square bracket, semicolon, comment or end of line as part of sound paths and not a name
+    // spaces can be removed if bFixSpace
+    void eventSoundprocess(std::deque<ScriptToken> & tokens, size_t startindex, size_t endindex, bool bFixSpace, InputLine const & iline, ErrorWarning& errors)
+    {
+        if (tokens.empty() || (startindex >= tokens.size()))  // should never happen
+            return;
+
+        // we should be on sound token
+        std::size_t index = startindex;
+        assert( (tokens[index].getID() & eTokenName) && (tokens[index].getTokenlc() == kS_sound));
+
+        // next token should be double colon
+        if (getNextTokenProcessSpaces(tokens, index, index, bFixSpace, 0, iline, errors))
+        {
+            if (tokens[index].getID() & eTokenDColon)
+            {
+                if (getNextTokenProcessSpaces(tokens, index, index, bFixSpace, 0, iline, errors))
+                {
+                    for (; index < endindex; index++)   // for all tokens in the range give, mark them all as belonging to sound path
+                    {
+                        tokens[index].removeID( eTokenName );  // if a name token, remove it
+                        tokens[index].orID( eTokenSoundPath ); // mark it as a sound path
+                    }
+                }
+                else
+                    errors.setWarning(iline,"Sound event invalid format - missing sound path");
+            }
+            else
+                errors.setWarning(iline,"Sound event invalid format - missing :");
+        }
+    }
+
+    // return true if another index exists, false if end of line. Skip all ignored
+    // input index: token index to start. Use -1 to start from beginning.
+    // output newindex: token index of token that is not already ignored
+    bool getNextToken(std::deque<ScriptToken> const & tokens, std::size_t index, std::size_t& newindex) const
+    {
+        if ((intmax_t)index < 0)
+            newindex = 0;   // first time start at 0
+        else
+            newindex = index + 1;  // else move to next token
+        for (;newindex < tokens.size() && (tokens[newindex].getID() & eTokenIgnore); newindex++) // if ignored, move to next token
+            ;
+
+        return (newindex < tokens.size()) ? true : false;
+    }
+
+    // same as above but combined with process spaces.
+    bool getNextTokenProcessSpaces(std::deque<ScriptToken> & tokens, std::size_t startindex, std::size_t& newindex, bool bFixSpace, int64_t spaceflags, InputLine const &iline, ErrorWarning &errors)
+    {
+        std::size_t index = startindex;
+        do
+        {
+            if (!getNextToken(tokens, index, index))        // get next token
+                break;                                      // out of tokens
+        }
+        while (processSpaces(tokens[index], bFixSpace, spaceflags, iline, errors));   // spaces not allowed but fixing, they are removed
+        newindex = index;
+        return index < tokens.size();
+    }
+
+    // mask is 0 or eTokenSpace or (eTokenSpaces | eTokenSpace) bits.
+    // There is never a case where we have to have eTokenSpaces
+    // return true means to skip to next token since a space(s) were processed. False means to stay with current token
+    bool processSpaces(ScriptToken& it, bool bFixSpace, uint64_t mask, InputLine const & iline, ErrorWarning& errors)
+    {
+        if (it.getID() & (eTokenSpace | eTokenSpaces))  // token is some form of space
+        {
+            if (it.getID() & eTokenIgnore)           // already told to ignore this token
+                return true;                         // ignore - tell caller to look at next token
+
+            if (mask & (eTokenSpace | eTokenSpaces)) // some sort of spacing is allowed
+            {
+                if (!(mask & eTokenSpaces))          // multiple spaces not allowed
+                {
+                    if (it.getID() & eTokenSpaces)  // single space allowed but have multiple spaces
+                    {
+                        if (bFixSpace)              // allowed to fix
+                        {
+                            if (mask & eTokenOptional)      // if space is optional, remove it if fixing
+                                it.orID( eTokenIgnore );
+                            else
+                                it.setToken(" ");       // change to single space
+                        }
+                        else
+                        {
+                            errors.setError(iline, "Invalid spaces - only single space allowed");
+                        }
+                    }
+                }
+                else  // multiple spaces are allowed.
+                {
+                    if (bFixSpace && (mask & eTokenOptional))  // if spaces are optional
+                        it.orID( eTokenIgnore );               // then remove them
+                }
+            }
+            else    // spaces not allowed
+            {
+                if (bFixSpace)              // allowed to fix
+                {
+                    it.orID( eTokenIgnore );    // set ignore to comp
+                }
+                else
+                {
+                    errors.setError(iline, "spaces not allowed");
+                }
+            }
+            return true;    // current token is a space
+        }
+
+        // token is not a space. If spaces are optional, then no error
+        if (mask & (eTokenSpace | eTokenSpaces)) // some sort of spacing is allowed/required
+        {
+            if (!(mask & eTokenOptional))     // space is required
+            {
+                errors.setError(iline, "Missing required space");
+            }
+        }
+        return false;   // token is not a space
     }
 
 
@@ -3546,6 +3562,61 @@ protected:
         }
     }
 
+    // block section timer variables, add to initial list of timer variables and to list of timer variables to not optimize names for
+    // ID/TriggerTimer:ROW,COL,NAME,DELAY,MAX,MIN
+    void collectTimerVars(std::deque<InputLine> const& blocks)
+    {
+        constexpr std::string_view tev = "TriggerTimer";
+
+        for (auto const& it : blocks)  // every block line
+        {
+            std::string_view line = it.getLine();
+            auto start = line.find(tev);
+            if (start != line.npos)
+            {
+                std::string name;
+                start += tev.length() + 1;     // past : char
+                start = line.find(',',start);  // end of ROW
+                if (start != line.npos)
+                {
+                    start = line.find(',',start+1);  // end of COL
+                    if (start != line.npos)
+                    {
+                        size_t endpos = line.find(',',start+1);  // end of NAME
+                        if ((endpos != line.npos) && (endpos > start+2))
+                        {
+                            name = line.substr(start+1,endpos-start-2);
+                            if (MMUtil::isAlphaNumericName(name) && !isReservedVar(name))
+                            {
+                                if (!m_variableNames.contains(name))
+                                {
+                                    variableTypeSP vt(std::make_shared<variableType>(name, variableType::eVarTypeTimer)); // everyone only has a shared_ptr to it
+                                    vt->setLine(it);            // save line defining
+                                    m_variableNames.add(vt);        // save as a timer variable (not saving any of the timer parameters - no reason)
+                                    m_blockTimerVars.emplace_back(noOptimizeName(it, name)); // add to list of timer variables to ignore during name optimization
+                                }
+                                else
+                                {
+                                    m_errors.setWarning(it, "Block section TriggerTimer has duplicate timer name: " + name);
+                                }
+                            }
+                            else
+                            {
+                                m_errors.setWarning(it, "Block section TriggerTimer has invalid timer name: " + name);
+                            }
+                        }
+                    }
+                }
+                if (name.empty())
+                {
+                    m_errors.setWarning(it, "Block section TriggerTimer has invalid format or empty timer name");
+
+                }
+            }
+        }
+
+    }
+
     // process the block TriggerEventChains (chains defined by block system). Add as a defined chain or generate warning.
     // in any case that name is not allowed to be optimized
     void processTriggerEventChain(std::unordered_set<std::string>& noOptNames)
@@ -3596,6 +3667,16 @@ protected:
                 m_errors.setWarning(it.iline(),"Objectives section uses undefined variable: "+name);
         }
 
+    }
+
+    void processBlockTimerVars(std::unordered_set<std::string>& noOptNames)
+    {
+        for (auto const& it : m_blockTimerVars)
+        {
+            std::string const & namelc = it.namelc();  // lower case name
+            if (!noOptNames.contains(namelc))
+                noOptNames.insert(namelc);        // add  name to not optimize
+        }
     }
 
 
@@ -3685,7 +3766,7 @@ protected:
             return true;
 
         std::size_t npos =
-            std::string_view("\",!=<>/*\\-+()[]:;.").find(ch);  
+            std::string_view("\",!=<>/*\\-+()[]:;.?~").find(ch);  
         return npos != std::string_view::npos;
     }
 
@@ -3866,6 +3947,7 @@ protected:
     std::list<noOptimizeName>                       m_objectiveVars;             // variables used in objective section
     std::unordered_map<std::string, noOptimizeName> m_blockTriggerEventChains;   // unique
     std::list<noOptimizeName>                       m_blockEventCallEvent;       // names defined in script (usually event chain but can be variables as part of any single event).
+    std::list<noOptimizeName>                       m_blockTimerVars;            // timer variables defined in block section
 
 //    MMMap::blockEvents_t           m_blockEvents;    // data about event chains from block system
 

@@ -810,7 +810,7 @@ int wmain(int , wchar_t ** )   // ignore all passed in parameters
         scrEngine.addCmdDefines(cmdParser.getOptions(), srcMap.getHeight(), srcMap.getWidth(), srcMap.getMapName());
         scrEngine.loadScript(srcMap.getScriptLines(), cmdParser.getOptions().m_sincdirs, cmdParser.getOptions().m_bReadANSI);
         scrEngine.collectObjectiveVars(srcMap.getObjectiveLines());
-        scrEngine.collectBlockEventChains(srcMap.getBlockLines());
+        scrEngine.collectBlockNames(srcMap.getBlockLines());
 
         if (!scrEngine.getErrors().emptyErrors())
         {
@@ -998,7 +998,7 @@ int wmain(int , wchar_t ** )   // ignore all passed in parameters
         scrEngine.addCmdDefines(cmdParser.getOptions(), outMap.getHeight(), outMap.getWidth(), outMap.getMapName() );
         scrEngine.loadScript( outMap.getScriptLines(), cmdParser.getOptions().m_sincdirs, cmdParser.getOptions().m_bReadANSI );
         scrEngine.collectObjectiveVars( outMap.getObjectiveLines() );
-        scrEngine.collectBlockEventChains( outMap.getBlockLines() );
+        scrEngine.collectBlockNames( outMap.getBlockLines() );
 
         if (!scrEngine.getErrors().emptyErrors())
         {

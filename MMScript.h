@@ -44,18 +44,18 @@ protected:
     {
     public:
         noOptimizeName() = default;
-        noOptimizeName(InputLine const& iline, std::string const& name)
+        noOptimizeName(InputLinePtr const& iline, std::string const& name)
             : m_iline(iline), m_name(name), m_namelc(MMUtil::toLower(name))
         {}
 
-        InputLine   const &iline()  const { return m_iline; }
-        std::string const &name()   const { return m_name; }
-        std::string const &namelc() const { return m_namelc; }
+        InputLinePtr const &iline()  const { return m_iline; }
+        std::string  const &name()   const { return m_name; }
+        std::string  const &namelc() const { return m_namelc; }
 
     protected:
-        InputLine   m_iline;      // line referenced in .dat file
-        std::string m_name;       // name used in line
-        std::string m_namelc;     // lower case version of name, use this for key
+        InputLinePtr m_iline;      // line referenced in .dat file
+        std::string  m_name;       // name used in line
+        std::string  m_namelc;     // lower case version of name, use this for key
     };
 
 
@@ -1020,7 +1020,7 @@ protected:
         public:
             DefineKeyValue() = default;
             DefineKeyValue( const DefineKeyValue &) = default;
-            DefineKeyValue(const std::string& key, const std::string& value, InputLine const &iline) { setKeyValue( key, value, iline); }
+            DefineKeyValue(const std::string& key, const std::string& value, InputLinePtr const &iline) { setKeyValue( key, value, iline); }
             ~DefineKeyValue() = default;
             DefineKeyValue& operator=(const DefineKeyValue&) = default;
 
@@ -1049,10 +1049,10 @@ protected:
             }
             const std::string & getkeylc() const { return m_keylc; }
 
-            const InputLine& inputLine() const { return m_iline; }   // used in case of error
+            const InputLinePtr& inputLine() const { return m_iline; }   // used in case of error
 
         protected:
-            void setKeyValue(const std::string &key, const std::string& value, InputLine const &iline )
+            void setKeyValue(const std::string &key, const std::string& value, InputLinePtr const &iline )
             {
                 m_iline = iline;                // save input line where defined - used in case of evaluating error
                 m_key = key;
@@ -1074,7 +1074,7 @@ protected:
             std::string   m_key;                // user key
             std::string   m_keylc;              // key to compare against
             std::string   m_value;              // value of key
-            InputLine     m_iline;              // line where macro was defined
+            InputLinePtr  m_iline;              // line where macro was defined
             int32_t       m_uniqueNameVal = 0; // used to generate unique names
             bool          m_evaluated = false;    // true = fully evaluated, false = need evaluation
             bool          m_uniquename = false;   // true = macro value is dynamically computed in some form (currently only used by TyUniqueName)
@@ -1098,7 +1098,7 @@ protected:
             return keyvalue ? keyvalue->getValue() : std::string();
         }
 
-        void addKeyValue(const std::string & key, const std::string & value, InputLine const &iline)
+        void addKeyValue(const std::string & key, const std::string & value, InputLinePtr const &iline)
         {
             std::string keylc = MMUtil::toLower(key);
             auto it = m_defines.find(keylc);
@@ -1289,8 +1289,8 @@ protected:
         variableType(const std::string& name, varType type) : m_name(name), m_namelc(MMUtil::toLower(name)), m_type(type), m_count(1) {}
         ~variableType() = default;
 
-        void setLine( const InputLine &iline ) { m_line = iline; }
-        const InputLine &getLine() const { return m_line; }
+        void setLine( const InputLinePtr &iline ) { m_line = iline; }
+        const InputLinePtr &getLine() const { return m_line; }
 
         bool hasData() const { return m_hasValue; }
         void setValueString( const std::string &val ) { m_string = val; }
@@ -1347,12 +1347,12 @@ protected:
 
 
     protected:
-        InputLine   m_line;       // line that defines variable. Used to generate warnings if never used
-        std::string m_namelc;     // lower case name
-        std::string m_name;       // original name may be mixed case
-        std::string m_optname;    // optimized name, all instances of this variable will be written with this name
-        int         m_count = 0;  // number of references. Used for generation of new names
-        varType     m_type = eVarTypeBool;  // defines type of variable
+        InputLinePtr  m_line;       // line that defines variable. Used to generate warnings if never used
+        std::string   m_namelc;     // lower case name
+        std::string   m_name;       // original name may be mixed case
+        std::string   m_optname;    // optimized name, all instances of this variable will be written with this name
+        int           m_count = 0;  // number of references. Used for generation of new names
+        varType       m_type = eVarTypeBool;  // defines type of variable
 
         // these are the types of = parameters
         std::string m_string;         // string value or arrow color
@@ -1533,8 +1533,8 @@ protected:
         eventChainName(const std::string& name) : m_name(name), m_namelc(MMUtil::toLower(name)), m_count(1) {}
         ~eventChainName() = default;
 
-        void setLine( const InputLine &iline ) { m_line = iline; }
-        const InputLine &getLine() const { return m_line; }
+        void setLine( const InputLinePtr &iline ) { m_line = iline; }
+        const InputLinePtr &getLine() const { return m_line; }
 
         void incCount() { m_count++; }
         int  getCount() const { return m_count; }
@@ -1545,11 +1545,11 @@ protected:
         const std::string& getNamelc()  const { return m_namelc; }
 
     protected:
-        InputLine   m_line;      // generate warnings if not referenced
-        std::string m_name;      // original name
-        std::string m_namelc;    // lower case version of name
-        std::string m_optname;   // optimized name
-        int         m_count = 0; // number of times name is used
+        InputLinePtr m_line;      // generate warnings if not referenced
+        std::string  m_name;      // original name
+        std::string  m_namelc;    // lower case version of name
+        std::string  m_optname;   // optimized name
+        int          m_count = 0; // number of times name is used
     };
 
     typedef std::shared_ptr<eventChainName> eventChainNameSP;
@@ -1567,7 +1567,7 @@ protected:
         }
 
         // increment the count if it already exists, or add a new one
-        void add(const std::string& name, InputLine const &iline )
+        void add(const std::string& name, InputLinePtr const &iline )
         {
             std::string namelc = MMUtil::toLower(name);
             assert(m_eventchainnames.contains(namelc) == false);
@@ -1642,6 +1642,7 @@ protected:
         uint64_t getID() const { return m_id; }
         void orID( uint64_t value ) { m_id |= value; }      // used to refine the token type during processing.
         void removeID( uint64_t value ) { m_id &= ~value; } // mainly used to remove name for sound paths
+        void setID( uint64_t value ) { m_id = value; }      // used to set the sound path start
 
     protected:
         std::string m_token;
@@ -1655,7 +1656,7 @@ protected:
     {
     public:
         ScriptLine() = default;
-        ScriptLine(const InputLine & line) : m_line(line) {}
+        ScriptLine(const InputLinePtr & line) : m_line(line) {}
         ~ScriptLine() = default;
 
         void setTokens(std::deque<ScriptToken>&& tokens)    // move
@@ -1667,8 +1668,8 @@ protected:
             m_tokens = tokens;
         }
 
-        InputLine const & getLine() const { return m_line; }
-        InputLine       & getLine()       { return m_line; }
+        InputLinePtr const & getLine() const { return m_line; }
+        InputLinePtr       & getLine()       { return m_line; }
 
         // build line from the parsed tokens
         // set bSkip to true to ignore this line, caller will ignore
@@ -1676,7 +1677,7 @@ protected:
         {
             bSkip = false;
             std::string str;
-            std::size_t len = m_line.getLine().length();
+            std::size_t len = m_line->getLine().length();
             str.reserve( len ? len : 256 );
             for (auto const & it : m_tokens)
             {
@@ -1706,7 +1707,7 @@ protected:
                 else if ((it.getID() & eTokenCommentLine) && bNoComments && isIgnorableComment(it.getTokenlc()))
                 {
                     bSkip = true;   // full line comment, we must exclude them from the output since they turn into empty strings
-                    continue;
+                    break;          // all done nothing else on this line
                 }
                 else
                     str += it.getToken();
@@ -1720,7 +1721,7 @@ protected:
         // script language does not allow any leading spaces on a line that is not a comment line.
         void processInitialSpace(bool bFixSpace, ErrorWarning errors)
         {
-            if (m_processed)
+            if (m_bProcessed)
                 return;
             if (m_tokens.empty())   // should not happen, we always have some token for a line even if the line is blank.
                 return;
@@ -1736,7 +1737,7 @@ protected:
         // script language does not allow any trailing spaces on a line that is not a comment line.
         void processLastSpace(bool bFixSpace, ErrorWarning errors)
         {
-            if (m_processed)
+            if (m_bProcessed)
                 return;
             if (m_tokens.empty())   // should not happen, we always have some token for a line even if the line is blank.
                 return;
@@ -1749,6 +1750,32 @@ protected:
             }
         }
 
+        // looking for if/when
+        void processTrigger(ScriptEngine& se, [[maybe_unused]] bool bFixSpace, [[maybe_unused]] ErrorWarning& m_errors)  // currently this is just to set the line type as a trigger
+        {
+            if (m_bProcessed)    // line has been processed, don't process again.
+                return;
+            if (m_tokens.empty())  // should never happen
+                return;
+            if (m_bVariableDecl)   // ignore variables declerations
+                return;
+            if (m_bEventChain)     // ignore event chain definations
+                return;
+
+            std::size_t index = 0;
+            if (!se.getNextToken(m_tokens,(size_t)((intmax_t)(-1)), index))    // start at beginning - find first non-ignored token
+                return;               // no more tokens, not a variable line
+
+            ScriptToken &it = m_tokens[index];  // get first usable token
+            if ((index <= 1) && (it.getID() & eTokenName))  // have token, see if it is if or when
+            {
+                if ((it.getTokenlc() == se.kS_if) || (it.getTokenlc() == se.kS_when))
+                    m_bTrigger = true;
+            }
+        }
+
+
+
 
         // process the tokens, see if this is a variable declaration. if so return true, if not return false
         // errors can be filled in if invalid, caller checks for any errors added.
@@ -1756,7 +1783,7 @@ protected:
         // vars is updated as complete declarations are detected.
         void processVariableDecleration(ScriptEngine& se, allUserVariables& vars, bool bFixSpace, ErrorWarning& errors)
         {
-            if (m_processed)    // line has been processed, don't process again.
+            if (m_bProcessed)    // line has been processed, don't process again.
                 return;
             if (m_tokens.empty())  // should never happen
                 return;
@@ -1774,7 +1801,8 @@ protected:
                 if (mapit != se.m_varTypeMap.cend())        // this is one of our variable types
                 {
                     processVariableDecl(mapit->second, index, se, vars, bFixSpace, errors);
-                    m_processed = true;     // no need to process this line again.
+                    m_bProcessed = true;     // no need to process this line again.
+                    m_bVariableDecl = true;  // this is a variable declaration
                 }
             }
         }
@@ -1785,7 +1813,7 @@ protected:
         // vars is updated as complete declarations are detected.
         void processEventChainName(ScriptEngine& se, allEventChainNames& eventchainnames, bool bFixSpace, ErrorWarning& errors)
         {
-            if (m_processed)    // line has been processed, don't process again.
+            if (m_bProcessed)    // line has been processed, don't process again.
                 return;
             if (m_tokens.empty())  // should never happen
                 return;
@@ -1811,7 +1839,7 @@ protected:
                     return;                         // not event chain name
 
                 // found :: Set flag so later processing will skip everything prior to the ::
-                m_eventchain = true;    // found :: treat as event chain name def even if error
+                m_bEventChain = true;    // found :: treat as event chain name def even if error
 
                 if (se.isReservedEvent(m_tokens[nameindex].getToken()))   // cannot be a reserved word
                 {
@@ -1836,9 +1864,65 @@ protected:
             }
         }
 
+        // this will look for sound: event. If found the stuff after sound is combined into a single soundpath object.
+        // end of token are ; and ] or the end comment
+        void processSoundPath(ScriptEngine& se, bool bFixSpace, ErrorWarning& errors)
+        {
+            if (m_bProcessed)    // line has been processed, don't process again.
+                return;
+            if (m_tokens.empty())  // should never happen
+                return;
+
+            size_t index = (size_t)(-1LL);
+            for (; se.getNextToken(m_tokens, index, index);)    // start at beginning - find first non-ignored token
+            {
+                ScriptToken & it = m_tokens[index];
+                if (!(it.getID() & eTokenIgnore) && (it.getID() & eTokenName))  // have a name
+                {
+                    if (it.getTokenlc() == se.kS_sound) // sound token
+                        break;
+                }
+            }
+            if (index < m_tokens.size())  // sound was found
+            {
+                if ((se.getNextTokenProcessSpaces(m_tokens, index, index, bFixSpace, eTokenSpace | eTokenSpaces | eTokenOptional, m_line, errors)))
+                {
+                    if (m_tokens[index].getID() & eTokenColon)  // have the :
+                    {
+                        if ((se.getNextTokenProcessSpaces(m_tokens, index, index, bFixSpace, eTokenSpace | eTokenSpaces | eTokenOptional, m_line, errors)))
+                        {
+                            // I want to find all of the tokens for the sound path
+                            size_t soundIndexStart = index;
+                            size_t soundIndexEnd = index;
+                            for (; se.getNextToken(m_tokens, index, index);)
+                            {
+                                // all tokens are part of the path until ; ] comment
+                                if (m_tokens[index].getID() & (eTokenCBracket | eTokenSemi | eTokenComment))
+                                    break;
+                            }
+                            soundIndexEnd = index;  // this token is not part of the path
+
+                            if (soundIndexStart < soundIndexEnd)
+                            {
+                                // first one gets everything
+                                m_tokens[soundIndexStart].setID(eTokenSoundPath);
+                                for (index = soundIndexStart+1; index < soundIndexEnd; index++)
+                                {
+                                    m_tokens[index].orID(eTokenIgnore);  // ignore them
+                                    m_tokens[soundIndexStart].setToken(m_tokens[soundIndexStart].getToken()+m_tokens[index].getToken());
+                                    m_tokens[index].setToken(std::string());
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+
         void identifyTokens(ScriptEngine& se, bool bFixSpace, ErrorWarning& errors)
         {
-            if (m_processed)    // line has been processed, don't process again.
+            if (m_bProcessed)    // line has been processed, don't process again.
                 return;
             if (m_tokens.empty())  // should never happen
                 return;
@@ -1850,7 +1934,7 @@ protected:
             if (!se.getNextToken(m_tokens,(size_t)((intmax_t)(-1)), index))    // start at beginning - find first non-ignored token
                 return;
 
-            if (m_eventchain)  // this line has been identified as one that contains an event chain name, it has the :: token.
+            if (m_bEventChain)  // this line has been identified as one that contains an event chain name, it has the :: token.
             {
                 assert(m_tokens[index].getID() & eTokenEventChain);
                 if (!se.getNextToken(m_tokens,index, index))    // move to next token
@@ -1873,11 +1957,11 @@ protected:
                 {
                     if (!se.getNextToken(m_tokens, index, index))  // end of line and no comment
                     {
-                        m_processed = true;
+                        m_bProcessed = true;
                     }
                     else if (m_tokens[index].getID() && eTokenComment)
                     {
-                        m_processed = true;
+                        m_bProcessed = true;
                     }
                     else
                     {
@@ -1939,16 +2023,10 @@ protected:
         // index is the token for type. format is space name optional =value(s) depending on type of variable.
         void processVariableDecl(variableType::varType type, std::size_t index, ScriptEngine& se, allUserVariables& vars, bool bFixSpace, ErrorWarning& errors)
         {
-            m_processed = true;     // no matter what, line has now been processed
+            m_bProcessed = true;     // no matter what, line has now been processed
             if (!se.getNextTokenProcessSpaces(m_tokens,index,index, bFixSpace, eTokenSpace | eTokenSpaces, m_line, errors ))
             {
-                errors.setError(m_line, "missing space after variable decleration");
-                return;
-            }
-
-            if (!se.getNextToken(m_tokens, index,index))
-            {
-                errors.setError(m_line, "missing variable name");
+                errors.setError(m_line, std::string("missing variable name"));
                 return;
             }
 
@@ -2254,18 +2332,19 @@ protected:
             return floatloop == numfloats;
         }
 
-
-
-        InputLine               m_line;                // holds the line, linenumber, filename
+        InputLinePtr            m_line;                // holds the line, linenumber, filename
         std::deque<ScriptToken> m_tokens;              // parsed tokens for this line
 
-        bool                    m_eventchain = false;  // true = this line starts an event chain.
+        // todo might be better to use a flags setup for these.
+    public:
+        bool                    m_bProcessed = false;   // set to true when line has been completely processed
+
+        bool                    m_bEventChain = false;  // true = this line starts an event chain.
         bool                    m_event = false;       // true = event within an event chain.
         bool                    m_eventlist = false;   // true = ? event part of event list 
         bool                    m_failedEvent = false; // true = ~ event for failed emerge
-        bool                    m_processed = false;   // set to true when line has been completely processed
-        bool                    m_variableDecl = false; // true = variable decleration
-        bool                    m_trigger = false;      // true = trigger defination
+        bool                    m_bVariableDecl = false; // true = variable decleration
+        bool                    m_bTrigger = false;      // true = trigger defination
     };
 
 public:
@@ -2280,7 +2359,7 @@ public:
     // passed in the lines loaded from the map script section.
     // if there is a filename setup, then this input is ignored
     // the file is processed
-    bool loadScript(const std::deque<InputLine>& scriptSectionLines, const std::deque<std::filesystem::path> &incDirs, bool bAnsi )
+    bool loadScript(const std::deque<InputLinePtr>& scriptSectionLines, const std::deque<std::filesystem::path> &incDirs, bool bAnsi )
     {
         bool retval = true;     // assume ok
         if (m_filename.empty())
@@ -2288,7 +2367,7 @@ public:
         else
         {
             std::deque<std::filesystem::path> processed;    // how we check for circular reference and more directories to search
-            retval = loadScriptFile(m_filename,incDirs, processed, InputLine(), bAnsi, "  ");
+            retval = loadScriptFile(m_filename,incDirs, processed, std::make_shared<InputLine>(), bAnsi, "  ");
         }
         return retval;
     }
@@ -2297,7 +2376,7 @@ public:
     int addCmdDefines(const CommandLineOptions& cmdline, int rows, int cols, const std::string &mapname)
     {
         // first add the predefined ones
-        InputLine emptyLine;
+        InputLinePtr emptyLine;
 
         m_defines.addKeyValue("TyabMapRows", std::to_string(rows), emptyLine);
         m_defines.addKeyValue("TyabMapCols", std::to_string(cols), emptyLine);
@@ -2307,7 +2386,7 @@ public:
         std::string sdate = FileIO::getDateStr(m_filename, cmdline.m_datestr);
         if (sdate.empty() && !m_inputlines.empty())
         {
-            sdate = FileIO::getDateStr(std::filesystem::path(Unicode::utf8_to_wstring(m_inputlines[0].getFileName())), cmdline.m_datestr);
+            sdate = FileIO::getDateStr(std::filesystem::path(Unicode::utf8_to_wstring(m_inputlines[0]->getFileName())), cmdline.m_datestr);
         }
 
         m_defines.addKeyValue("TyabScriptDate", sdate, emptyLine);        // main script we know its date
@@ -2318,16 +2397,16 @@ public:
         {
             if (m_defines.contains(it.key()))
             {
-                m_errors.setError(InputLine(), "Duplicate name=value from command line: " + std::string(it.key()));
+                m_errors.setError(std::make_shared<InputLine>(), "Duplicate name=value from command line: " + std::string(it.key()));
                 return 1;
             }
             if (isReservedWord(it.key()))
             {
-                m_errors.setError(InputLine(), "name=value from command line is reserved name: " + std::string(it.key()));
+                m_errors.setError(std::make_shared<InputLine>(), "name=value from command line is reserved name: " + std::string(it.key()));
                 return 1;
             }
 
-            m_defines.addKeyValue(it.key(), it.value(),InputLine());
+            m_defines.addKeyValue(it.key(), it.value(),std::make_shared<InputLine>());
 
         }
         return 0;
@@ -2381,36 +2460,61 @@ public:
 
     }
 
-    std::deque<InputLine> buildOutputLines( bool bNoComments, bool bOptimizeNames, bool bOptimizeBlank )
+    std::deque<InputLinePtr> buildOutputLines( bool bNoComments, bool bOptimizeNames, bool bOptimizeBlank )
     {
                 // now generate the output. have each line serialize itself out, make into a new InputLine for output
-        std::deque<InputLine> output;
+        std::deque<InputLinePtr> output;
         int linenum = 1;
         std::string filename;       // blank filename for output
 
+        const ScriptLine * lastNonBlankLine = nullptr;
         bool bLastBlank = false;
-        for (auto const & it : m_scriptlines)
+        for (auto itp = m_scriptlines.cbegin(); itp != m_scriptlines.cend(); itp++)  // using old school iterator so we can get a pointer
         {
+            const ScriptLine * slp = &(*itp);   // pointer to the script line
             bool bSkip = false;
-            std::string str = it.serialize_out(*this, bNoComments, bOptimizeNames, bSkip);
-            if (!bSkip) // will be true if removing full line comments
+            std::string str = slp->serialize_out(*this, bNoComments, bOptimizeNames, bSkip);
+            if (bSkip) // was it a full line comment and we are optimizing comments
+                continue; // then skip the line.
+
+            if (bOptimizeBlank)   // optimizing blanks
             {
-                if (str.empty() && bNoComments)     // if removing comments, we also remove duplicate blank lines
+                if (str.empty())  // this is a blank line
                 {
-                    if (bLastBlank)
-                        continue;   // skip duplicate blank line
-                    bLastBlank = true;  // first blank line, remember
+                    bLastBlank = true;    // remember that we have a blank line pending
+                    continue;             // go to next line
                 }
-                else
-                    bLastBlank = false;  // not a blank line
-
-                // if removing all blank lines, skip them
-                if (str.empty() && bOptimizeBlank)
-                    continue;
-
-                output.push_back(InputLine(str, linenum++, filename));
+                // a non-blank line. If we have a pending blank line it may or maynot be output depending on what this is and what the last non-blank was.
+                if (bLastBlank)   // have one or more sequences of blank lines before this line
+                {
+                    bool bOutputBlank = false;
+                    if (lastNonBlankLine) // not the first non-blank line, so need to see if this line needs a blank line based on the last non-blank line
+                    {
+                        // trigger,variables can skip if the prior was also a trigger or variable
+                        if (slp->m_bTrigger || slp->m_bVariableDecl)  // this line is trigger or var
+                        {
+                            if (!lastNonBlankLine->m_bTrigger && !lastNonBlankLine->m_bVariableDecl)
+                                bOutputBlank = true;
+                        }
+                        else if (slp->m_bEventChain) // event chain is ok after a variable or trigger
+                        {
+                            if (!lastNonBlankLine->m_bTrigger && !lastNonBlankLine->m_bVariableDecl)
+                                bOutputBlank = true;
+                        }
+                        else
+                            bOutputBlank = true;  // comment lines mostly, could also be event where the prior line was blank (invalid syntax but we are not fixing that)
+                    }
+                    if (bOutputBlank) // output the blank line skipped
+                    {
+                        output.push_back(std::make_shared<InputLine>(std::string(), linenum++, filename));
+                    }
+                }
+                bLastBlank = false;     // last line not blank
+                lastNonBlankLine = slp; // save current line
             }
-        }
+            // output the line
+            output.push_back(std::make_shared<InputLine>(str, linenum++, filename));
+        } // for m_scriptlines
         return output;
     }
 
@@ -2421,7 +2525,7 @@ protected:
         for (auto & it : m_inputlines)  // macros may change the input line
         {
             ScriptLine sl(it);
-            sl.setTokens(rawParseLine( sl.getLine(), sl.getLine().getLine(), true, true, bFixSpace, m_errors));
+            sl.setTokens(rawParseLine( sl.getLine(), sl.getLine()->getLine(), true, true, bFixSpace, m_errors));
             m_scriptlines.push_back(sl);
         }
     }
@@ -2431,16 +2535,22 @@ protected:
     {
         for (auto & it : m_scriptlines)
         {
+            // do spaces first
             // if first token is some sort of space, error or fix.
             it.processInitialSpace( bFixSpace, m_errors );
             // if last token is some sort of space, error or fix.
             it.processLastSpace( bFixSpace, m_errors );
 
+            // see if any of our variable declerations
             it.processVariableDecleration( *this, m_variableNames, bFixSpace, m_errors );
 
+            // see if starting eventchain
             it.processEventChainName( *this, m_eventChainNames, bFixSpace, m_errors );
 
-            //it.processSoundPath( *this, bFixSpace, m_errors );
+            it.processTrigger( *this, bFixSpace, m_errors );  // currently this is just to set the line type as a trigger
+
+            // custom processing for sound event.
+            it.processSoundPath( *this, bFixSpace, m_errors );
         }
 
         // now we need to make sure ref counts are correct. Timer variables reference an event chain. If the chain is not defined, issue a warning.
@@ -2448,7 +2558,6 @@ protected:
         for (auto const & it : m_variableNames.getTimerVars())
         {
             const std::string &TimerEventChainName = it.second->getTimerEventName();
-            assert(TimerEventChainName.empty() == false);
 
             if (m_eventChainNames.contains(TimerEventChainName))
             {
@@ -2473,7 +2582,7 @@ protected:
     // this is recursive. The passed in filename is to be loaded and lines added to input lines.
     // return false if unable to load file. Return true if file is loaded
     // pragmas are processed here.
-    bool loadScriptFile(const std::filesystem::path & filename, const std::deque<std::filesystem::path> & incdirs, std::deque<std::filesystem::path> & processed, const InputLine &inputline, bool bAnsi, const std::string & indent )
+    bool loadScriptFile(const std::filesystem::path & filename, const std::deque<std::filesystem::path> & incdirs, std::deque<std::filesystem::path> & processed, const InputLinePtr &inputline, bool bAnsi, const std::string & indent )
     {
         if (filename.empty())
         {
@@ -2493,7 +2602,7 @@ protected:
             std::filesystem::path fnameonly = it.filename();
             if (filenameonly == fnameonly)
             {
-                m_inputlines.push_back(InputLine(std::string("## WARNING: Include IGNORED: ")+Unicode::wstring_to_utf8(filename.wstring())+" - file already included",inputline.getLineNum(),inputline.getFileName()));
+                m_inputlines.push_back(std::make_shared<InputLine>(std::string("## WARNING: Include IGNORED: ")+Unicode::wstring_to_utf8(filename.wstring())+" - file already included",inputline->getLineNum(),inputline->getFileName()));
                 m_errors.setWarning(inputline,indent+"Ignoring circular included file: " + Unicode::wstring_to_utf8(filename.wstring()));
                 return true;    // continue processing
             }
@@ -2507,8 +2616,8 @@ protected:
             return false;
         }
 
-        FileIO                 fileio;      // how we read files.
-        std::deque<InputLine>  lines;       // lines read from file.
+        FileIO                   fileio;      // how we read files.
+        std::deque<InputLinePtr> lines;       // lines read from file.
         int linenum = 0;
 
         fileio.setFileName( foundfullpath );
@@ -2539,7 +2648,7 @@ protected:
         for (auto const & iline : lines)
         {
             linenum++;
-            std::string_view lineview = iline.getLine();    // string data.
+            std::string_view lineview = iline->getLine();    // string data.
 
             std::string linelc = MMUtil::toLower(lineview);
             std::string_view linelcview = linelc;
@@ -2569,7 +2678,7 @@ protected:
                 if (!processPragmaDefine(iline, linelcview, sizeof(kdefine),indent))
                     return false;
                 // change line we store to ##pragma so it can't be processed again
-                m_inputlines.push_back( InputLine (std::string("#")+iline.getLine(),iline.getLineNum(), iline.getFileName()) );
+                m_inputlines.push_back( std::make_shared<InputLine> (std::string("#")+iline->getLine(),iline->getLineNum(), iline->getFileName()) );
             }
             else if (linelcview.find(ktyabscriptdate) == 0) // add in file time info from main script file
             {
@@ -2577,7 +2686,7 @@ protected:
                 if (!processPragmatyabscriptdate(iline, linelcview, sizeof(ktyabscriptdate), value, indent))
                     return false;
                 // change line we store to ##pragma so it can't be processed again
-                m_inputlines.push_back( InputLine (std::string("#")+iline.getLine()+" "+value, iline.getLineNum(), iline.getFileName()));
+                m_inputlines.push_back( std::make_shared<InputLine> (std::string("#")+iline->getLine()+" "+value, iline->getLineNum(), iline->getFileName()));
             }
             else if (linelcview.find(ktyabscriptincdate) == 0) // add in file time info from current included script file
             {
@@ -2585,12 +2694,12 @@ protected:
                 if (!processPragmatyabscriptincdate(iline, linelcview, sizeof(ktyabscriptincdate), foundfullpath, value, indent))
                     return false;
                 // change line we store to ##pragma so it can't be processed again
-                m_inputlines.push_back( InputLine (std::string("#")+iline.getLine()+" "+value, iline.getLineNum(), iline.getFileName()));
+                m_inputlines.push_back( std::make_shared<InputLine> (std::string("#")+iline->getLine()+" "+value, iline->getLineNum(), iline->getFileName()));
             }
             else if (linelcview.find(kinclude) == 0)    // include another script file
             {
                 // change line we store to ##pragma so it can't be processed again
-                m_inputlines.push_back( InputLine (std::string("#")+iline.getLine(),iline.getLineNum(), iline.getFileName()) );
+                m_inputlines.push_back( std::make_shared<InputLine> (std::string("#")+iline->getLine(),iline->getLineNum(), iline->getFileName()) );
                 if (!processPragmaInclude(linelcview,sizeof(kinclude),incdirs, processed, iline, bAnsi, indent))
                     return false;
             }
@@ -2599,7 +2708,7 @@ protected:
                 std::string value;
                 processPragmatyabMMDatUtil(value);
                 // change line we store to ##pragma so it can't be processed again
-                m_inputlines.push_back( InputLine (std::string("#")+iline.getLine()+" "+value, iline.getLineNum(), iline.getFileName()));
+                m_inputlines.push_back( std::make_shared<InputLine> (std::string("#")+iline->getLine()+" "+value, iline->getLineNum(), iline->getFileName()));
             }
             else
             {
@@ -2617,7 +2726,7 @@ protected:
         value = std::string("MMDatUtil ") + DATE_ISO + " https://github.com/tyabnet/MMDatUtil";
     }
 
-    bool processPragmaInclude(std::string_view line, std::size_t len, const std::deque<std::filesystem::path> & incdirs, std::deque<std::filesystem::path> & processed, const InputLine &lineit, bool bAnsi, const std::string & indent)
+    bool processPragmaInclude(std::string_view line, std::size_t len, const std::deque<std::filesystem::path> & incdirs, std::deque<std::filesystem::path> & processed, const InputLinePtr &lineit, bool bAnsi, const std::string & indent)
     {
         line = line.substr(len-1);    // skip past the token
         line = MMUtil::removeLeadingAndTrailingWhite(line);
@@ -2644,7 +2753,7 @@ protected:
 
 
 
-    bool processPragmatyabscriptincdate(const InputLine & /*lineit*/, std::string_view line, std::size_t len, const std::filesystem::path& fname, std::string& value, const std::string& /*indent*/)
+    bool processPragmatyabscriptincdate(const InputLinePtr & /*lineit*/, std::string_view line, std::size_t len, const std::filesystem::path& fname, std::string& value, const std::string& /*indent*/)
     {
         line = line.substr(len-1);    // skip past the token
         line = MMUtil::removeLeadingAndTrailingWhite(line);
@@ -2672,7 +2781,7 @@ protected:
     }
 
 
-    bool processPragmatyabscriptdate(const InputLine& /*lineit*/, std::string_view line, std::size_t len, std::string& value, const std::string& /*indent*/)
+    bool processPragmatyabscriptdate(const InputLinePtr& /*lineit*/, std::string_view line, std::size_t len, std::string& value, const std::string& /*indent*/)
     {
         line = line.substr(len-1);    // skip past the token
         line = MMUtil::removeLeadingAndTrailingWhite(line);
@@ -2696,7 +2805,7 @@ protected:
             }
             if (!format.empty())
             {
-                value = FileIO::getDateStr(m_filename.empty() ? std::filesystem::path(Unicode::utf8_to_wstring(m_inputlines[0].getFileName())) : m_filename, format);
+                value = FileIO::getDateStr(m_filename.empty() ? std::filesystem::path(Unicode::utf8_to_wstring(m_inputlines[0]->getFileName())) : m_filename, format);
             }
             else
             {
@@ -2714,7 +2823,7 @@ protected:
 
 
     // return false if invalid pragma define, true if pragma added
-    bool processPragmaDefine(const InputLine &iline, std::string_view line, std::size_t len, const std::string & indent)
+    bool processPragmaDefine(const InputLinePtr &iline, std::string_view line, std::size_t len, const std::string & indent)
     {
         // find start of key
         line = line.substr(len-1);    // skip past the token
@@ -2790,11 +2899,11 @@ protected:
 
     // generic raw parser. Used to parse every script line. Can also be used to parse objectives and events in blocks
     // returns a collection of tokens found
-    // InputLine is the source input.
+    // InputLinePtr is the source input.
     // bAllowMacros is set to true to allow macros, Set to false for blocks and objective lines.
     // errors will be filled in if any errors
     // for script, macros will change the inputline to result after all macros expanded
-    std::deque<ScriptToken> rawParseLine(InputLine const & iline, std::string const &parseLine, bool bAllowComments, bool bAllowMacros, bool bFixSpace, ErrorWarning & errors)
+    std::deque<ScriptToken> rawParseLine(InputLinePtr const & iline, std::string const &parseLine, bool bAllowComments, bool bAllowMacros, bool bFixSpace, ErrorWarning & errors)
     {
         std::deque<ScriptToken> parsedTokens;
         Defines * defines = bAllowMacros ? &m_defines : nullptr;  // can be used in blocks and objects, they do not support macros
@@ -3286,13 +3395,13 @@ protected:
     // scan and build a collection of every variable referenced.
     // The same variable may be used mulitple times and thus have an entry per reference
   public:
-    void collectObjectiveVars(std::deque<InputLine> const& objectives)
+    void collectObjectiveVars(std::deque<InputLinePtr> const& objectives)
     {
         std::string variablekw = kS_variable + ':';     // variable: keyword
 
         for (auto const& it : objectives)  // for each objective line
         {
-            std::string linelc = MMUtil::toLower(it.getLine());
+            std::string linelc = MMUtil::toLower(it->getLine());
 
             // looking for variable: If found, everything until / is part of the script conditional for the objective.
             auto startpos = linelc.find(variablekw);
@@ -3329,7 +3438,7 @@ protected:
     // variables. Here we collect up every name reference, similar to collectObjectiveVars.
     // also collect up timer variables defined in blocks
     // 
-    void collectBlockNames(std::deque<InputLine> const& blocks)
+    void collectBlockNames(std::deque<InputLinePtr> const& blocks)
     {
         collectTriggerEventChain( blocks );
         collectEventCallEvent( blocks );
@@ -3350,43 +3459,6 @@ protected:
         return stats;
     }
 
-
-    // event sound processing.
-    // caller has identified this set of tokens as an event
-    // events could be in the block section, or in script as either a single line event or one of the conditional path.
-    // input are the tokens to look at, starting at the given start index
-    // look for sound: event. If found, tag tokens after : until square bracket, semicolon, comment or end of line as part of sound paths and not a name
-    // spaces can be removed if bFixSpace
-    void eventSoundprocess(std::deque<ScriptToken> & tokens, size_t startindex, size_t endindex, bool bFixSpace, InputLine const & iline, ErrorWarning& errors)
-    {
-        if (tokens.empty() || (startindex >= tokens.size()))  // should never happen
-            return;
-
-        // we should be on sound token
-        std::size_t index = startindex;
-        assert( (tokens[index].getID() & eTokenName) && (tokens[index].getTokenlc() == kS_sound));
-
-        // next token should be double colon
-        if (getNextTokenProcessSpaces(tokens, index, index, bFixSpace, 0, iline, errors))
-        {
-            if (tokens[index].getID() & eTokenDColon)
-            {
-                if (getNextTokenProcessSpaces(tokens, index, index, bFixSpace, 0, iline, errors))
-                {
-                    for (; index < endindex; index++)   // for all tokens in the range give, mark them all as belonging to sound path
-                    {
-                        tokens[index].removeID( eTokenName );  // if a name token, remove it
-                        tokens[index].orID( eTokenSoundPath ); // mark it as a sound path
-                    }
-                }
-                else
-                    errors.setWarning(iline,"Sound event invalid format - missing sound path");
-            }
-            else
-                errors.setWarning(iline,"Sound event invalid format - missing :");
-        }
-    }
-
     // return true if another index exists, false if end of line. Skip all ignored
     // input index: token index to start. Use -1 to start from beginning.
     // output newindex: token index of token that is not already ignored
@@ -3403,23 +3475,25 @@ protected:
     }
 
     // same as above but combined with process spaces.
-    bool getNextTokenProcessSpaces(std::deque<ScriptToken> & tokens, std::size_t startindex, std::size_t& newindex, bool bFixSpace, int64_t spaceflags, InputLine const &iline, ErrorWarning &errors)
+    bool getNextTokenProcessSpaces(std::deque<ScriptToken> & tokens, std::size_t startindex, std::size_t& newindex, bool bFixSpace, int64_t spaceflags, InputLinePtr const &iline, ErrorWarning &errors)
     {
         std::size_t index = startindex;
-        do
+        if (getNextToken(tokens, index, index))        // get next token
         {
-            if (!getNextToken(tokens, index, index))        // get next token
-                break;                                      // out of tokens
+            bool bFoundSpace = processSpaces(tokens[index], bFixSpace, spaceflags, iline, errors);  // see if space
+            if (bFoundSpace)           // if we found a space
+            {
+                getNextToken(tokens, index, index);  // move to next token which cannot be a space
+            }
         }
-        while (processSpaces(tokens[index], bFixSpace, spaceflags, iline, errors));   // spaces not allowed but fixing, they are removed
-        newindex = index;
-        return index < tokens.size();
+        newindex = index;    // index of either past end or non-space token
+        return index < tokens.size();  // true - index is valid, false no more tokens.
     }
 
     // mask is 0 or eTokenSpace or (eTokenSpaces | eTokenSpace) bits.
     // There is never a case where we have to have eTokenSpaces
     // return true means to skip to next token since a space(s) were processed. False means to stay with current token
-    bool processSpaces(ScriptToken& it, bool bFixSpace, uint64_t mask, InputLine const & iline, ErrorWarning& errors)
+    bool processSpaces(ScriptToken& it, bool bFixSpace, uint64_t mask, InputLinePtr const & iline, ErrorWarning& errors)
     {
         if (it.getID() & (eTokenSpace | eTokenSpaces))  // token is some form of space
         {
@@ -3480,13 +3554,13 @@ protected:
 protected:
 
     // these are event chains defined by block system. It provides a way for script to call into block system
-    void collectTriggerEventChain(std::deque<InputLine> const& blocks)
+    void collectTriggerEventChain(std::deque<InputLinePtr> const& blocks)
     {
         constexpr std::string_view tev = "TriggerEventChain";
 
         for (auto const& it : blocks)  // every block line
         {
-            std::string_view line = it.getLine();
+            std::string_view line = it->getLine();
             auto start = line.find(tev);
             if (start != line.npos)
             {
@@ -3524,13 +3598,13 @@ protected:
         }
     }
 
-    void collectEventCallEvent(std::deque<InputLine> const& blocks)
+    void collectEventCallEvent(std::deque<InputLinePtr> const& blocks)
     {
         constexpr std::string_view tev = "EventCallEvent";
 
         for (auto const& it : blocks)  // every block line
         {
-            std::string_view line = it.getLine();
+            std::string_view line = it->getLine();
             auto start = line.find(tev);
             if (start != line.npos)
             {
@@ -3564,13 +3638,13 @@ protected:
 
     // block section timer variables, add to initial list of timer variables and to list of timer variables to not optimize names for
     // ID/TriggerTimer:ROW,COL,NAME,DELAY,MAX,MIN
-    void collectTimerVars(std::deque<InputLine> const& blocks)
+    void collectTimerVars(std::deque<InputLinePtr> const& blocks)
     {
         constexpr std::string_view tev = "TriggerTimer";
 
         for (auto const& it : blocks)  // every block line
         {
-            std::string_view line = it.getLine();
+            std::string_view line = it->getLine();
             auto start = line.find(tev);
             if (start != line.npos)
             {
@@ -3585,7 +3659,7 @@ protected:
                         size_t endpos = line.find(',',start+1);  // end of NAME
                         if ((endpos != line.npos) && (endpos > start+2))
                         {
-                            name = line.substr(start+1,endpos-start-2);
+                            name = MMUtil::removeLeadingAndTrailingWhite(line.substr(start+1,endpos-start-1)); // block timer name 
                             if (MMUtil::isAlphaNumericName(name) && !isReservedVar(name))
                             {
                                 if (!m_variableNames.contains(name))
@@ -3684,7 +3758,7 @@ protected:
     // error will be filled in if $( found but name is invalid or no closing ) and false returned
     // if true returned, the  macronamelc is filled in with lower case name of the macro
     // if true returned, epos is next char past the closing )
-    bool isMacro(const InputLine &iline, ErrorWarning & errors, std::string_view line, std::size_t spos, std::size_t & epos, std::string& macroname )
+    bool isMacro(const InputLinePtr &iline, ErrorWarning & errors, std::string_view line, std::size_t spos, std::size_t & epos, std::string& macroname )
     {
         bool retval = false;
         std::size_t pos = spos;           // start
@@ -3719,7 +3793,7 @@ protected:
 
     // if macros are not allowed, defines will be nullptr
     // return true if no error, false is line has a syntax error
-    bool embededMacro(InputLine const &iline, std::string& token, ErrorWarning& errors, Defines  *defines)
+    bool embededMacro(InputLinePtr const &iline, std::string& token, ErrorWarning& errors, Defines  *defines)
     {
         bool bqMacro = false;
         do    // loop until no more interior macros
@@ -3935,8 +4009,8 @@ protected:
 
 
     std::filesystem::path          m_filename;     // empty unless script file is replacing map script section. This is the main file.
-    std::deque<InputLine>          m_inputlines;   // lines to process after all include and other pragmas 
-    std::deque<InputLine>          m_outputlines;  // lines all processed ready to replace the script section
+    std::deque<InputLinePtr>       m_inputlines;   // lines to process after all include and other pragmas 
+    std::deque<InputLinePtr>       m_outputlines;  // lines all processed ready to replace the script section
 
     std::deque<ScriptLine>         m_scriptlines;   // every line of script processed into tokens.
 

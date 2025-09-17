@@ -376,13 +376,22 @@ class CommandLineParser
                 case 38: // optimize script variables and chain names
                 {
                     m_cmdOptions.m_bOptimizeNames = true;
+                    break;
                 }
 
                 case 39: // remove blank script lines
                 {
                     m_cmdOptions.m_bOptimizeBlank = true;
+                    break;
                 }
 
+                case 40: // briefing  filename parameter
+                    m_cmdOptions.m_briefing = removeQuotes(getStringParm(++i));
+                    break;
+
+                case 41: // briefing  filename parameter
+                    m_cmdOptions.m_success = removeQuotes(getStringParm(++i));
+                    break;
 
                 } // switch 
             }
@@ -494,7 +503,9 @@ class CommandLineParser
         { L"-utf32be",        36 },
         { L"-utf8",           37 },
         { L"-soptnames",      38 },
-        { L"-soptblank",      39 }
+        { L"-soptblank",      39 },
+        { L"-briefing",       40 },     // filename contents will replace briefing section
+        { L"-success",        41 }      // filename contents will replace briefing success section
     };
 
     std::wstring_view getStringParm(std::size_t i)
@@ -621,7 +632,7 @@ void help()
     wprintf(L"      -sfixspace      automatically remove spaces where not allowed in scripts\n");
     wprintf(L"      -snocomment     remove all comments in script except #.\n");
     wprintf(L"      -sdefine        name=value   define script subsitution\n");
-    wprintf(L"      -sdatefmt       format for TyabScript{Inc}Date, default \"y.m.d\"");
+    wprintf(L"      -sdatefmt       format for TyabScript{Inc}Date, default \"y.m.d\"\n");
     wprintf(L"      -soptnames      Optimize script variable and event chain names\n");
     wprintf(L"      -soptblank      Remove script blank lines\n");
     wprintf(L"      -flattenabove   height, newheight. Heights > height set to newheight\n");
@@ -635,6 +646,8 @@ void help()
     wprintf(L"      -utf32BE        output .dat is UTF32EE format (default UTF8)\n");
     wprintf(L"      -bom            output .dat has BOM Byte Order Marker (default none)\n");
     wprintf(L"      -srcansi        UTF8 input files without BOM assume ANSI codepage\n");
+    wprintf(L"      -briefing       filename. Will replace the briefing message in output\n");
+    wprintf(L"      -success        filename. Will replace the success message in output\n");
     wprintf(L"\n");
     wprintf(L"  -srcmap is used to provide merge data unless -copysrc is used\n");
     wprintf(L"  -script will replace outmap's script with the contents of that file.\n");
@@ -922,6 +935,14 @@ int wmain(int , wchar_t ** )   // ignore all passed in parameters
 
             wprintf(L"  Rows: %d  Columns: %d  Total lines: %d\n", outMap.getHeight(), outMap.getWidth(), outMap.getNumLinesRead());
         }
+
+        // check for briefing and briefing success replacements.
+        outMap.clearErrorsWarnings();
+        outMap.briefing(cmdParser.getOptions().m_briefing);
+        outMap.success( cmdParser.getOptions().m_success );
+        outMap.getErrors().printErrors();
+        outMap.getErrors().printWarnings();
+        outMap.getErrors().printConsols();
 
         // see if resizing
         if (cmdParser.getOptions().m_nRowResize || cmdParser.getOptions().m_nColResize)

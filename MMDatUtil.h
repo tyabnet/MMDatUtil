@@ -384,6 +384,8 @@ public:
     bool         m_bReadANSI      = false;  // if set, assume 8 byte input with no BOM is ANSI
     bool         m_bOptimizeNames = false;  // if set optimize variable and event chain names
     bool         m_bOptimizeBlank = false;
+    std::filesystem::path m_briefing;  // contents of this file will be used for briefing message
+    std::filesystem::path m_success;   // contents of this file will be used for briefing success message
 }; // class CommandLineOptions
 
 
@@ -431,7 +433,9 @@ protected:
     int              m_linenum = 0; // line number for input line
 };
 
-// stores errors and warnings.
+using InputLinePtr = std::shared_ptr<InputLine>;
+
+// stores errors and warnings and console message
 // all strings are utf8.  Every error/warning also has a copy of its InputLine
 // this is a collection class, can store unlimited errors/warnings.
 // Other error/warnings can be appended with +=
@@ -442,10 +446,11 @@ class ErrorWarning
   public:
 
     ErrorWarning() = default;
-    ErrorWarning(const InputLine& line, const std::string & errMsg, const std::string &warnMsg )
+    ErrorWarning(const InputLinePtr& line, const std::string & errMsg, const std::string &warnMsg, const std::string &consoleMsg )
     {
         setError(line, errMsg);
         setWarning(line, warnMsg);
+        setConsole(line, consoleMsg);
     }
     ~ErrorWarning() = default;
 
@@ -456,6 +461,8 @@ class ErrorWarning
         m_errors.insert(m_errors.end(), rhs.m_errors.begin(), rhs.m_errors.end());
         m_warnlines.insert(m_warnlines.end(), rhs.m_warnlines.begin(), rhs.m_warnlines.end());
         m_warnings.insert(m_warnings.end(), rhs.m_warnings.begin(), rhs.m_warnings.end());
+        m_consolelines.insert(m_consolelines.end(), rhs.m_consolelines.begin(), rhs.m_consolelines.end());
+        m_console.insert(m_console.end(), rhs.m_console.begin(), rhs.m_console.end());
         return *this;
     }
 
@@ -465,9 +472,11 @@ class ErrorWarning
         m_errors.clear();
         m_warnlines.clear();
         m_warnings.clear();
+        m_consolelines.clear();
+        m_console.clear();
     }
 
-    void setError(const InputLine & line, const std::string &errMsg)
+    void setError(const InputLinePtr & line, const std::string &errMsg)
     {
         if (!errMsg.empty())
         {
@@ -476,7 +485,7 @@ class ErrorWarning
         }
     }
 
-    void setWarning(const InputLine& line, const std::string& warnMsg)
+    void setWarning(const InputLinePtr & line, const std::string& warnMsg)
     {
         if (!warnMsg.empty())
         {
@@ -485,20 +494,33 @@ class ErrorWarning
         }
     }
 
+    void setConsole(const InputLinePtr & line, const std::string& consoleMsg)
+    {
+        if (!consoleMsg.empty())
+        {
+            m_consolelines.push_back(line);
+            m_console.push_back(consoleMsg);
+        }
+    }
+
+
     void printErrors() const
     {
         for (std::size_t index = 0; index < m_errors.size(); index++)
         {
-            if (!m_errors[index].empty() || !m_errlines[index].empty())
+            if (!m_errors[index].empty())
             {
                 wprintf((L"Error: " + Unicode::utf8_to_wstring(m_errors[index]) + L"\n").c_str());
-                if (!m_errlines[index].getFileName().empty())
+                if (!m_errlines[index])  // skip nullptrs
                 {
-                    wprintf((L" File: " + Unicode::utf8_to_wstring(m_errlines[index].getFileName()) + L"\n").c_str());
-                }
-                if (m_errlines[index].getLineNum())
-                {
-                    wprintf((L" Line: " + std::to_wstring(m_errlines[index].getLineNum()) + L": " + Unicode::utf8_to_wstring(m_errlines[index].getLine()) + L"\n").c_str());
+                    if (!m_errlines[index]->getFileName().empty())
+                    {
+                        wprintf((L" File: " + Unicode::utf8_to_wstring(m_errlines[index]->getFileName()) + L"\n").c_str());
+                    }
+                    if (m_errlines[index]->getLineNum()) // skip line 0
+                    {
+                        wprintf((L" Line: " + std::to_wstring(m_errlines[index]->getLineNum()) + L": " + Unicode::utf8_to_wstring(m_errlines[index]->getLine()) + L"\n").c_str());
+                    }
                 }
             }
 
@@ -509,36 +531,65 @@ class ErrorWarning
     {
         for (std::size_t index = 0; index < m_warnings.size(); index++)
         {
-            if (!m_warnings[index].empty() || !m_warnlines[index].empty())
+            if (!m_warnings[index].empty())
             {
                 wprintf((L"Warning: " + Unicode::utf8_to_wstring(m_warnings[index]) + L"\n").c_str());
-                if (!m_warnlines[index].getFileName().empty())
+                if (m_warnlines[index])     // skip nullptrs
                 {
-                    wprintf((L" File: " + Unicode::utf8_to_wstring(m_warnlines[index].getFileName()) + L"\n").c_str());
-                }
-                if (m_warnlines[index].getLineNum())
-                {
-                    wprintf((L" Line: " + std::to_wstring(m_warnlines[index].getLineNum()) + L": " + Unicode::utf8_to_wstring(m_warnlines[index].getLine()) + L"\n").c_str());
+                    if (!m_warnlines[index]->getFileName().empty())
+                    {
+                        wprintf((L" File: " + Unicode::utf8_to_wstring(m_warnlines[index]->getFileName()) + L"\n").c_str());
+                    }
+                    if (m_warnlines[index]->getLineNum()) // skip line 0
+                    {
+                        wprintf((L" Line: " + std::to_wstring(m_warnlines[index]->getLineNum()) + L": " + Unicode::utf8_to_wstring(m_warnlines[index]->getLine()) + L"\n").c_str());
+                    }
                 }
             }
 
         }
     }
 
+    void printConsols() const
+    {
+        for (std::size_t index = 0; index < m_console.size(); index++)
+        {
+            if (!m_console[index].empty())
+            {
+                wprintf((L"      " + Unicode::utf8_to_wstring(m_console[index]) + L"\n").c_str());
+                if (m_consolelines[index])     // skip nullptrs
+                {
+                    if (!m_consolelines[index]->getFileName().empty())
+                    {
+                        wprintf((L" File: " + Unicode::utf8_to_wstring(m_consolelines[index]->getFileName()) + L"\n").c_str());
+                    }
+                    if (m_consolelines[index]->getLineNum())  // skip line 0
+                    {
+                        wprintf((L" Line: " + std::to_wstring(m_consolelines[index]->getLineNum()) + L": " + Unicode::utf8_to_wstring(m_consolelines[index]->getLine()) + L"\n").c_str());
+                    }
+                }
+            }
+        }
+    }
+
     bool emptyErrors() const { return m_errors.empty(); }
     bool emptyWarnings() const { return m_warnings.empty(); }
 
-    const std::deque<InputLine>&   getErrLines()  const { return m_errlines; }
-    const std::deque<std::string>& getErrors()    const { return m_errors; }
-    const std::deque<InputLine>&   getWarnLines() const { return m_warnlines; }
-    const std::deque<std::string>& getWarnings()  const { return m_warnings; }
+    const std::deque<InputLinePtr>& getErrLines()  const { return m_errlines; }
+    const std::deque<std::string>&  getErrors()    const { return m_errors; }
+    const std::deque<InputLinePtr>& getWarnLines() const { return m_warnlines; }
+    const std::deque<std::string>&  getWarnings()  const { return m_warnings; }
 
   protected:
-    std::deque<InputLine>   m_errlines;
-    std::deque<std::string> m_errors;
+    std::deque<InputLinePtr> m_errlines;
+    std::deque<std::string>  m_errors;
 
-    std::deque<InputLine>   m_warnlines;
-    std::deque<std::string> m_warnings;
+    std::deque<InputLinePtr> m_warnlines;
+    std::deque<std::string>  m_warnings;
+
+    std::deque<InputLinePtr> m_consolelines;
+    std::deque<std::string>  m_console; // strings to display to console not associated with any line number
+
 };
 
 
@@ -581,24 +632,29 @@ class FileIO
     FileEncoding getEncoding() const { return m_encoding; }
     void setAnsi( bool bAnsi ) { m_bAnsi = bAnsi; }
     
-    static const std::string & getEncodingStr( FileEncoding encoding )
+    static std::string getEncodingStr( FileEncoding encoding )
     {
-        static const std::string encodings[] = { "ANSI", "UTF8", "UTF16LE", "UTF16BE", "UTF32LE", "UTF32BE" };
-        return encodings[encoding];
+        static constexpr std::string_view encodings[] = { "ANSI", "UTF8", "UTF16LE", "UTF16BE", "UTF32LE", "UTF32BE" };
+        return std::string(encodings[encoding]);
+    }
+
+    std::string getEncodingStr() const
+    {
+        return getEncodingStr(m_encoding);
     }
 
     // set bAnsi to true if you want 8 bit input format without BOM to assume ANSI code page
     // read every line from the file, returning a collection of InputLines.
-    std::deque<InputLine> readFile(ErrorWarning &errors)
+    std::deque<InputLinePtr> readFile(ErrorWarning &errors)
     {
-        std::deque<InputLine> ilines;
+        std::deque<InputLinePtr> ilines;
         std::string filename = Unicode::wstring_to_utf8(m_filename.wstring());
 
         FILE *fp = nullptr;
         errno_t err = _wfopen_s( &fp, m_filename.wstring().c_str(), L"rb");
         if (err || fp == nullptr)
         {
-            errors.setError(InputLine(),"Unable to open: " + filename);
+            errors.setError(std::make_shared<InputLine>(),"Unable to open: " + filename);
             return ilines;
         }
         determineEncoding(fp);         // check for BOM's determine type of encoding used by file.
@@ -628,7 +684,7 @@ class FileIO
             }
             linenum++;
             if (line.size() || !feof(fp))   // read something or not at end of file
-                ilines.emplace_back(line,linenum,filename);
+                ilines.push_back(std::make_shared<InputLine>(line,linenum,filename));
             if (!errmsg.empty())
             {
                 errors.setError(ilines.back(),errmsg);
@@ -648,7 +704,7 @@ class FileIO
         errno_t err = _wfopen_s( &fp, m_filename.wstring().c_str(), L"wb");
         if (err || fp == nullptr)
         {
-            errors.setError(InputLine(),"Unable to create: " + filename);
+            errors.setError(std::make_shared<InputLine>(),"Unable to create: " + filename);
             return false;
         }
 
@@ -684,7 +740,7 @@ class FileIO
             if (fwrite(bom, bomsize, 1, fp) != 1)
             {
                 retval = false;     // stop processing
-                errors.setError(InputLine(), "Error writing: " + filename);
+                errors.setError(std::make_shared<InputLine>(), "Error writing: " + filename);
             }
         }
         if (retval)
@@ -712,7 +768,7 @@ class FileIO
                 }
                 if (!retval)
                 {
-                    errors.setError(InputLine(), "Error writing: " + filename);
+                    errors.setError(std::make_shared<InputLine>(), "Error writing: " + filename);
                     break;
                 }
             }
@@ -1191,7 +1247,7 @@ public:
     }
 
     // return true if no error
-    virtual bool serializeInLine(InputLine const& line, ErrorWarning & )  // caller does this for every line it has determined is part of the section
+    virtual bool serializeInLine(InputLinePtr const& line, ErrorWarning & )  // caller does this for every line it has determined is part of the section
     {
         m_lines.push_back(line);
         return true;
@@ -1204,19 +1260,19 @@ public:
         m_outputLines.clear();
         for (auto it = m_lines.cbegin(); it != m_lines.cend(); ++it)
         {
-            m_outputLines.emplace_back((*it).getLine());
+            m_outputLines.emplace_back((*it)->getLine());
         }
 
         // return copy of lines to write to file. Does not include the section name and begin/end markers. Caller does that.
         return m_outputLines;
     }
 
-    const std::deque<InputLine>& getLines() const
+    const std::deque<InputLinePtr>& getLines() const
     {
         return m_lines;
     }
 
-    void setLines(const std::deque<InputLine>& lines)
+    void setLines(const std::deque<InputLinePtr>& lines)
     {
         m_lines = lines;
     }
@@ -1229,13 +1285,13 @@ public:
     virtual void                 flattenHigh([[maybe_unused]] int testVal, [[maybe_unused]] int newValue) {}  // change all values above this to given value
     virtual void                 flattenLow([[maybe_unused]] int testVal, [[maybe_unused]] int newValue) {}  // change all values above this to given value
     virtual void                 flattenBetween([[maybe_unused]] int testLow, [[maybe_unused]] int testHigh, [[maybe_unused]] int newValue) {}  // change all values testLow <= value <=testHigh to newValue
-    virtual bool                 verifyBounds([[maybe_unused]] int rows, [[maybe_unused]] int cols, [[maybe_unused]] bool bFix, [[maybe_unused]] const InputLine& iline, [[maybe_unused]] ErrorWarning& errorWarning, [[maybe_unused]] const std::string& errwarnpre) { return true; }
+    virtual bool                 verifyBounds([[maybe_unused]] int rows, [[maybe_unused]] int cols, [[maybe_unused]] bool bFix, [[maybe_unused]] const InputLinePtr& iline, [[maybe_unused]] ErrorWarning& errorWarning, [[maybe_unused]] const std::string& errwarnpre) { return true; }
     virtual void                 merge([[maybe_unused]] const MapSection* src, [[maybe_unused]] int srow, [[maybe_unused]] int scol, [[maybe_unused]] int erow, [[maybe_unused]] int ecol, [[maybe_unused]] int rowOffset, [[maybe_unused]] int colOffset, [[maybe_unused]] bool bAllow1, [[maybe_unused]] bool bAllow2 ) {}  // merge in values from src that are in range
     virtual void                 setTo([[maybe_unused]] int defValue1, [[maybe_unused]] int defValue2) {}  // change all arrays to this value
 
 protected:
     std::string                  m_name;           // name of section
-    std::deque<InputLine>        m_lines;          // lines read in for that section
+    std::deque<InputLinePtr>     m_lines;          // lines read in for that section
     std::deque<std::string>      m_outputLines;    // lines ready to write
 };
 
@@ -1363,15 +1419,15 @@ class KeyValueSection : public MapSection
     }
 
     // no need to save input lines, we save key:value pair
-    virtual bool serializeInLine(InputLine const& line, ErrorWarning &error) override  // caller does this for every line it has determined is part of the section
+    virtual bool serializeInLine(InputLinePtr const& line, ErrorWarning &error) override  // caller does this for every line it has determined is part of the section
     {
-        if (!line.getLine().empty())    // ignore blank lines
+        if (!line->getLine().empty())    // ignore blank lines
         {
             std::string_view key;
             std::string_view value;
 
             // format for lines are key:value. 
-            bool retval = getKeyValueFromLine( key, value, line.getLine() );
+            bool retval = getKeyValueFromLine( key, value, line->getLine() );
             if (!retval)
             {
                 error.setError(line, m_name + " section. Missing colon");
@@ -1435,7 +1491,7 @@ class IntArraySection : public MapSection
     }
 
 
-    virtual bool serializeInLine(InputLine const& line, ErrorWarning& error) override  // caller does this for every line it has determined is part of the section
+    virtual bool serializeInLine(InputLinePtr const& line, ErrorWarning& error) override  // caller does this for every line it has determined is part of the section
     {
         std::deque<int> row = processLine(line,error);
         if (row.empty())
@@ -1502,7 +1558,7 @@ class IntArraySection : public MapSection
     // only a single warning/error is generated
     // if bFix is set, then correct the array size
     // input line usually points to the trailing } closing the section
-    virtual bool verifyBounds( int rows, int cols, bool bFix, const InputLine& iline, ErrorWarning& errorWarning,const std::string& errwarnpre ) override
+    virtual bool verifyBounds( int rows, int cols, bool bFix, const InputLinePtr& iline, ErrorWarning& errorWarning,const std::string& errwarnpre ) override
     {
         if (m_data.size() > rows)   // too many rows
         {
@@ -1535,7 +1591,7 @@ class IntArraySection : public MapSection
             }
             else if (rowvec.size() < cols)  // not enough data
             {
-                InputLine thisline = iline;
+                InputLinePtr thisline = iline;
                 if (i < m_lines.size())
                     thisline = m_lines[i];
 
@@ -1593,11 +1649,11 @@ class IntArraySection : public MapSection
     void setNegAllowed( bool val ) { m_bAllowNeg = val; }   // used by height section
 
 
-    std::deque<int> processLine(const InputLine& line, ErrorWarning& error)
+    std::deque<int> processLine(const InputLinePtr& line, ErrorWarning& error)
     {
         std::deque<int> output;
         std::string_view token;
-        std::string_view sline = line.getLine();
+        std::string_view sline = line->getLine();
         std::size_t startpos = 0;
         std::size_t endpos = sline.length();    // index after end
 
@@ -1644,9 +1700,9 @@ public:
         return new ResourceSection( *this );
     }
 
-    virtual bool serializeInLine(InputLine const& line, ErrorWarning& error) override  // caller does this for every line it has determined is part of the section
+    virtual bool serializeInLine(InputLinePtr const& line, ErrorWarning& error) override  // caller does this for every line it has determined is part of the section
     {
-        std::string_view sline = line.getLine();
+        std::string_view sline = line->getLine();
         sline = MMUtil::removeLeadingAndTrailingWhite(sline);
         if (!sline.empty())
         {
@@ -1709,7 +1765,7 @@ public:
         m_ore.resize( height, width, defore, defore );
     }
 
-    virtual bool verifyBounds(int rows, int cols, bool bFix, const InputLine& iline, ErrorWarning& errorWarning, const std::string& errwarnpre) override
+    virtual bool verifyBounds(int rows, int cols, bool bFix, const InputLinePtr& iline, ErrorWarning& errorWarning, const std::string& errwarnpre) override
     {
         if (!m_crystals.verifyBounds( rows, cols, bFix, iline, errorWarning, errwarnpre + " " + std::string(scrystals)))
             return false;
@@ -1825,7 +1881,7 @@ class HeightSection : public IntArraySection  // heights are allowed to be negat
     }
 
     // heights have 1 more in row,cols since they are a cell and we have last cell corners.
-    virtual bool verifyBounds(int rows, int cols, bool bFix, const InputLine& iline, ErrorWarning& errorWarning, const std::string& errwarnpre) override
+    virtual bool verifyBounds(int rows, int cols, bool bFix, const InputLinePtr& iline, ErrorWarning& errorWarning, const std::string& errwarnpre) override
     {
         return IntArraySection::verifyBounds(rows+1, cols+1, bFix, iline, errorWarning, errwarnpre);
     }
@@ -1878,7 +1934,7 @@ class MMMap
         if (!m_file.exists())
         {
             std::string file = Unicode::wstring_to_utf8(m_file.getFileName().wstring());
-            m_errors.setError(InputLine(), "Unable to locate source: " + file);
+            m_errors.setError(std::make_shared<InputLine>(), "Unable to locate source: " + file);
             return false;
         }
         m_file.setAnsi( bReadANSI );
@@ -1892,7 +1948,7 @@ class MMMap
     }
 
     
-    const std::string & getEncoding(FileIO::FileEncoding& encoding, bool& hasBOM) const
+    std::string getEncoding(FileIO::FileEncoding& encoding, bool& hasBOM) const
     {
         encoding = m_file.getEncoding();
         hasBOM = m_file.hasBOM();
@@ -1913,8 +1969,8 @@ class MMMap
         MapSection *ms = nullptr;
         for (auto const &iline : m_inlines)
         {
-            const std::string & linestr = iline.getLine(); // get ref to string data
-            std::string_view lineview = linestr;           // get view to string data
+            const std::string & linestr = iline->getLine(); // get ref to string data
+            std::string_view lineview = linestr;            // get view to string data
             if (ms)     // already building a section - wait until ending }
             {
                 std::size_t pos = lineview.find('}');
@@ -2039,7 +2095,7 @@ class MMMap
                 MapSection *ms = findMapSection( name );
                 if (!ms)
                 {
-                    m_errors.setError(InputLine(),"Missing required section: " + name);
+                    m_errors.setError(std::make_shared<InputLine>(),"Missing required section: " + name);
                     return false;
                 }
             }
@@ -2053,7 +2109,7 @@ class MMMap
         intval = std::stoi(value);
         if (value.empty() || !MMUtil::isInteger(value, false) || (intval < 3))
         {
-            m_errors.setError(InputLine(),"info section. Missing or invalid: " + std::string(scolcount));
+            m_errors.setError(std::make_shared<InputLine>(),"info section. Missing or invalid: " + std::string(scolcount));
             return false;
         }
         m_width = intval;
@@ -2061,25 +2117,25 @@ class MMMap
         intval = std::stoi(value);
         if (value.empty() || !MMUtil::isInteger(value, false) || (intval < 3))
         {
-            m_errors.setError(InputLine(),"Info section. Missing or invalid: " + std::string(srowcount));
+            m_errors.setError(std::make_shared<InputLine>(),"Info section. Missing or invalid: " + std::string(srowcount));
             return false;
         }
         m_height = intval;
 
         // now need to make sure all the array sizes are valid.
         ms = findMapSection( stiles );
-        if (!ms->verifyBounds( m_height, m_width, bFix, InputLine(), m_errors, ms->getSectionName()))
+        if (!ms->verifyBounds( m_height, m_width, bFix, std::make_shared<InputLine>(), m_errors, ms->getSectionName()))
             return false;
         ms->resize( m_height, m_width, deftile, deftile);
         //ms->setBorders( 38 );   // make sure borders are solid rock regular
 
         ms = findMapSection( sheight );
-        if (!ms->verifyBounds( m_height, m_width, bFix, InputLine(), m_errors, ms->getSectionName()))
+        if (!ms->verifyBounds( m_height, m_width, bFix, std::make_shared<InputLine>(), m_errors, ms->getSectionName()))
             return false;
         ms->resize( m_height, m_width, defheight, defheight);
 
         ms = findMapSection( sresources );
-        if (!ms->verifyBounds( m_height, m_width, bFix, InputLine(), m_errors, ms->getSectionName()))
+        if (!ms->verifyBounds( m_height, m_width, bFix, std::make_shared<InputLine>(), m_errors, ms->getSectionName()))
             return false;
         ms->resize( m_height, m_width, defcrystal, defore);
 
@@ -2208,34 +2264,34 @@ class MMMap
         ms->AddorModifyItem( screator, creator );
     }
 
-    const std::deque<InputLine> & getSectionLines( std::string const & name ) const
+    const std::deque<InputLinePtr> & getSectionLines( std::string const & name ) const
     {
         const MapSection *ms = findMapSection( name );
         if (ms)
         {
             return ms->getLines();
         }
-        static std::deque<InputLine> empty;
+        static std::deque<InputLinePtr> empty;
         return empty;
     }
 
-    const std::deque<InputLine> & getScriptLines() const
+    const std::deque<InputLinePtr> & getScriptLines() const
     {
         return getSectionLines(sscript);
     }
 
-    const std::deque<InputLine> & getObjectiveLines() const
+    const std::deque<InputLinePtr> & getObjectiveLines() const
     {
         return getSectionLines(sobjectives);
     }
 
-    const std::deque<InputLine> & getBlockLines() const
+    const std::deque<InputLinePtr> & getBlockLines() const
     {
         return getSectionLines(sblocks);
     }
 
     // return number of lines
-    int setScriptLines(const std::deque<InputLine>& lines)
+    int setScriptLines(const std::deque<InputLinePtr>& lines)
     {
         MapSection *ms = findMapSection( sscript );
         if (ms)
@@ -2250,6 +2306,68 @@ class MMMap
         const MapSection *ms = findMapSection( sinfo );
         return ms->getValue( slevelname );
     }
+
+    // return number of lines replaced, 0 if unchanged
+    int briefing(std::filesystem::path const& filename)
+    {
+        if (!filename.empty())
+        {
+            FileIO file;
+            file.setFileName(filename);
+            if (file.exists())
+            {
+                std::deque<InputLinePtr> ilp = file.readFile( m_errors );
+                if (m_errors.emptyErrors() && m_errors.emptyWarnings() && !ilp.empty())
+                {
+                    MapSection *mp = findMapSection(sbriefing);
+                    if (mp)
+                    {
+                        mp->setLines(ilp);
+                        m_errors.setConsole(nullptr, std::string("Read briefing file: ") + filename.string() );
+                        m_errors.setConsole(nullptr, std::string("Format: ")+file.getEncodingStr() + ", Lines read: " + std::to_string(ilp.size()) );
+                        return (int)ilp.size();  // number of lines
+                    }
+                }
+            }
+            else
+                m_errors.setWarning( InputLinePtr(), std::string("Unable to open briefing file: ") + filename.string());
+        }
+        return 0;
+    }
+
+    // return number of lines replaced, 0 if unchanged
+    int success(std::filesystem::path const& filename)
+    {
+        if (!filename.empty())
+        {
+            FileIO file;
+            file.setFileName(filename);
+            if (file.exists())
+            {
+                std::deque<InputLinePtr> ilp = file.readFile( m_errors );
+                if (m_errors.emptyErrors() && m_errors.emptyWarnings() && !ilp.empty())
+                {
+                    MapSection *mp = findMapSection(sbriefingsuccess);
+                    if (mp)
+                    {
+                        mp->setLines(ilp);
+                        m_errors.setConsole(nullptr, std::string("Read success file: ") + filename.string() );
+                        m_errors.setConsole(nullptr, std::string("Format: ")+file.getEncodingStr() + ", Lines read: " + std::to_string(ilp.size()) );
+                        return (int)ilp.size();  // number of lines
+                    }
+                }
+            }
+            else
+                m_errors.setWarning( InputLinePtr(), std::string("Unable to open briefingsuccess file: ") + filename.string());
+        }
+        return 0;
+    }
+
+    void clearErrorsWarnings()
+    {
+        m_errors.clear();
+    }
+
 
 protected:
     void deleteSections()
@@ -2302,8 +2420,8 @@ protected:
     FileIO       m_file;      // everything for reading and writing.
     ErrorWarning m_errors;    // errors
 
-    std::deque<InputLine>    m_inlines;     // lines read in
-    std::deque<std::string> m_outlines;    // lines ready to write to file
+    std::deque<InputLinePtr> m_inlines;     // lines read in
+    std::deque<std::string>  m_outlines;    // lines ready to write to file
 
     std::unordered_map<std::string, MapSection *> m_sections;  // holds all of the data for all sections
 

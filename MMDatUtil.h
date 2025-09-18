@@ -511,7 +511,7 @@ class ErrorWarning
             if (!m_errors[index].empty())
             {
                 wprintf((L"Error: " + Unicode::utf8_to_wstring(m_errors[index]) + L"\n").c_str());
-                if (!m_errlines[index])  // skip nullptrs
+                if (m_errlines[index])  // skip nullptrs
                 {
                     if (!m_errlines[index]->getFileName().empty())
                     {

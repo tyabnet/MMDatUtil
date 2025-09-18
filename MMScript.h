@@ -65,6 +65,7 @@ protected:
     }
 
     // script reserved words in mixed case Friendly format
+    const std::string kStr_actionstations               = "actionstations";                  // enable/disable value
     const std::string kStr_addrandomspawn               = "addrandomspawn";                  // event
     const std::string kStr_air                          = "air";                             // macro int, amount of air
     const std::string kStr_arrow                        = "arrow";                           // variable type
@@ -127,6 +128,7 @@ protected:
     const std::string kStr_driven                       = "driven";                          // Data Field Trigger|Trigger when a miner enters a vehicle.
     const std::string kStr_driver                       = "driver";                          // Data Field, miner id of the driver.Same as driverid.
     const std::string kStr_driverid                     = "driverid";                        // Data Field, miner id of the driver.Same as driver.
+    const std::string kStr_dynamite                     = "dynamite";                        // Parameter, used with enable/disable.
     const std::string kStr_Dynamite_C                   = "Dynamite_C";                      // Collection, All dynamite outside of toolstore.
     const std::string kStr_E                            = "E";                               // Emerge Direction, East.
     const std::string kStr_eaten                        = "eaten";                           // Data Field, The number of crystals eaten / absorbed.
@@ -212,6 +214,8 @@ protected:
     const std::string kStr_powered                      = "powered";                         // | Data Field | Same as power. |
     const std::string kStr_poweroff                     = "poweroff";                        // | Data Field Trigger | Trigger when power is deactivated for a building.
     const std::string kStr_poweron                      = "poweron";                         // | Data Field Trigger | Trigger when power is activated for a building.
+    const std::string kStr_powerpath                    = "powerpath";                       // | Paramter | enable/disable parameter
+    const std::string kStr_PowerPath_C                  = "PowerPath_C";                     // | Macro | Number of power paths |
     const std::string kStr_powerstation                 = "powerstation";                    // | Macro | Number of Power Stations. |
     const std::string kStr_PowerStation_C               = "PowerStation_C";                  // | Macro | Number of Power Stations. |
     const std::string kStr_progress_path                = "progress_path";                   // | Macro | Tile id of a progress path(13). |
@@ -219,6 +223,7 @@ protected:
     const std::string kStr_rapidrider                   = "rapidrider";                      // | Macro | Number of Rapid Riders. |
     const std::string kStr_RapidRider_C                 = "RapidRider_C";                    // | Macro | Number of Rapid Riders. |
     const std::string kStr_random                       = "random";                          // | Macro | return random number, random(low)(high) |
+    const std::string kStr_randomspawn                  = "randomspawn";                     // | Event | Spawn the given creature class in random location |
     const std::string kStr_RechargeSeamGoal_C           = "RechargeSeamGoal_C";              // | Collection | Visible recharge seams. |
     const std::string kStr_red                          = "red";                             // | Color | Arrow colors. |
     const std::string kStr_reinforce                    = "reinforce";                       // | Trigger | Trigger when wall is reinforced. |
@@ -314,6 +319,7 @@ protected:
     const std::string kStr_Z                            = "Z";                               // | Data Field | Height, 300 values per cell |
 
     // script reserved words converted to lower case
+    const std::string kS_actionstations               = MMUtil::toLower( kStr_actionstations               );   // enable/disable value
     const std::string kS_A                            = MMUtil::toLower( kStr_A                            );   // emerge direction
     const std::string kS_addrandomspawn               = MMUtil::toLower( kStr_addrandomspawn               );   // event
     const std::string kS_air                          = MMUtil::toLower( kStr_air                          );   // macro int, amount of air
@@ -376,6 +382,7 @@ protected:
     const std::string kS_driven                       = MMUtil::toLower( kStr_driven                       );   // Data Field Trigger|Trigger when a miner enters a vehicle.
     const std::string kS_driver                       = MMUtil::toLower( kStr_driver                       );   // Data Field, miner id of the driver.Same as driverid.
     const std::string kS_driverid                     = MMUtil::toLower( kStr_driverid                     );   // Data Field, miner id of the driver.Same as driver.
+    const std::string kS_dynamite                     = MMUtil::toLower( kStr_dynamite                     );   // Parameter, used with enable/disable.
     const std::string kS_Dynamite_C                   = MMUtil::toLower( kStr_Dynamite_C                   );   // Collection, All dynamite outside of toolstore.
     const std::string kS_E                            = MMUtil::toLower( kStr_E                            );   // Emerge Direction, East.
     const std::string kS_eaten                        = MMUtil::toLower( kStr_eaten                        );   // Data Field, The number of crystals eaten / absorbed.
@@ -461,11 +468,14 @@ protected:
     const std::string kS_powered                      = MMUtil::toLower( kStr_powered                      );   // | Data Field | Same as power. |
     const std::string kS_poweroff                     = MMUtil::toLower( kStr_poweroff                     );   // | Data Field Trigger | Trigger when power is deactivated for a building.
     const std::string kS_poweron                      = MMUtil::toLower( kStr_poweron                      );   // | Data Field Trigger | Trigger when power is activated for a building.
+    const std::string kS_powerpath                    = MMUtil::toLower( kStr_powerpath                    );   // | Paramter | enable/disable parameter
+    const std::string kS_PowerPath_C                  = MMUtil::toLower( kStr_PowerPath_C                  );   // | Macro | Number of power paths |
     const std::string kS_powerstation                 = MMUtil::toLower( kStr_powerstation                 );   // | Macro | Number of Power Stations. |
     const std::string kS_PowerStation_C               = MMUtil::toLower( kStr_PowerStation_C               );   // | Macro | Number of Power Stations. |
     const std::string kS_progress_path                = MMUtil::toLower( kStr_progress_path                );   // | Macro | Tile id of a progress path(13). |
     const std::string kS_qmsg                         = MMUtil::toLower( kStr_qmsg                         );   // | Event | Display message to user. |
     const std::string kS_random                       = MMUtil::toLower( kStr_random                       );   // | Macro | return random number, random(low)(high) |
+    const std::string kS_randomspawn                  = MMUtil::toLower( kStr_randomspawn                  );   // | Event | Spawn the given creature class in random location
     const std::string kS_rapidrider                   = MMUtil::toLower( kStr_rapidrider                   );   // | Macro | Number of Rapid Riders. |
     const std::string kS_RapidRider_C                 = MMUtil::toLower( kStr_RapidRider_C                 );   // | Macro | Number of Rapid Riders. |
     const std::string kS_RechargeSeamGoal_C           = MMUtil::toLower( kStr_RechargeSeamGoal_C           );   // | Collection | Visible recharge seams. |
@@ -563,16 +573,15 @@ protected:
     const std::string kS_Z                            = MMUtil::toLower( kStr_Z                            );   // | Data Field | Height, 300 values per cell |
 
     // map of reserved words mapping lower case to friendly name.
-    // variable names and event chains may not have any of these.
-    // init and tick are not added since the script developer provides those optional event chains.
-    // thus variable names are also checked for init and tick since they are event chain only.
-    typedef std::unordered_map<std::string, std::string> ReservedWordsType;
-
+    using  ReservedWordsType = std::unordered_map<std::string, std::string>;
 
     // map contains all reserved words, key is lower case, value is friendly name
+    // init and tick are not added since the script developer provides those optional event chains.
+    // thus variable names are also checked for init and tick since they are event chain only.
     const ReservedWordsType ReservedWordsMap =
     {
         { kS_A                            , kStr_A                            },   // emerge direction
+        { kS_actionstations               , kStr_actionstations               },   // enable/disable value
         { kS_addrandomspawn               , kStr_addrandomspawn               },   // event
         { kS_air                          , kStr_air                          },   // macro int, amount of air
         { kS_arrow                        , kStr_arrow                        },   // variable type
@@ -634,6 +643,7 @@ protected:
         { kS_driven                       , kStr_driven                       },   // Data Field Trigger|Trigger when a miner enters a vehicle.
         { kS_driver                       , kStr_driver                       },   // Data Field, miner id of the driver.Same as driverid.
         { kS_driverid                     , kStr_driverid                     },   // Data Field, miner id of the driver.Same as driver.
+        { kS_dynamite                     , kStr_dynamite                     },   // Parameter, used with enable/disable.
         { kS_Dynamite_C                   , kStr_Dynamite_C                   },   // Collection, All dynamite outside of toolstore.
         { kS_E                            , kStr_E                            },   // Emerge Direction, East.
         { kS_eaten                        , kStr_eaten                        },   // Data Field, The number of crystals eaten / absorbed.
@@ -719,11 +729,14 @@ protected:
         { kS_powered                      , kStr_powered                      },   // | Data Field | Same as power. |
         { kS_poweroff                     , kStr_poweroff                     },   // | Data Field Trigger | Trigger when power is deactivated for a building.
         { kS_poweron                      , kStr_poweron                      },   // | Data Field Trigger | Trigger when power is activated for a building.
+        { kS_powerpath                    , kStr_powerpath                    },   // | Paramter | enable/disable parameter
+        { kS_PowerPath_C                  , kStr_PowerPath_C                  },   // | Macro | Number of power paths |
         { kS_powerstation                 , kStr_powerstation                 },   // | Macro | Number of Power Stations. |
         { kS_PowerStation_C               , kStr_PowerStation_C               },   // | Macro | Number of Power Stations. |
         { kS_progress_path                , kStr_progress_path                },   // | Macro | Tile id of a progress path(13). |
         { kS_qmsg                         , kStr_qmsg                         },   // | Event | Display message to user. |
         { kS_random                       , kStr_random                       },   // | Macro | return random number, random(low)(high) |
+        { kS_randomspawn                  , kStr_randomspawn                  },   // | Event | Spawn the given creature class in random location
         { kS_rapidrider                   , kStr_rapidrider                   },   // | Macro | Number of Rapid Riders. |
         { kS_RapidRider_C                 , kStr_RapidRider_C                 },   // | Macro | Number of Rapid Riders. |
         { kS_RechargeSeamGoal_C           , kStr_RechargeSeamGoal_C           },   // | Collection | Visible recharge seams. |
@@ -904,6 +917,7 @@ protected:
         { kS_orerefinery                  , eMacroFlagReturnNumeric },   // | Macro | Number of Ore Refineries. |
         { kS_OreRefinery_C                , eMacroFlagReturnNumeric },   // | Macro | Number of Ore Refineries. |
         { kS_ore_seam                     , eMacroFlagReturnNumeric },   // | Macro | Tile ID of an ore seam(46). |
+        { kS_PowerPath_C                  , eMacroFlagReturnNumeric },   // | Macro | Number of Power Paths. |
         { kS_powerstation                 , eMacroFlagReturnNumeric },   // | Macro | Number of Power Stations. |
         { kS_PowerStation_C               , eMacroFlagReturnNumeric },   // | Macro | Number of Power Stations. |
         { kS_progress_path                , eMacroFlagReturnNumeric },   // | Macro | Tile id of a progress path(13). |
@@ -1774,8 +1788,40 @@ protected:
             }
         }
 
+        // if the line last token (ignoring comments) is a simi then consider it an event.
+        // This is not full event detection, it does not detect events that have no semi (possible last event in a chain).
+        // The purpose of this is for blank line optimization. If enabled we can optimize out blank lines ending chains
+        // by not outputing the semi
+        void processEventDetection(ScriptEngine& se, [[maybe_unused]] bool bFixSpace, [[maybe_unused]] ErrorWarning errors)
+        {
+            if (m_bProcessed)
+                return;
+            if (m_tokens.empty())   // should not happen, we always have some token for a line even if the line is blank.
+                return;
+            size_t index = m_tokens.size();
+            if (index < 1)
+                return;
+            ScriptToken & it = m_tokens[index-1];     // last token
+            if (it.getID() & se.eTokenCommentLine)      // entire line comment
+                return;
 
-
+            if (it.getID() & se.eTokenComment)  // first token comment
+            {
+                index--;
+                if (index < 1)
+                    return;
+                it = m_tokens[index - 1];
+            }
+            if (it.getID() & se.eTokenIgnore)  // trailing spaces they have already been tagged as ignore
+            {
+                index--;
+                if (index < 1)
+                    return;
+                it = m_tokens[index - 1];
+            }
+            if (it.getID() & se.eTokenSemi)  // ends in semi
+                m_bEvent = true;
+        }
 
         // process the tokens, see if this is a variable declaration. if so return true, if not return false
         // errors can be filled in if invalid, caller checks for any errors added.
@@ -1793,7 +1839,7 @@ protected:
                 return;               // no more tokens, not a variable line
 
             ScriptToken &it = m_tokens[index];  // get first usable token
-            if ((index <= 1) && (it.getID() & eTokenName))  // have token, see if it is one of the variable types (bool, int, float, string, intarrray, miner, building, vehicle, creature, arrow, timer)
+            if ((index <= 1) && (it.getID() & se.eTokenName))  // have token, see if it is one of the variable types (bool, int, float, string, intarrray, miner, building, vehicle, creature, arrow, timer)
             {
                 assert(it.getTokenlc().empty() == false);
                 assert(it.getToken().empty() == false);
@@ -1823,7 +1869,7 @@ protected:
                 return;               // no more tokens, not a variable line
 
             ScriptToken &it = m_tokens[index];  // get first usable token
-            if ((index <= 1) && (it.getID() & eTokenName))  // have token, see if it is one of the variable types (bool, int, float, string, intarrray, miner, building, vehicle, creature, arrow, timer)
+            if ((index <= 1) && (it.getID() & se.eTokenName))  // have token, see if it is one of the variable types (bool, int, float, string, intarrray, miner, building, vehicle, creature, arrow, timer)
             {
                 assert(it.getTokenlc().empty() == false);
                 assert(it.getToken().empty() == false);
@@ -1835,7 +1881,7 @@ protected:
                     return;                         // no more tokens, not an event chain name
 
                 // see if token is ::
-                if (!(m_tokens[index].getID() & eTokenDColon))
+                if (!(m_tokens[index].getID() & se.eTokenDColon))
                     return;                         // not event chain name
 
                 // found :: Set flag so later processing will skip everything prior to the ::
@@ -2039,19 +2085,19 @@ protected:
 
             if (se.isReservedVar(nameToken.getTokenlc()))
             {
-                errors.setError(m_line, std::string("variable name is reserved keyword: ") + nameToken.getTokenlc());
+                errors.setWarning(m_line, std::string("variable name is reserved keyword: ") + nameToken.getTokenlc());
                 return;
             }
 
             if (vars.contains(nameToken.getTokenlc()))
             {
-                errors.setError(m_line,std::string("Duplicate variable name: ") + nameToken.getToken());
+                errors.setWarning(m_line,std::string("Duplicate variable name: ") + nameToken.getToken());
                 return;
             }
 
             if (se.getEventChainNames().contains(nameToken.getTokenlc()))
             {
-                errors.setError(m_line,std::string("Variable name duplicates EventChain name: ")+ nameToken.getTokenlc());
+                errors.setWarning(m_line,std::string("Variable name duplicates EventChain name: ")+ nameToken.getTokenlc());
                 return;
             }
 
@@ -2188,9 +2234,9 @@ protected:
                                         if (se.getNextTokenProcessSpaces(m_tokens, index, index, bFixSpace, 0, m_line, errors))
                                         {
                                             ScriptToken &tit = m_tokens[index];
-                                            if ((tit.getID() & eTokenInt) && !(it.getID() & (eTokenBoolFalse | eTokenBoolTrue)))
+                                            if ((tit.getID() & eTokenInt) && !(tit.getID() & (eTokenBoolFalse | eTokenBoolTrue)))
                                             {
-                                                col = std::stoi(it.getTokenlc());
+                                                col = std::stoi(tit.getTokenlc());
                                                 vt->setValueBuilding(row,col);
                                                 if ((row < se.getRows()) && (col < se.getCols()))
                                                 {
@@ -2198,13 +2244,13 @@ protected:
                                                         break;
                                                     else
                                                     {
-                                                        errors.setError(m_line, "Duplicate building variable row,col. Only one variable per building location allowed");
+                                                        errors.setWarning(m_line, "Duplicate building variable row,col. Only one variable per building location allowed");
                                                         break;
                                                     }
                                                 }
                                                 else
                                                 {
-                                                    errors.setError(m_line,"row,col out of range");
+                                                    errors.setWarning(m_line,"row,col out of range");
                                                     break;
                                                 }
                                             }
@@ -2212,7 +2258,7 @@ protected:
                                     }
                                 }
                             }
-                            errors.setError(m_line,"Invalid Building row,col");
+                            errors.setWarning(m_line,"Invalid Building row,col");
                             break;
 
                         case variableType::eVarTypeString:  // string variables may have either quoted string, or unquoted. If unquoted, combine every following token into a single token.
@@ -2313,10 +2359,20 @@ protected:
             int floatloop = 0;
             for (; floatloop < numfloats; floatloop++)
             {
-                ScriptToken const & it = m_tokens[index];
-                if (!(it.getID() & eTokenInt | eTokenFloat))
-                    break;
-                data[floatloop] = stof(it.getTokenlc());
+                ScriptToken & it = m_tokens[index];
+                if (it.getID() & eTokenMinus)  // "Levels\LRRR\oresome.dat" has -1 for delay, ignore the -
+                {
+                    errors.setWarning(m_line,"timer negative delay");
+                    index++;
+                    it = m_tokens[index];
+                }
+                if (!(it.getID() & (eTokenInt | eTokenFloat)))
+                {
+                    errors.setWarning(m_line,"timer invalid delay");
+                    data[floatloop] = 0;
+                }
+                else
+                    data[floatloop] = stof(it.getTokenlc());
                 if (!se.getNextTokenProcessSpaces(m_tokens, index, index, bFixSpace, 0, m_line, errors))    // have another token
                     break;
 
@@ -2340,7 +2396,7 @@ protected:
         bool                    m_bProcessed = false;   // set to true when line has been completely processed
 
         bool                    m_bEventChain = false;  // true = this line starts an event chain.
-        bool                    m_event = false;       // true = event within an event chain.
+        bool                    m_bEvent = false;       // true = event within an event chain.
         bool                    m_eventlist = false;   // true = ? event part of event list 
         bool                    m_failedEvent = false; // true = ~ event for failed emerge
         bool                    m_bVariableDecl = false; // true = variable decleration
@@ -2547,9 +2603,16 @@ protected:
             // see if starting eventchain
             it.processEventChainName( *this, m_eventChainNames, bFixSpace, m_errors );
 
-            it.processTrigger( *this, bFixSpace, m_errors );  // currently this is just to set the line type as a trigger
+            // currently this is just to set the line type as a trigger
+            // TODO rework later with full analysis detection
+            it.processTrigger( *this, bFixSpace, m_errors );  
+
+            // used to tag line as ending in semi, used for blank line optimization
+            // TODO rework later with full analysis detection
+            it.processEventDetection(*this, bFixSpace, m_errors);
 
             // custom processing for sound event.
+            // TODO rework later with full analysis detection
             it.processSoundPath( *this, bFixSpace, m_errors );
         }
 
@@ -2558,14 +2621,16 @@ protected:
         for (auto const & it : m_variableNames.getTimerVars())
         {
             const std::string &TimerEventChainName = it.second->getTimerEventName();
-
-            if (m_eventChainNames.contains(TimerEventChainName))
+            if (!TimerEventChainName.empty())  // timer vars from block system do not have a chain name so skip them.
             {
-                m_eventChainNames.incCount(TimerEventChainName);
-            }
-            else
-            {
-                m_errors.setWarning(it.second->getLine(),"Timer event chain name does not exist - timer has no effect");
+                if (m_eventChainNames.contains(TimerEventChainName))
+                {
+                    m_eventChainNames.incCount(TimerEventChainName);
+                }
+                else
+                {
+                    m_errors.setWarning(it.second->getLine(), "Timer event chain name does not exist - timer has no effect");
+                }
             }
         }
     }
@@ -2903,7 +2968,7 @@ protected:
     // bAllowMacros is set to true to allow macros, Set to false for blocks and objective lines.
     // errors will be filled in if any errors
     // for script, macros will change the inputline to result after all macros expanded
-    std::deque<ScriptToken> rawParseLine(InputLinePtr const & iline, std::string const &parseLine, bool bAllowComments, bool bAllowMacros, bool bFixSpace, ErrorWarning & errors)
+    std::deque<ScriptToken> rawParseLine(InputLinePtr const & iline, std::string const &parseLine, bool bAllowComments, bool bAllowMacros, [[maybe_unused]] bool bFixSpace, ErrorWarning & errors)
     {
         std::deque<ScriptToken> parsedTokens;
         Defines * defines = bAllowMacros ? &m_defines : nullptr;  // can be used in blocks and objects, they do not support macros
@@ -2976,17 +3041,11 @@ protected:
             }
             else
             {
-                // see if entire line is empty
+                // see if entire line is empty. engine allows multiple spaces on blank line
                 if (MMUtil::isEmptyStr(input))
                 {
-                    if (bFixSpace || input.empty())
-                    {
-                        std::string empty;
-                        parsedTokens.emplace_back(empty, empty, eTokenBlankLine);   // entire line is empty - it will terminate an event chain
-                    }
-                    else
-                        errors.setWarning(iline,"empty line has spaces. Use -sfixspace option to fix.");
-                    break;
+                    std::string empty;     // automatically convert it to a completely empty line
+                    parsedTokens.emplace_back(empty, empty, eTokenBlankLine);   // entire line is empty - it will terminate an event chain
                 }
                 commentpos = inputLen;    // pretend we have a comment after end of line - this allows us to use this to stop parsing
             }
@@ -3280,18 +3339,27 @@ protected:
                         break;
                     }
 
-                    case '"':  // start quoted string. We want to keep the quotes
+                    case '"':  // start quoted string. We want to keep the quotes. The engine allows embeded quotes for literals, and drops for variables. We will just support the nested version
                     {
-                        for (; epos < commentpos && input[epos] != '"'; epos++)
-                            ;
-                        if ((epos >= commentpos) || (input[epos] != '"'))   // missing ending quote
+                        size_t lastquote = nestedQuotes( input, npos, commentpos);
+                        if (lastquote)   // we have a string with correctly balanced quotes from npos to lastquote
                         {
-                            errors.setWarning(iline,"Missing ending double quote, string contents may be incorrect");
+                            token = input.substr(npos, lastquote - npos + 1);
+                            epos = lastquote + 1;
                         }
-                        if (epos == npos)
-                            token = "\"\"";
                         else
-                            token = input.substr(npos, epos++ - npos + 1);
+                        {
+                            for (; epos < commentpos && input[epos] != '"'; epos++)
+                                ;
+                            if ((epos >= commentpos) || (input[epos] != '"'))   // missing ending quote
+                            {
+                                errors.setWarning(iline, "Missing ending double quote, string contents may be incorrect");
+                            }
+                            if (epos == npos)
+                                token = "\"\"";
+                            else
+                                token = input.substr(npos, epos++ - npos + 1);
+                        }
 
                         std::string quotetoken(token);  // saved quoted string into string so we can deal with macro expansion
                         if (!embededMacro(iline, quotetoken, errors, defines))
@@ -3315,7 +3383,7 @@ protected:
                                     errors.setError(iline, std::string("Unknown macro name: ") + macro);
                                     break;
                                 }
-                                std::string macrovalue = defines->getValue(macro,errors);
+                                std::string macrovalue = defines->getValue(macro, errors);
                                 if (macrovalue.empty())
                                 {
                                     errors.setError(iline, "Empty macro value");
@@ -3339,15 +3407,15 @@ protected:
 
                     case '?':  // random event list
                     {
-                        token = input.substr(npos,epos - npos);
-                        parsedTokens.emplace_back(token,eTokenEventList);
+                        token = input.substr(npos, epos - npos);
+                        parsedTokens.emplace_back(token, eTokenEventList);
                         break;
                     }
 
                     case '~':  // failed emerge event
                     {
-                        token = input.substr(npos,epos - npos);
-                        parsedTokens.emplace_back(token,eTokenFailedEmerge);
+                        token = input.substr(npos, epos - npos);
+                        parsedTokens.emplace_back(token, eTokenFailedEmerge);
                         break;
                     }
 
@@ -3379,7 +3447,7 @@ protected:
                 std::string commentstr(commentview);                      // string that may be modified
                 if (MMUtil::removeLeadingWhite(commentview).find("#.") == 0)
                 {
-                    if (!embededMacro( iline, commentstr, errors, defines))
+                    if (!embededMacro(iline, commentstr, errors, defines))
                         break;
                 }
 
@@ -3390,6 +3458,30 @@ protected:
 
         return parsedTokens;
     }
+
+    // look at the line, starting at the sindex (this should be the starting double quote)
+    // scan forward and see if there are nested quotes. If there is the correct ending quote
+    // before the eindex, then return the index for the final closing quote
+    // return 0 if not valid nested quotes (odd number of quotes)
+    size_t nestedQuotes(std::string_view line, size_t sindex, size_t eindex)
+    {
+        if (line[sindex] == '"')  // must start with a double quote.
+        {
+            size_t count = 1;     // on the current "
+            size_t lastfound = sindex;
+            for ( ;; count++)
+            {
+                size_t pos = line.find('"',lastfound + 1);
+                if (pos >= eindex)
+                    break;
+                lastfound = pos;
+            }
+            if ((count & 1) == 0)  // even count
+                return lastfound;
+        }
+        return 0;
+    }
+
 
     // input is the collecton of raw objective lines.
     // scan and build a collection of every variable referenced.
@@ -3533,7 +3625,7 @@ protected:
                 }
                 else
                 {
-                    errors.setError(iline, "spaces not allowed");
+                    errors.setWarning(iline, "spaces not allowed here");
                 }
             }
             return true;    // current token is a space
@@ -3620,7 +3712,7 @@ protected:
                         for (auto const& tit : tokens)
                         {
                             if ((tit.getID() & eTokenName) && !isReservedEvent(tit.getToken()))
-                                m_blockEventCallEvent.emplace_back(it,name);    // add name to list that must not be optimized
+                                m_blockEventCallEvent.emplace_back(it,tit.getTokenlc());    // add name to list that must not be optimized
                         }
                     }
                     else
@@ -3638,6 +3730,7 @@ protected:
 
     // block section timer variables, add to initial list of timer variables and to list of timer variables to not optimize names for
     // ID/TriggerTimer:ROW,COL,NAME,DELAY,MAX,MIN
+    // there is an older format where an extra empty parameter is between the col and name
     void collectTimerVars(std::deque<InputLinePtr> const& blocks)
     {
         constexpr std::string_view tev = "TriggerTimer";
@@ -3657,6 +3750,11 @@ protected:
                     if (start != line.npos)
                     {
                         size_t endpos = line.find(',',start+1);  // end of NAME
+                        if (endpos == start + 1)  // empty parameter, lets see if the next one has the name (older format)
+                        {
+                            start = endpos;
+                            endpos = line.find(',',start+1);  // end of NAME
+                        }
                         if ((endpos != line.npos) && (endpos > start+2))
                         {
                             name = MMUtil::removeLeadingAndTrailingWhite(line.substr(start+1,endpos-start-1)); // block timer name 

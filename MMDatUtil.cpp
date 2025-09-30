@@ -7,6 +7,11 @@
 #include <unordered_set>
 #include <filesystem>
 #include <tchar.h>
+#include <chrono>
+#include <format>
+#include <cctype>
+#include <algorithm>
+#include <cwctype>
 
 #include "MMDatUtil.h"
 #include "MMScript.h"
@@ -121,16 +126,31 @@ class CommandLineParser
 
                 case 1: // srcmap  filename parameter
                 {
-                    m_cmdOptions.m_srcmap = removeQuotes(getStringParm(++i));
+                    m_cmdOptions.m_srcmap = FilenameParameter(getStringParm(++i));
+                    if (m_cmdOptions.m_srcmap.empty())
+                    {
+                        m_bValid = false;
+                        m_error = L" -srcmap invalid filename";
+                    }
                     break;
                 }
 
                 case 2: // outmap  filename parameter
-                    m_cmdOptions.m_outmap = removeQuotes(getStringParm(++i));
+                    m_cmdOptions.m_outmap = FilenameParameter(getStringParm(++i));
+                    if (m_cmdOptions.m_outmap.empty())
+                    {
+                        m_bValid = false;
+                        m_error = L" -outmap invalid filename";
+                    }
                     break;
 
                 case 3: // script  filename parameter
-                    m_cmdOptions.m_srcscript = removeQuotes(getStringParm(++i));
+                    m_cmdOptions.m_srcscript = FilenameParameter(getStringParm(++i));
+                    if (m_cmdOptions.m_srcscript.empty())
+                    {
+                        m_bValid = false;
+                        m_error = L" -script invalid filename";
+                    }
                     break;
 
                 case 4:  // mergeheight no parameter
@@ -170,7 +190,7 @@ class CommandLineParser
                     break;
 
                 case 13:  // copysrc  no parameter
-                    m_cmdOptions.m_bEraseOutMap = true;
+                    m_cmdOptions.m_bCopySrc = true;
                     m_cmdOptions.m_bOverwrite   = true;
                     break;
 
@@ -215,16 +235,21 @@ class CommandLineParser
                     {
                         if (te > ts) // not empty range
                         {
-                            std::wstring singledir = removeQuotes(token.substr(ts, te - ts));
+                            std::wstring singledir = FilenameParameter(token.substr(ts, te - ts));
                             if (!singledir.empty())
                                 m_cmdOptions.m_sincdirs.push_back(singledir);
                         }
                     }
                     if (ts < token.size())
                     {
-                        std::wstring singledir = removeQuotes(token.substr(ts));
+                        std::wstring singledir = FilenameParameter(token.substr(ts));
                         if (!singledir.empty())
                             m_cmdOptions.m_sincdirs.push_back(singledir);
+                    }
+                    if (m_cmdOptions.m_sincdirs.empty())
+                    {
+                        m_bValid = false;
+                        m_error = L" -sincdirs invalid path(s)";
                     }
                     break;
                 }
@@ -386,11 +411,38 @@ class CommandLineParser
                 }
 
                 case 40: // briefing  filename parameter
-                    m_cmdOptions.m_briefing = removeQuotes(getStringParm(++i));
+                    m_cmdOptions.m_briefing = FilenameParameter(getStringParm(++i));
+                    if (m_cmdOptions.m_briefing.empty())
+                    {
+                        m_bValid = false;
+                        m_error = L" -briefing invalid filename";
+                    }
+
                     break;
 
-                case 41: // briefing  filename parameter
-                    m_cmdOptions.m_success = removeQuotes(getStringParm(++i));
+                case 41: // briefingsuccess  filename parameter
+                    m_cmdOptions.m_success = FilenameParameter(getStringParm(++i));
+                    if (m_cmdOptions.m_success.empty())
+                    {
+                        m_bValid = false;
+                        m_error = L" -success invalid filename";
+                    }
+                    break;
+
+                case 42: // backup  filename parameter
+                    m_cmdOptions.m_backup = true;
+                    break;
+
+                case 43: // -nobom do not output UTF BOM
+                    m_cmdOptions.m_bNoBOM = true;
+                    break;
+
+                case 44:  // -srcUTF8  8 bit source not BOM is considered UTF8
+                    m_cmdOptions.m_bReadUTF8 = true;
+                    break;
+
+                case 45:   // -ansi. Output format is windows code page
+                    m_cmdOptions.m_bANSI = true;
                     break;
 
                 } // switch 
@@ -436,8 +488,51 @@ class CommandLineParser
 
 
   protected:
+      // return true if the path appears to be a valid filename
+      // surrounding quotes must have already been removed
+      // leading and trail space must have already been removed
+      bool isValidWindowsPath(const std::wstring& input)
+      {
+          if (input.empty())
+              return false;
+
+          // Check for illegal characters
+          if (input.find_first_of(L"<>:\"|?*") != std::wstring::npos)
+              return false;
+
+          // Check for reserved device names (case-insensitive)
+          static const std::wregex reserved(L"(?:^|\\\\)(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(?:\\.|$)", std::regex::icase);
+          if (std::regex_search(input, reserved))
+              return false;
+
+          return true;
+      }
+
+      std::wstring removeLeadingTrailingWhite(const std::wstring& input)
+      {
+          auto is_not_space = [](wchar_t ch) { return !std::iswspace(ch); };
+
+          auto start = std::find_if(input.begin(), input.end(), is_not_space);
+          auto end = std::find_if(input.rbegin(), input.rend(), is_not_space).base();
+
+          if (start >= end)
+              return L""; // all whitespace or empty
+
+          return std::wstring(start, end);
+      }
+
+      // empty string returned if invalid
+      std::wstring FilenameParameter(std::wstring_view str)
+      {
+          std::wstring filename = removeLeadingTrailingWhite( removeQuotes( str ) );
+          if (!isValidWindowsPath(filename))
+              filename.clear();
+          return filename;
+      }
+
 
       // remove leading/trailing quotes. look for \" to escape a quote and replace with a quote
+      // this is used for other purposes than filenames which is why embedded quotes are allowed
     std::wstring removeQuotes(std::wstring_view str)
     {
         std::wstring rets(str);
@@ -494,18 +589,24 @@ class CommandLineParser
         { L"-flattenbelow",   28 },
         { L"-flattenbetween", 29 },
         { L"-borderheight",   30 },
-        { L"-unicode",        31 },     // request unicode output
+        { L"-unicode",        31 },     // output format is UTF16LE
         { L"-bom",            32 },     // request BOM market
         { L"-srcansi",        33 },     // assume ansi code page input if 8 byte without BOM
-        { L"-utf16le",        31 },     // same as -unicode
-        { L"-utf16be",        34 },
-        { L"-utf32le",        35 },
-        { L"-utf32be",        36 },
-        { L"-utf8",           37 },
+        { L"-utf16le",        31 },     // output format is UTF16LE
+        { L"-utf16be",        34 },     // output format is UTF16BE
+        { L"-utf32le",        35 },     // output format is UTF32LE
+        { L"-utf32be",        36 },     // output format is UTF32BE
+        { L"-utf8",           37 },     // output format is UTF8
         { L"-soptnames",      38 },
         { L"-soptblank",      39 },
         { L"-briefing",       40 },     // filename contents will replace briefing section
-        { L"-success",        41 }      // filename contents will replace briefing success section
+        { L"-success",        41 },     // filename contents will replace briefing success section
+        { L"-backup",         42 },     // backup output file name first.
+        { L"-nobom",          43 },     // do not output UTF BOM
+        { L"-srcutf8",        44 },     // 8 bit source no BOM is considered UTF8
+        { L"-ansi",           45 }      // output format is 8 bit windows code page
+
+
     };
 
     std::wstring_view getStringParm(std::size_t i)
@@ -606,52 +707,53 @@ void help()
     wprintf(L"    parameters are until the next space unless it is double quoted.\n");
     wprintf(L"    strings may have a \\\" in them to embed a quote.\n");
     wprintf(L"    Option:\n");
-    wprintf(L"      -help           display this help\n");
-    wprintf(L"      -srcmap         file name of a source merge .DAT\n");
-    wprintf(L"      -outmap         file name of a destination .DAT\n");
-    wprintf(L"      -overwrite      allow changing existing outmap\n");
+    wprintf(L"      -ansi           Output .dat is windows current code page\n");
+    wprintf(L"      -backup         Output filename will be backed up prior to overwritting\n");
+    wprintf(L"      -bom            output .dat has BOM Byte Order Marker (default)\n");
+    wprintf(L"      -borderheight   force height borders to this value\n");
+    wprintf(L"      -briefing       filename contents will replace briefing text\n");
     wprintf(L"      -copysrc        outmap is recreated from srcmap, implies -overwrite\n");
-    wprintf(L"      -mergeheight    merge height values from srcmap into outmap\n");
-    wprintf(L"      -mergecrystal   merge crystals values from srcmap into outmap\n");
-    wprintf(L"      -mergeore       merge ore values from srcmap into outmap\n");
-    wprintf(L"      -mergetile      merge tile values from srcmap into outmap\n");
-    wprintf(L"      -mergerect      startrow,startcol,endrow,endcol for merge\n");
-    wprintf(L"      -offsetrow      add row offset when merging/copying srcmap into outmap\n");
-    wprintf(L"      -offsetcol      add col offset when merging/copying srcmap into outmap\n");
-    wprintf(L"      -resizerow      resize outmap rows for tiles,height,resources\n");
-    wprintf(L"      -resizecol      resize outmap cols for tiles,height,resources\n");
-    wprintf(L"      -deftile        value for invalid tiles or resize, default 1\n");
-    wprintf(L"      -defheight      value for invalid heights or resize, default 0\n");
-    wprintf(L"      -defcrystal     value for invalid crystals or resize, default 0\n");
-    wprintf(L"      -defore         value for invalid ore or resize, default 0\n");
-    wprintf(L"      -mapname        levelname: value saved in outmap info section\n");
     wprintf(L"      -creator        creator: value saved in outmap info section\n");
+    wprintf(L"      -deftile        value for invalid tiles or resize, default 1\n");
+    wprintf(L"      -defcrystal     value for invalid crystals or resize, default 0\n");
+    wprintf(L"      -defheight      value for invalid heights or resize, default 0\n");
+    wprintf(L"      -defore         value for invalid ore or resize, default 0\n");
+    wprintf(L"      -flattenabove   height,newheight. Heights > height set to newheight\n");
+    wprintf(L"      -flattenbelow   height,newheight. Heights < height set to newheight\n");
+    wprintf(L"      -flattenbetween low,high,value. low <= Heights <= high set to value\n");
     wprintf(L"      -fix            fix invalid/missing tile, height, crystal, ore values\n");
+    wprintf(L"      -help           display this help\n");
+    wprintf(L"      -mapname        levelname: value saved in outmap info section\n");
+    wprintf(L"      -mergecrystal   merge crystals values from srcmap into outmap\n");
+    wprintf(L"      -mergeheight    merge height values from srcmap into outmap\n");
+    wprintf(L"      -mergerect      startrow,startcol,endrow,endcol for merge\n");
+    wprintf(L"      -mergetile      merge tile values from srcmap into outmap\n");
+    wprintf(L"      -mergeore       merge ore values from srcmap into outmap\n");
+    wprintf(L"      -nobom          output .dat will not have BOM\n");
+    wprintf(L"      -outmap         file name of a destination .DAT\n");
+    wprintf(L"      -offsetcol      add col offset when merging/copying srcmap into outmap\n");
+    wprintf(L"      -offsetrow      add row offset when merging/copying srcmap into outmap\n");
+    wprintf(L"      -overwrite      allow changing existing outmap\n");
+    wprintf(L"      -resizecol      resize outmap cols for tiles,height,resources\n");
+    wprintf(L"      -resizerow      resize outmap rows for tiles,height,resources\n");
     wprintf(L"      -script         filename of script file to replace outmap's script\n");
-    wprintf(L"      -sincdirs       ; separated list of paths to search for script includes\n");
-    wprintf(L"      -sfixspace      automatically remove spaces where not allowed in scripts\n");
-    wprintf(L"      -snocomment     remove all comments in script except #.\n");
-    wprintf(L"      -sdefine        name=value   define script subsitution\n");
     wprintf(L"      -sdatefmt       format for TyabScript{Inc}Date, default \"y.m.d\"\n");
+    wprintf(L"      -sdefine        name=value   define script subsitution\n");
+    wprintf(L"      -sfixspace      automatically remove spaces where not allowed in scripts\n");
+    wprintf(L"      -sincdirs       ; separated list of paths to search for script includes\n");
+    wprintf(L"      -snocomment     remove all comments in script except #.\n");
     wprintf(L"      -soptnames      Optimize script variable and event chain names\n");
     wprintf(L"      -soptblank      Remove script blank lines\n");
-    wprintf(L"      -flattenabove   height, newheight. Heights > height set to newheight\n");
-    wprintf(L"      -flattenbelow   height, newheight. Heights < height set to newheight\n");
-    wprintf(L"      -flattenbetween low, high, value. low <= Heights <= high set to value\n");
-    wprintf(L"      -borderheight   force height borders to this value\n");
-    wprintf(L"      -unicode        output .dat is UTF16LE format (default UTF8)\n");
-    wprintf(L"      -utf16LE        same as -unicode\n");
-    wprintf(L"      -utf16BE        output .dat is UTF16BE format (default UTF8)\n");
-    wprintf(L"      -utf32LE        output .dat is UTF32LE format (default UTF8)\n");
-    wprintf(L"      -utf32BE        output .dat is UTF32EE format (default UTF8)\n");
-    wprintf(L"      -bom            output .dat has BOM Byte Order Marker (default none)\n");
-    wprintf(L"      -srcansi        UTF8 input files without BOM assume ANSI codepage\n");
-    wprintf(L"      -briefing       filename. Will replace the briefing message in output\n");
-    wprintf(L"      -success        filename. Will replace the success message in output\n");
-    wprintf(L"\n");
-    wprintf(L"  -srcmap is used to provide merge data unless -copysrc is used\n");
-    wprintf(L"  -script will replace outmap's script with the contents of that file.\n");
-    wprintf(L"  -copysrc may be combined with resize and offsets\n");
+    wprintf(L"      -srcansi        8 bit input files without BOM assume ANSI\n");
+    wprintf(L"      -srcmap         file name of a source map\n");
+    wprintf(L"      -srcutf8        8 bit input files without BOM assume UTF8\n");
+    wprintf(L"      -success        filename contents will replace briefingsuccess text\n");
+    wprintf(L"      -unicode        output .dat is UTF16LE format\n");
+    wprintf(L"      -utf8           output .dat is UTF8 format (default)\n");
+    wprintf(L"      -utf16BE        output .dat is UTF16BE format\n");
+    wprintf(L"      -utf16LE        output .dat is UTF16LE format\n");
+    wprintf(L"      -utf32BE        output .dat is UTF32EE format\n");
+    wprintf(L"      -utf32LE        output .dat is UTF32LE format\n");
     wprintf(L"\n");
     wprintf(L" see TyabMMDatUtil.pdf for more details and examples\n");
 }
@@ -662,7 +764,68 @@ void showHelpOption()
     wprintf(L" For available options, use -help\n");
 }
 
+// given an input full path, return a backup filename
+std::filesystem::path createCustomPath(const std::filesystem::path& filename, const std::wstring& userSuffix, size_t sequence)
+{
+    // Get current date
+    auto now = std::chrono::system_clock::now();
+    std::time_t t = std::chrono::system_clock::to_time_t(now);
+    std::tm localTime;
+    localtime_s(&localTime,&t);
 
+    // Format date as YYYY_MM_DD
+    std::wstring dateStr = std::format(L"{:04}{:02}{:02}", 
+        localTime.tm_year + 1900, 
+        localTime.tm_mon + 1, 
+        localTime.tm_mday);
+
+    // Build new filename
+    std::filesystem::path newFilename = filename.stem();    // get the filename without extension and no path
+    newFilename += L"_";
+    newFilename += userSuffix;
+    newFilename += L"_";
+    newFilename += dateStr;
+    newFilename += L"_" + std::to_wstring(sequence);
+    newFilename += filename.extension();
+
+    // Combine with original directory
+    return filename.parent_path() / newFilename;
+}
+
+bool BackupFile(std::filesystem::path const& filename)
+{
+    std::error_code ec;
+    if (std::filesystem::exists(filename, ec))
+    {
+        // need to find a unique file name:
+        std::filesystem::path backup;
+        for (size_t sequence = 1;; sequence++)
+        {
+            backup = createCustomPath( filename, L"Backup", sequence);
+            if (!std::filesystem::exists(backup))
+                break;
+        }
+        // backup is the unique backup file. Copy to it.
+        BOOL retVal = CopyFileW(filename.wstring().c_str(), backup.wstring().c_str(), 0);
+        if (!retVal)
+        {
+            wprintf(L"Error: %d creating backup file\n", GetLastError() );
+            wprintf(L"   Trying to backup: %s\n", filename.wstring().c_str());
+            wprintf(L"   To unique backup: %s\n", backup.wstring().c_str());
+            wprintf(L"Aborted. Output file not modified\n");
+            return false;
+        }
+        wprintf(L"  Unique Backup created: %s\n", backup.wstring().c_str());
+
+    }
+    else
+    {
+        wprintf(L"  Destination map does not exist. No backup needed\n");
+    }
+    return true;
+}
+
+// --- main - program entry
 int wmain(int , wchar_t ** )   // ignore all passed in parameters
 {
     header();
@@ -699,7 +862,7 @@ int wmain(int , wchar_t ** )   // ignore all passed in parameters
             || cmdParser.getOptions().m_bMergeHeight
             || cmdParser.getOptions().m_bMergeOre
             || cmdParser.getOptions().m_bMergeTiles
-            || cmdParser.getOptions().m_bEraseOutMap
+            || cmdParser.getOptions().m_bCopySrc
             || cmdParser.getOptions().m_bMergeRect
             || cmdParser.getOptions().m_nOffsetCol
             || cmdParser.getOptions().m_nOffsetRow
@@ -713,7 +876,7 @@ int wmain(int , wchar_t ** )   // ignore all passed in parameters
     }
     else
     {
-        std::size_t npos = MMUtil::toLower(cmdParser.getOptions().m_srcmap.filename().wstring()).rfind(L".dat");
+        std::size_t npos = MMUtil::toLower(cmdParser.getOptions().m_srcmap.extension().wstring()).rfind(L".dat");
         if (npos == std::wstring::npos)
         {
             wprintf(L" ERROR: Source map: %s must have a .dat extension\n", cmdParser.getOptions().m_srcmap.c_str());
@@ -721,35 +884,49 @@ int wmain(int , wchar_t ** )   // ignore all passed in parameters
             return 1;
         }
     }
+    // check for incompatible values
+    if (cmdParser.getOptions().m_bReadANSI && cmdParser.getOptions().m_bReadUTF8)
+    {
+        wprintf(L" ERROR: input cannot have both -srcansi and -srcutf8");
+        return 1;
+    }
+    cmdParser.getOptions().m_bReadANSI = !cmdParser.getOptions().m_bReadUTF8;  // set default 8 bit no BOM to be either ANSI (default) or UTF8
+
+    if (cmdParser.getOptions().m_bBOM && cmdParser.getOptions().m_bNoBOM)
+    {
+        wprintf(L" ERROR: output cannot have both -bom and -nobom");
+        return 1;
+    }
+    cmdParser.getOptions().m_bBOM = !cmdParser.getOptions().m_bNoBOM;  // set BOM (default) or no bom.
+
+    if ((int)cmdParser.getOptions().m_bANSI + (int)cmdParser.getOptions().m_bUTF8 + (int)cmdParser.getOptions().m_bUTF16 + (int)cmdParser.getOptions().m_bUTF32 > 1)
+    {
+        wprintf(L" ERROR: only one format allowed. One of -ansi, -utf8, -utf16, -utf32");
+        return 1;
+    }
+
     if (!cmdParser.getOptions().m_outmap.empty())
     {
-        std::size_t npos = MMUtil::toLower(cmdParser.getOptions().m_outmap.filename().wstring()).rfind(L".dat");
+        std::size_t npos = MMUtil::toLower(cmdParser.getOptions().m_outmap.extension().wstring()).rfind(L".dat");
         if (npos == std::string::npos)
         {
             wprintf(L" ERROR: outmap: %s must have a .dat extension\n", cmdParser.getOptions().m_outmap.wstring().c_str());
             showHelpOption();
             return 1;
         }
-
-        if (((cmdParser.getOptions().m_bUTF8 ? 1 : 0) + (cmdParser.getOptions().m_bUTF16 ? 1 : 0) + (cmdParser.getOptions().m_bUTF32 ? 1 : 0)) > 1 )
-        {
-            wprintf(L" ERROR: only one of UTF8, UTF16, UTF32 allowed\n");
-            showHelpOption();
-            return 1;
-        }
     }
     else
     {
-        if (cmdParser.getOptions().m_bUTF8 || cmdParser.getOptions().m_bUTF16 || cmdParser.getOptions().m_bUTF32 || cmdParser.getOptions().m_bBOM )
+        if (cmdParser.getOptions().m_bANSI || cmdParser.getOptions().m_bUTF8 || cmdParser.getOptions().m_bUTF16 || cmdParser.getOptions().m_bUTF32 || cmdParser.getOptions().m_bBOM || cmdParser.getOptions().m_bNoBOM  )
         {
-            wprintf(L" ERROR: UTF8, UTF16, UTF32, BOM options require -outmap\n");
+            wprintf(L" ERROR: output format and BOM options require -outmap\n");
             showHelpOption();
             return 1;
         }
     }
 
     // using eraseoutmap with merge options makes no sense
-    if (cmdParser.getOptions().m_bEraseOutMap)
+    if (cmdParser.getOptions().m_bCopySrc)
     {
         if (cmdParser.getOptions().m_bMergeCrystal ||
             cmdParser.getOptions().m_bMergeHeight ||
@@ -757,7 +934,7 @@ int wmain(int , wchar_t ** )   // ignore all passed in parameters
             cmdParser.getOptions().m_bMergeTiles
             )
         {
-            wprintf(L" ERROR: merging options have no meaning when using -eraseoutmap\n");
+            wprintf(L" ERROR: merging options have no meaning when using -copysrc\n");
             return 1;
         }
     }
@@ -853,15 +1030,15 @@ int wmain(int , wchar_t ** )   // ignore all passed in parameters
         bool bExists = outMap.fexists();
         if (bExists)
         {
-            if (!cmdParser.getOptions().m_bEraseOutMap && !cmdParser.getOptions().m_bOverwrite)
+            if (!cmdParser.getOptions().m_bCopySrc && !cmdParser.getOptions().m_bOverwrite)
             {
-                wprintf(L" ERROR: to overwrite existing outmap use -overwrite or -eraseoutmap options\n");
+                wprintf(L" ERROR: to overwrite existing outmap use -overwrite or -copysrc options\n");
                 return 1;
             }
         }
         else // outmap file does not exist
         {
-            if (cmdParser.getOptions().m_srcmap.empty() || !cmdParser.getOptions().m_bEraseOutMap)
+            if (cmdParser.getOptions().m_srcmap.empty() || !cmdParser.getOptions().m_bCopySrc)
             {
                 wprintf(L" ERROR: non-existent outmap requires a srcmap and -copysrc option\n");
                 return 1;
@@ -878,7 +1055,7 @@ int wmain(int , wchar_t ** )   // ignore all passed in parameters
         // tempOutMap is a temp file and can be used.
         // two cases. If using -eraseoutmap then copy the srcmap.
         // otherwise, if we have an existing outmap then copy it.
-        if (cmdParser.getOptions().m_bEraseOutMap)
+        if (cmdParser.getOptions().m_bCopySrc)
         {
             BOOL retval = CopyFileW(cmdParser.getOptions().m_srcmap.c_str(), tempOut.get().c_str(), false);      // copy src to temp - this ensures we have disk space
             if (retval == 0)
@@ -897,7 +1074,7 @@ int wmain(int , wchar_t ** )   // ignore all passed in parameters
             }
         }
 
-        if (cmdParser.getOptions().m_bEraseOutMap)
+        if (cmdParser.getOptions().m_bCopySrc)
         {
             outMap.copyFrom(srcMap, cmdParser.getOptions());     // outmap is now a copy of srcmap but using options like resize, offsets
         }
@@ -1061,11 +1238,14 @@ int wmain(int , wchar_t ** )   // ignore all passed in parameters
         outMap.serializeOutSections();
         outMap.setFileName( tempOut.get() );
 
-        FileIO::FileEncoding encoding = FileIO::FileEncoding::UTF8;     // default to UTF8 output
+        FileIO::FileEncoding encoding = FileIO::FileEncoding::ANSI;     // default to ANSI output
         if (cmdParser.getOptions().m_bUTF16)
             encoding = cmdParser.getOptions().m_bBigEndian ? FileIO::FileEncoding::UTF16BE : FileIO::FileEncoding::UTF16LE;
         else if (cmdParser.getOptions().m_bUTF32)
             encoding = cmdParser.getOptions().m_bBigEndian ? FileIO::FileEncoding::UTF32BE : FileIO::FileEncoding::UTF32LE;
+        else if (cmdParser.getOptions().m_bUTF8 || cmdParser.getOptions().m_bBOM)
+            encoding = FileIO::FileEncoding::UTF8;
+
         std::wstring const &encodingstr = Unicode::utf8_to_wstring(FileIO::getEncodingStr(encoding));
         wprintf((L"  Encoding: " + encodingstr + (cmdParser.getOptions().m_bBOM ? L" BOM" : L" No BOM") + L"\n").c_str());
 
@@ -1080,6 +1260,13 @@ int wmain(int , wchar_t ** )   // ignore all passed in parameters
         wprintf(L"  %d lines written for map file\n",outMap.getNumLinesWrite());
 
         // temp file has completed. Now copy to real destination
+        // First check to see if -backup is set, if so we need to make a backup first
+        if (cmdParser.getOptions().m_backup)
+        {
+            bool bSuccess = BackupFile(cmdParser.getOptions().m_outmap );
+            if (!bSuccess)
+                return 1;
+        }
         wprintf(L"  Copying \"%s\" to \"%s\"\n",tempOut.get().wstring().c_str(),cmdParser.getOptions().m_outmap.wstring().c_str());
         BOOL retVal = CopyFileW(tempOut.get().c_str(), cmdParser.getOptions().m_outmap.c_str(), 0);
         if (retVal == 0)

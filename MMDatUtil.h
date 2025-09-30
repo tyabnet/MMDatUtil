@@ -17,6 +17,7 @@
 #include <deque>
 #include <filesystem>
 #include <chrono>
+#include <regex>
 
 #include <windows.h>
 
@@ -294,7 +295,6 @@ namespace MMUtil
         return retval;
     }
 
-
 };  // namespace MMUtil
 
 
@@ -366,7 +366,7 @@ public:
     bool         m_bMergeOre      = false;
     bool         m_bMergeTiles    = false;
     bool         m_bOverwrite     = false;
-    bool         m_bEraseOutMap   = false;
+    bool         m_bCopySrc   = false;
     bool         m_bHelp          = false;
     bool         m_bFix           = false;
     bool         m_bScrFixSpace   = false;  // automatic fix spaces where not allowed
@@ -381,9 +381,13 @@ public:
     bool         m_bUTF32         = false;  // if set output format is UTF32, either big or little endian
     bool         m_bBigEndian     = false;  // if set output format is big endian, default false is little endian.
     bool         m_bBOM           = false;  // if set, output will have Byte Order Marker
+    bool         m_bNoBOM         = false;  // if set no BOM will be output.  NEW
     bool         m_bReadANSI      = false;  // if set, assume 8 byte input with no BOM is ANSI
+    bool         m_bReadUTF8      = false;  // if set, assume 8 byte input with no BOM is UTF8 NEW
     bool         m_bOptimizeNames = false;  // if set optimize variable and event chain names
     bool         m_bOptimizeBlank = false;
+    bool         m_backup         = false;
+    bool         m_bANSI          = false;  // if set output format is windows code page.
     std::filesystem::path m_briefing;  // contents of this file will be used for briefing message
     std::filesystem::path m_success;   // contents of this file will be used for briefing success message
 }; // class CommandLineOptions
@@ -619,17 +623,19 @@ class FileIO
     // files without a BOM will be scanned to see if what appears to be unicode chars are used. If so, it will assume UnicodeLE
     // Always write UTF8 without a BOM unless forced to unicode where a UnicodeLE BOM is written.
     enum FileEncoding
-    {               // 4 byte auto detection from JSON Try both 32's, then 16, then default to UTF8
+    {               // 4 byte auto detection from JSON Try both 32's, then 16, then default to ANSI or UTF8 NO BOM depending on options
         ANSI = 0,   // multibyte via ANSI system code page
-        UTF8,       // UTF8 (BOM is EF BB BF)           xx xx xx xx
+        UTF8,       // EF BB BF                         xx xx xx xx
         UTF16LE,    // FF FE                            xx 00 xx 00
         UTF16BE,    // FE FF                            00 xx 00 xx
         UTF32LE,    // FF FE 00 00                      xx 00 00 00
         UTF32BE,    // 00 00 FE FF                      00 00 00 xx
     };
 
-    bool hasBOM() const { return m_BOMsize > 0; }
+    bool hasBOM() const { return m_bBOM; }
     FileEncoding getEncoding() const { return m_encoding; }
+
+    // use this on input files to determine if 8 bit with no BOM is either UTF or ANSI. True is ANSI, false is UTF8
     void setAnsi( bool bAnsi ) { m_bAnsi = bAnsi; }
     
     static std::string getEncodingStr( FileEncoding encoding )
@@ -699,7 +705,7 @@ class FileIO
     // return true if ok, false if error
     bool writeFile(const std::deque<std::string>& lines, ErrorWarning & errors, FileEncoding encoding, bool forceBOM)
     {
-        std::string filename = Unicode::wstring_to_utf8(m_filename.wstring());
+        std::string filename = Unicode::wstring_to_utf8(m_filename.wstring());  // build filename in case of error
         FILE *fp = nullptr;
         errno_t err = _wfopen_s( &fp, m_filename.wstring().c_str(), L"wb");
         if (err || fp == nullptr)
@@ -750,6 +756,9 @@ class FileIO
                 retval = false;
                 switch (encoding)
                 {
+                    case ANSI:  // convert to unicode and then to windows system code page. We can use the UTF8 output
+                        retval = writeLineUTF8(fp,Unicode::wstring_to_ansi(Unicode::utf8_to_wstring(it)));
+                        break;
                     case UTF8:
                         retval = writeLineUTF8(fp,it);
                         break;
@@ -958,16 +967,17 @@ class FileIO
 
   protected:
 
-    // callers need to reset back to beginning then then skip the returned number of bytes
+    // callers need to reset back to beginning then then skip the m_BOMsize number of bytes
     // if bomSize is 0, there was no detected BOM
     void determineEncoding(FILE* fp)
     {
         m_BOMsize = 0;      // assume no bom
-        m_encoding = UTF8;  // asssuming utf8
+        m_bBOM = false;
+        m_encoding = ANSI;  // asssuming ansi
         m_hbf = false;      // asssum low byte first
 
         // work with all known text formats. Start by looking for BOM's
-        // if we have an error reading first 4 bytes, just default to UTF8 with no BOM.
+        // if we have an error reading first 4 bytes, just default to ANSI with no BOM.
         int byte1 = fgetc(fp);
         if (byte1 == EOF)
             return;
@@ -984,26 +994,32 @@ class FileIO
         if ((byte1 == 0xef) && (byte2 == 0xbb) && (byte3 == 0xbf))  // check for 3 byte legacy UTF8 BOM
         {
             m_BOMsize = 3;
+            m_bBOM = true;
+            m_encoding = UTF8;
         }
         else if ((byte1 == 0x00) && (byte2 == 0x00) && (byte3 == 0xfe) && (byte4 == 0xff))
         {
             m_BOMsize = 4;
+            m_bBOM = true;
             m_encoding = UTF32BE;
             m_hbf = true;
         }
         else if ((byte1 == 0xff) && (byte2 == 0xfe) && (byte3 == 0x00) && (byte4 == 0x00))
         {
             m_BOMsize = 4;
+            m_bBOM = true;
             m_encoding = UTF32LE;
         }
         else if ((byte1 == 0xff) && (byte2 == 0xfe))
         {
             m_BOMsize = 2;
+            m_bBOM = true;
             m_encoding = UTF16LE;
         }
         else if ((byte1 == 0xfe) && (byte2 == 0xff))
         {
             m_BOMsize = 2;
+            m_bBOM = true;
             m_encoding = UTF16BE;
             m_hbf = true;
         }
@@ -1058,11 +1074,7 @@ class FileIO
         {
             return Unicode::wstring_to_utf8(Unicode::ansi_to_wstring( line )); // convert ansi to wide, then back to utf8
         }
-        else
-        {
-            line.shrink_to_fit();
-            return line;
-        }
+        return line;
     }
 
     // this supports both utf16 formats so it reads a byte at a time
@@ -1139,6 +1151,7 @@ class FileIO
         return Unicode::utf32_to_utf8( u32line );
     }
 
+    // this is also used to write out ANSI data once it is converted to ansi 8 bit.
     bool writeLineUTF8(FILE* fp, const std::string &line )  // write utf line
     {
         std::size_t retval = 1;
@@ -1211,10 +1224,11 @@ class FileIO
 
     std::filesystem::path m_filename;   // filename for this file.
 
-    int          m_BOMsize  = 0;
+    int          m_BOMsize  = 0;      // how many bytes for BOM. 0 if no BOM
     FileEncoding m_encoding = UTF8;
     bool         m_hbf      = false;  // true if utf16/utf32 is high byte first storage format during read
     bool         m_bAnsi    = false;  // true means 8 bit input with no BOM is assumed to use ANSI code page.
+    bool         m_bBOM     = false;  // true means a read detected a BOM. On write, it forces a BOM to be generated for UTF formats.
 };
 
 

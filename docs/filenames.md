@@ -21,6 +21,5 @@ MMDatUtil allows use of relative paths - they will be relative from the current 
 >Manic Miners is not compatible with windows long path support. This means the directory that Manic Miners runs from cannot exceed the path limits of 255 characters including the subdirectories it references.
 
 ### Links
-### Links
 - [Back to Overview](README.md)
 - [File Encoding](fileencoding.md)

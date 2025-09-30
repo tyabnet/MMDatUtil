@@ -1,0 +1,15 @@
+/* Simple two-column documentation layout */
+:root{--nav-width:260px;--accent:#0366d6;--bg:#f7f8fa}
+html,body{height:100%;margin:0;font-family:Segoe UI, Arial, Helvetica, sans-serif;background:var(--bg);color:#111}
+.container{display:flex;height:100vh}
+.nav{width:var(--nav-width);background:#fff;border-right:1px solid #ddd;padding:20px;box-sizing:border-box;overflow:auto}
+.nav h2{font-size:16px;margin:0 0 10px}
+.nav a{display:block;padding:6px 8px;color:#111;text-decoration:none;border-radius:4px}
+.nav a:hover{background:#eef6ff;color:var(--accent)}
+.nav .section{margin-bottom:14px}
+.content{flex:1;padding:28px;overflow:auto}
+.content h1{margin-top:0}
+.backlink{display:inline-block;margin:8px 0;color:var(--accent);text-decoration:none}
+.option-meta{font-size:13px;color:#555;margin-bottom:12px}
+pre.cmd{background:#222;color:#fff;padding:10px;border-radius:6px;overflow:auto}
+@media (max-width:800px){.container{flex-direction:column}.nav{width:100%;height:200px;border-right:none;border-bottom:1px solid #ddd}}

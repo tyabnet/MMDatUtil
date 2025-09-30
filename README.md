@@ -23,9 +23,9 @@ The general format is:
 Review the list of options for more details.
 
 # Online documentation
-[Online documentation](https://github.com/tyabnet/MMDatUtil/blob/development/docs/index.html)
+[Online documentation](https://tyabnet.github.io/MMDatUtil/#/)
 
-THIS IS DEVELOPMENT DOCUMENTATION. WHEN RELEASED CHANGE LINK IN MAIN README.MD
+THIS IS DEVELOPMENT DOCUMENTATION. WHEN RELEASED CHANGE LINK IN MAIN README.MD AND SETTINGS ON GITHUB -> SETTINGS -> PAGES -> BRANCH
 
 
 Examples

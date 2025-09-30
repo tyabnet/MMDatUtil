@@ -1,5 +1,7 @@
 # MMDatUtil — Official Documentation
 
+THIS IS DEVELOPMENT DOCUMENTATION. WHEN RELEASED CHANGE LINK IN MAIN README.MD
+
 MMDatUtil is a windows command line utility that provides many operations on Manic Miners .DAT files.
 
 - Quick read-only analysis of the .DAT file checking for overall correct layout. It does include some objective, blocks, and script checking.

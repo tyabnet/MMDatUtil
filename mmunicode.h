@@ -421,19 +421,41 @@ namespace Unicode
         return utf16_to_wstring(utf8_to_utf16(str));
     }
 
-    // input string is assumed to be in system ansi code page. This is only valid for windows
-    static inline std::wstring ansi_to_wstring(std::string str)
+    // input string is assumed to be in system ansi code page. We are returning UTF16 data.
+    // this will then have to converted to utf16 and then utf8
+    static inline std::wstring ansi_to_wstring(std::string const & str)
     {
         std::wstring rets;
 
-        int chsize = ((int)str.size() + 1) * 2;     // making it much larger than ever needed
-        int bytesize = chsize * 2;
-        wchar_t * buff = (wchar_t *)malloc( bytesize );
-        buff[0] = 0;
-        int retval = MultiByteToWideChar( CP_ACP, 0, str.c_str(), -1, buff, chsize ); // convert using ANSI system code page
-        if (retval && buff[0])
-            rets = buff;
-        free(buff);
+        if (!str.empty())
+        {
+            int buffSize = ((int)str.size() + 1) * 4;     // this will handle utf32
+            wchar_t* buff = (wchar_t*)malloc( buffSize );
+            buff[0] = 0;
+            int retval = MultiByteToWideChar(CP_ACP, 0, str.c_str(), -1, buff, buffSize); // convert using ANSI system code page
+            if ((retval > 0) && buff[0])
+                rets = buff;
+            free(buff);
+        }
+        return rets;
+    }
+
+    // convert UTF16 data to ansi current code page. Ignoring data loss from characters that cannot be translated
+    // return ANSI string
+    static inline std::string wstring_to_ansi(std::wstring const& wstr)
+    {
+        std::string rets;
+        if (!wstr.empty())
+        {
+            int buffSize = (int)(wstr.length()+1)*2; // giving room for utf16 output for double default chars
+            char * buff = (char *)malloc( buffSize );
+            buff[0] = 0;
+
+            int retval = WideCharToMultiByte( CP_ACP, 0, wstr.c_str(), -1, buff, buffSize, nullptr, nullptr );
+            if ((retval > 0) && buff[0])
+                rets = buff;
+            free(buff);
+        }
         return rets;
     }
 };

@@ -1621,7 +1621,7 @@ protected:
             return std::string();
         }
 
-        eventChainNameSP find(std::string str)
+        eventChainNameSP find(std::string str) const
         {
             auto it = m_eventchainnames.find(MMUtil::toLower(str));
             return it->second;
@@ -1801,25 +1801,26 @@ protected:
             size_t index = m_tokens.size();
             if (index < 1)
                 return;
-            ScriptToken & it = m_tokens[index-1];     // last token
-            if (it.getID() & se.eTokenCommentLine)      // entire line comment
+            index-=1;   // index of last item
+            uint64_t id = m_tokens[index].getID();
+            if (id & se.eTokenCommentLine)      // entire line comment
                 return;
 
-            if (it.getID() & se.eTokenComment)  // first token comment
+            if (id & se.eTokenComment)  // token comment
             {
-                index--;
                 if (index < 1)
                     return;
-                it = m_tokens[index - 1];
-            }
-            if (it.getID() & se.eTokenIgnore)  // trailing spaces they have already been tagged as ignore
-            {
                 index--;
+                id = m_tokens[index].getID(); // get id on prior comment
+            }
+            if (id & se.eTokenIgnore)  // trailing spaces they have already been tagged as ignore
+            {
                 if (index < 1)
                     return;
-                it = m_tokens[index - 1];
+                index--;
+                id = m_tokens[index].getID();
             }
-            if (it.getID() & se.eTokenSemi)  // ends in semi
+            if (id & se.eTokenSemi)  // ends in semi
                 m_bEvent = true;
         }
 
@@ -1973,8 +1974,8 @@ protected:
             if (m_tokens.empty())  // should never happen
                 return;
 
-            auto vars = se.getUserVariables();
-            auto chains = se.getEventChainNames();
+            auto const & vars = se.getUserVariables();
+            auto const & chains = se.getEventChainNames();
 
             std::size_t index = 0;
             if (!se.getNextToken(m_tokens,(size_t)((intmax_t)(-1)), index))    // start at beginning - find first non-ignored token

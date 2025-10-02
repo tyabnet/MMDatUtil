@@ -445,6 +445,11 @@ class CommandLineParser
                     m_cmdOptions.m_bANSI = true;
                     break;
 
+                case 46:   // -ansi. Output format is windows code page
+                    m_cmdOptions.m_bSrcANSI7 = true;
+                    break;
+
+
                 } // switch 
             }
         }
@@ -604,7 +609,9 @@ class CommandLineParser
         { L"-backup",         42 },     // backup output file name first.
         { L"-nobom",          43 },     // do not output UTF BOM
         { L"-srcutf8",        44 },     // 8 bit source no BOM is considered UTF8
-        { L"-ansi",           45 }      // output format is 8 bit windows code page
+        { L"-ansi",           45 },     // output format is 8 bit windows code page
+        { L"-srcansi7",       46 }      // warn if any input is non-ANSI 7 bit
+
 
 
     };
@@ -897,7 +904,15 @@ int wmain(int , wchar_t ** )   // ignore all passed in parameters
         wprintf(L" ERROR: output cannot have both -bom and -nobom");
         return 1;
     }
-    cmdParser.getOptions().m_bBOM = !cmdParser.getOptions().m_bNoBOM;  // set BOM (default) or no bom.
+    if (cmdParser.getOptions().m_bBOM && cmdParser.getOptions().m_bANSI)
+    {
+        wprintf(L" ERROR: output cannot have both -bom and -ansi");
+        return 1;
+    }
+    if (cmdParser.getOptions().m_bANSI)
+        cmdParser.getOptions().m_bBOM = false;
+    else
+        cmdParser.getOptions().m_bBOM = !cmdParser.getOptions().m_bNoBOM;  // set BOM (default) or no bom.
 
     if ((int)cmdParser.getOptions().m_bANSI + (int)cmdParser.getOptions().m_bUTF8 + (int)cmdParser.getOptions().m_bUTF16 + (int)cmdParser.getOptions().m_bUTF32 > 1)
     {
@@ -957,7 +972,7 @@ int wmain(int , wchar_t ** )   // ignore all passed in parameters
         FileIO::FileEncoding encoding;
         bool hasBOM;
         std::wstring const &encodingstr = Unicode::utf8_to_wstring(srcMap.getEncoding( encoding, hasBOM ));
-        wprintf((L"  Encoding: " + encodingstr + (hasBOM ? L" BOM" : L" No BOM") + L"\n").c_str());
+        wprintf((L"  Encoding: " + encodingstr + L"\n").c_str());
 
         if (!srcMap.serializeInSections())
         {
@@ -1091,7 +1106,7 @@ int wmain(int , wchar_t ** )   // ignore all passed in parameters
             FileIO::FileEncoding encoding;
             bool hasBOM;
             std::wstring const &encodingstr = Unicode::utf8_to_wstring(outMap.getEncoding( encoding, hasBOM ));
-            wprintf((L"  Encoding: " + encodingstr + (hasBOM ? L" BOM" : L" No BOM") + L"\n").c_str());
+            wprintf((L"  Encoding: " + encodingstr + L"\n").c_str());
 
             if (!outMap.serializeInSections())
             {
@@ -1115,8 +1130,8 @@ int wmain(int , wchar_t ** )   // ignore all passed in parameters
 
         // check for briefing and briefing success replacements.
         outMap.clearErrorsWarnings();
-        outMap.briefing(cmdParser.getOptions().m_briefing);
-        outMap.success( cmdParser.getOptions().m_success );
+        outMap.briefing(cmdParser.getOptions().m_briefing, cmdParser.getOptions().m_bReadANSI, cmdParser.getOptions().m_bSrcANSI7 );
+        outMap.success ( cmdParser.getOptions().m_success, cmdParser.getOptions().m_bReadANSI, cmdParser.getOptions().m_bSrcANSI7 );
         outMap.getErrors().printErrors();
         outMap.getErrors().printWarnings();
         outMap.getErrors().printConsols();
@@ -1125,13 +1140,13 @@ int wmain(int , wchar_t ** )   // ignore all passed in parameters
         if (cmdParser.getOptions().m_nRowResize || cmdParser.getOptions().m_nColResize)
         {
             outMap.resize(cmdParser.getOptions().m_nRowResize, cmdParser.getOptions().m_nColResize, cmdParser.getOptions().m_nDefTileID, cmdParser.getOptions().m_nDefHeight, cmdParser.getOptions().m_nDefCrystal, cmdParser.getOptions().m_nDefOre);
-            wprintf(L" Resizing outmap to Rows: %d, Columns: %d\n", outMap.getHeight(), outMap.getWidth());
+            wprintf(L"  Resizing outmap to Rows: %d, Columns: %d\n", outMap.getHeight(), outMap.getWidth());
         }
 
         // see if using subregion
         if (cmdParser.getOptions().m_bMergeRect)
         {
-            wprintf(L" Using srcmap subregion: [%d,%d] to [%d,%d]\n", cmdParser.getOptions().m_srow, cmdParser.getOptions().m_scol, cmdParser.getOptions().m_erow, cmdParser.getOptions().m_ecol);
+            wprintf(L"  Using srcmap subregion: [%d,%d] to [%d,%d]\n", cmdParser.getOptions().m_srow, cmdParser.getOptions().m_scol, cmdParser.getOptions().m_erow, cmdParser.getOptions().m_ecol);
         }
 
         outMap.merging(srcMap, cmdParser.getOptions().m_srow, cmdParser.getOptions().m_scol, cmdParser.getOptions().m_erow, cmdParser.getOptions().m_ecol, cmdParser.getOptions().m_nOffsetRow, cmdParser.getOptions().m_nOffsetCol,
@@ -1140,54 +1155,54 @@ int wmain(int , wchar_t ** )   // ignore all passed in parameters
         // display merging performed
         if (cmdParser.getOptions().m_bMergeTiles)
         {
-            wprintf(L" Merging srcmap tiles into outmap using offsets row: %d, columns: %d\n", cmdParser.getOptions().m_nOffsetRow, cmdParser.getOptions().m_nOffsetCol);
+            wprintf(L"  Merging srcmap tiles into outmap using offsets row: %d, columns: %d\n", cmdParser.getOptions().m_nOffsetRow, cmdParser.getOptions().m_nOffsetCol);
         }
         if (cmdParser.getOptions().m_bMergeHeight)
         {
-            wprintf(L" Merging srcmap Heights into outmap using offsets row: %d, columns: %d\n", cmdParser.getOptions().m_nOffsetRow, cmdParser.getOptions().m_nOffsetCol);
+            wprintf(L"  Merging srcmap Heights into outmap using offsets row: %d, columns: %d\n", cmdParser.getOptions().m_nOffsetRow, cmdParser.getOptions().m_nOffsetCol);
         }
         if (cmdParser.getOptions().m_bMergeCrystal)
         {
-            wprintf(L" Merging srcmap crystals into outmap using offsets row: %d, columns: %d\n", cmdParser.getOptions().m_nOffsetRow, cmdParser.getOptions().m_nOffsetCol);
+            wprintf(L"  Merging srcmap crystals into outmap using offsets row: %d, columns: %d\n", cmdParser.getOptions().m_nOffsetRow, cmdParser.getOptions().m_nOffsetCol);
         }
         if (cmdParser.getOptions().m_bMergeOre)
         {
-            wprintf(L" Merging srcmap ore into outmap using offsets row: %d, columns: %d\n", cmdParser.getOptions().m_nOffsetRow, cmdParser.getOptions().m_nOffsetCol);
+            wprintf(L"  Merging srcmap ore into outmap using offsets row: %d, columns: %d\n", cmdParser.getOptions().m_nOffsetRow, cmdParser.getOptions().m_nOffsetCol);
         }
 
         // process any height changes
         if (cmdParser.getOptions().m_bFlattenHigh)
         {
             outMap.flattenHeightHigh(cmdParser.getOptions().m_flathighval, cmdParser.getOptions().m_flathighnewheight);
-            wprintf(L" Heights over %d set to %d\n", cmdParser.getOptions().m_flathighval, cmdParser.getOptions().m_flathighnewheight);
+            wprintf(L"  Heights over %d set to %d\n", cmdParser.getOptions().m_flathighval, cmdParser.getOptions().m_flathighnewheight);
         }
         if (cmdParser.getOptions().m_bFlattenLow)
         {
             outMap.flattenHeightLow(cmdParser.getOptions().m_flatlowval, cmdParser.getOptions().m_flatlownewheight);
-            wprintf(L" Heights below %d set to %d\n", cmdParser.getOptions().m_flatlowval, cmdParser.getOptions().m_flatlownewheight);
+            wprintf(L"  Heights below %d set to %d\n", cmdParser.getOptions().m_flatlowval, cmdParser.getOptions().m_flatlownewheight);
         }
         if (cmdParser.getOptions().m_bFlattenBetween)
         {
             outMap.flattenHeightBetween(cmdParser.getOptions().m_flatBetweenLow, cmdParser.getOptions().m_flatBetweenHigh, cmdParser.getOptions().m_flatBetweenVal);
-            wprintf(L" Heights: [%d,%d] set to %d\n", cmdParser.getOptions().m_flatBetweenLow, cmdParser.getOptions().m_flatBetweenHigh, cmdParser.getOptions().m_flatBetweenVal);
+            wprintf(L"  Heights: [%d,%d] set to %d\n", cmdParser.getOptions().m_flatBetweenLow, cmdParser.getOptions().m_flatBetweenHigh, cmdParser.getOptions().m_flatBetweenVal);
         }
 
         if (cmdParser.getOptions().m_bBorderHeight)
         {
             outMap.borderHeight(cmdParser.getOptions().m_BorderHeight);
-            wprintf(L" border heights set to: %d\n", cmdParser.getOptions().m_BorderHeight);
+            wprintf(L"  border heights set to: %d\n", cmdParser.getOptions().m_BorderHeight);
         }
 
         if (!cmdParser.getOptions().m_mapName.empty())
         {
             outMap.setMapName(cmdParser.getOptions().m_mapName);
-            wprintf(L" Setting levelname to: %s\n", Unicode::utf8_to_wstring(cmdParser.getOptions().m_mapName).c_str());
+            wprintf(L"  Setting levelname to: %s\n", Unicode::utf8_to_wstring(cmdParser.getOptions().m_mapName).c_str());
         }
 
         if (!cmdParser.getOptions().m_creator.empty())
         {
             outMap.setMapCreator(cmdParser.getOptions().m_creator);
-            wprintf(L" Setting creator to: %s\n", Unicode::utf8_to_wstring(cmdParser.getOptions().m_creator).c_str());
+            wprintf(L"  Setting creator to: %s\n", Unicode::utf8_to_wstring(cmdParser.getOptions().m_creator).c_str());
         }
 
         ScriptEngine scrEngine;     // script processing engine
@@ -1239,15 +1254,17 @@ int wmain(int , wchar_t ** )   // ignore all passed in parameters
         outMap.setFileName( tempOut.get() );
 
         FileIO::FileEncoding encoding = FileIO::FileEncoding::ANSI;     // default to ANSI output
-        if (cmdParser.getOptions().m_bUTF16)
+        if (cmdParser.getOptions().m_bANSI)
+            encoding = FileIO::FileEncoding::ANSI;     // default to ANSI output
+        else if (cmdParser.getOptions().m_bUTF16)
             encoding = cmdParser.getOptions().m_bBigEndian ? FileIO::FileEncoding::UTF16BE : FileIO::FileEncoding::UTF16LE;
         else if (cmdParser.getOptions().m_bUTF32)
             encoding = cmdParser.getOptions().m_bBigEndian ? FileIO::FileEncoding::UTF32BE : FileIO::FileEncoding::UTF32LE;
         else if (cmdParser.getOptions().m_bUTF8 || cmdParser.getOptions().m_bBOM)
             encoding = FileIO::FileEncoding::UTF8;
 
-        std::wstring const &encodingstr = Unicode::utf8_to_wstring(FileIO::getEncodingStr(encoding));
-        wprintf((L"  Encoding: " + encodingstr + (cmdParser.getOptions().m_bBOM ? L" BOM" : L" No BOM") + L"\n").c_str());
+        std::wstring const &encodingstr = Unicode::utf8_to_wstring(FileIO::getEncodingStr(encoding,cmdParser.getOptions().m_bBOM));
+        wprintf((L"  Encoding: " + encodingstr + L"\n").c_str());
 
         if (!outMap.writeMap(encoding, cmdParser.getOptions().m_bBOM))
         {

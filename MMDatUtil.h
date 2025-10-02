@@ -220,7 +220,6 @@ namespace MMUtil
         return sum;
     }
 
-
     // return true if view is an integer number. must have at least a single digit with nothing but digits and an optional leading -sign.
     // leading/training blank space must have already been removed
     static inline bool isInteger(std::string_view val, bool bAllowNeg)
@@ -293,6 +292,17 @@ namespace MMUtil
         }
         while (val);
         return retval;
+    }
+
+    // return 0 if no 8 bit char found, else return first 8 bit char found
+    static char find8BitChar(std::string_view str)
+    {
+        for (char ch : str)
+        {
+            if ((unsigned char)ch > 0x7f)
+                return ch;
+        }
+        return 0;
     }
 
 };  // namespace MMUtil
@@ -388,6 +398,7 @@ public:
     bool         m_bOptimizeBlank = false;
     bool         m_backup         = false;
     bool         m_bANSI          = false;  // if set output format is windows code page.
+    bool         m_bSrcANSI7      = false;  // if set warn if any input file has 8 bit characters
     std::filesystem::path m_briefing;  // contents of this file will be used for briefing message
     std::filesystem::path m_success;   // contents of this file will be used for briefing success message
 }; // class CommandLineOptions
@@ -560,7 +571,7 @@ class ErrorWarning
         {
             if (!m_console[index].empty())
             {
-                wprintf((L"      " + Unicode::utf8_to_wstring(m_console[index]) + L"\n").c_str());
+                wprintf((L"  " + Unicode::utf8_to_wstring(m_console[index]) + L"\n").c_str());
                 if (m_consolelines[index])     // skip nullptrs
                 {
                     if (!m_consolelines[index]->getFileName().empty())
@@ -644,9 +655,14 @@ class FileIO
         return std::string(encodings[encoding]);
     }
 
+    static std::string getEncodingStr( FileEncoding encoding, bool bBOM )
+    {
+        return getEncodingStr(encoding) + ((encoding==ANSI) ? "" : (bBOM ? " BOM" : " no BOM"));
+    }
+
     std::string getEncodingStr() const
     {
-        return getEncodingStr(m_encoding);
+        return getEncodingStr(m_encoding, m_bBOM);
     }
 
     // set bAnsi to true if you want 8 bit input format without BOM to assume ANSI code page
@@ -1041,8 +1057,8 @@ class FileIO
         {
             m_encoding = UTF16LE;
         }
-        else if (m_bAnsi)  // not UTF32, not UTF16, no bom, callers want to assume ANSI
-            m_encoding = ANSI;
+        else  // not UTF32, not UTF16, no bom, use either ANSI or UTF8
+            m_encoding = m_bAnsi ? ANSI : UTF8;
     }
 
     // returns string
@@ -1962,11 +1978,13 @@ class MMMap
     }
 
     
+    // return encoded string including BOM
+    // also returns encoding and hasBOM via reference
     std::string getEncoding(FileIO::FileEncoding& encoding, bool& hasBOM) const
     {
         encoding = m_file.getEncoding();
         hasBOM = m_file.hasBOM();
-        return FileIO::getEncodingStr(encoding);
+        return m_file.getEncodingStr();
     }
 
     int getNumLinesRead() const  { return (int)m_inlines.size(); }
@@ -2322,23 +2340,29 @@ class MMMap
     }
 
     // return number of lines replaced, 0 if unchanged
-    int briefing(std::filesystem::path const& filename)
+    // bAnsi = true means read 8 bit input with no BOM as ANSI, false = UTF-8
+    // bAnsi7 = true means check input for 7 bit ANSI, set m_warning for first 8 bit char on each line found
+    int briefing(std::filesystem::path const& filename, bool bAnsi, bool bAnsi7 )
     {
         if (!filename.empty())
         {
             FileIO file;
             file.setFileName(filename);
+            file.setAnsi(bAnsi);
             if (file.exists())
             {
                 std::deque<InputLinePtr> ilp = file.readFile( m_errors );
-                if (m_errors.emptyErrors() && m_errors.emptyWarnings() && !ilp.empty())
+                if (bAnsi7)
+                    checkFor8bit(ilp);
+
+                if (m_errors.emptyErrors() && !ilp.empty())
                 {
                     MapSection *mp = findMapSection(sbriefing);
                     if (mp)
                     {
                         mp->setLines(ilp);
                         m_errors.setConsole(nullptr, std::string("Read briefing file: ") + filename.string() );
-                        m_errors.setConsole(nullptr, std::string("Format: ")+file.getEncodingStr() + ", Lines read: " + std::to_string(ilp.size()) );
+                        m_errors.setConsole(nullptr, std::string("Encoding: ")+file.getEncodingStr() + ", Lines read: " + std::to_string(ilp.size()) );
                         return (int)ilp.size();  // number of lines
                     }
                 }
@@ -2350,23 +2374,27 @@ class MMMap
     }
 
     // return number of lines replaced, 0 if unchanged
-    int success(std::filesystem::path const& filename)
+    int success(std::filesystem::path const& filename, bool bAnsi, bool bAnsi7 )
     {
         if (!filename.empty())
         {
             FileIO file;
             file.setFileName(filename);
+            file.setAnsi(bAnsi);
             if (file.exists())
             {
                 std::deque<InputLinePtr> ilp = file.readFile( m_errors );
-                if (m_errors.emptyErrors() && m_errors.emptyWarnings() && !ilp.empty())
+                if (bAnsi7)
+                    checkFor8bit(ilp);
+
+                if (m_errors.emptyErrors() && !ilp.empty())
                 {
                     MapSection *mp = findMapSection(sbriefingsuccess);
                     if (mp)
                     {
                         mp->setLines(ilp);
                         m_errors.setConsole(nullptr, std::string("Read success file: ") + filename.string() );
-                        m_errors.setConsole(nullptr, std::string("Format: ")+file.getEncodingStr() + ", Lines read: " + std::to_string(ilp.size()) );
+                        m_errors.setConsole(nullptr, std::string("Encoding: ")+file.getEncodingStr() + ", Lines read: " + std::to_string(ilp.size()) );
                         return (int)ilp.size();  // number of lines
                     }
                 }
@@ -2382,8 +2410,21 @@ class MMMap
         m_errors.clear();
     }
 
-
 protected:
+    void checkFor8bit( const std::deque<InputLinePtr>& lines )
+    {
+        for (auto const & line : lines)
+        {
+            char ch = MMUtil::find8BitChar(line->getLine());
+            if (ch)
+            {
+                char str[] = { ch, ')', 0};
+                m_errors.setWarning(line, std::string("8 bit character found in srcansi7 mode: (") + str );
+            }
+        }
+    }
+
+
     void deleteSections()
     {
         for (auto & it : m_sections)

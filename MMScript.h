@@ -1226,58 +1226,58 @@ protected:
     };
 
     // when we tokenize a line, each token will be one of these.
-    static constexpr uint64_t eUnknown             = 0x0000000000000000ull;  // unknown
-    static constexpr uint64_t eTokenFloat          = 0x0000000000000001ull;  // some sort of floating point number
-    static constexpr uint64_t eTokenInt            = 0x0000000000000002ull;  // number 
-    static constexpr uint64_t eTokenName           = 0x0000000000000004ull;  // starts with alpha, has nothing but more alpha or digits. If it starts with a numeric, it must have an alpha to identify it as a variable
-    static constexpr uint64_t eTokenSpace          = 0x0000000000000008ull;  // single space
-    static constexpr uint64_t eTokenSpaces         = 0x0000000000000010ull;  // more than 1 space
-    static constexpr uint64_t eTokenDot            = 0x0000000000000020ull;  // .
-    static constexpr uint64_t eTokenSemi           = 0x0000000000000040ull;  // ;
-    static constexpr uint64_t eTokenColon          = 0x0000000000000080ull;  // :
-    static constexpr uint64_t eTokenDColon         = 0x0000000000000100ull;  // ::
-    static constexpr uint64_t eTokenOBrace         = 0x0000000000000200ull;  // (
-    static constexpr uint64_t eTokenDOBrace        = 0x0000000000000400ull;  // ((
-    static constexpr uint64_t eTokenCBrace         = 0x0000000000000800ull;  // )
-    static constexpr uint64_t eTokenDCBrace        = 0x0000000000001000ull;  // ))
-    static constexpr uint64_t eTokenOBracket       = 0x0000000000002000ull;  // [
-    static constexpr uint64_t eTokenCBracket       = 0x0000000000004000ull;  // ]
-    static constexpr uint64_t eTokenPlus           = 0x0000000000008000ull;  // +
-    static constexpr uint64_t eTokenPlusAssign     = 0x0000000000010000ull;  // +=
-    static constexpr uint64_t eTokenMinus          = 0x0000000000020000ull;  // -
-    static constexpr uint64_t eTokenMinusAssign    = 0x0000000000040000ull;  // -=
-    static constexpr uint64_t eTokenMultiply       = 0x0000000000080000ull;  // *
-    static constexpr uint64_t eTokenMultiplyAssign = 0x0000000000100000ull;  // *=
-    static constexpr uint64_t eTokenFslash         = 0x0000000000200000ull;  //  /  special case, follows is an objective treat as a string
-    static constexpr uint64_t eTokenDivide         = 0x0000000000400000ull;  // //  divide   not supported on older versions of the engine
-    static constexpr uint64_t eTokenDivideAssign   = 0x0000000000800000ull;  // /=
-    static constexpr uint64_t eTokenAssignment     = 0x0000000001000000ull;  // =
-    static constexpr uint64_t eTokenEqual          = 0x0000000002000000ull;  // ==
-    static constexpr uint64_t eTokenObjStr         = 0x0000000004000000ull;  //  string after / is objective, until end of line
-    static constexpr uint64_t eTokenLess           = 0x0000000008000000ull;  // <
-    static constexpr uint64_t eTokenLessEqual      = 0x0000000010000000ull;  // <=
-    static constexpr uint64_t eTokenGreater        = 0x0000000020000000ull;  // >
-    static constexpr uint64_t eTokenGreaterEqual   = 0x0000000040000000ull;  // >=
-    static constexpr uint64_t eTokenNot            = 0x0000000080000000ull;  // !  mm engine does not support this currently, we will generate an error
-    static constexpr uint64_t eTokenNotEqual       = 0x0000000100000000ull;  // !=
-    static constexpr uint64_t eTokenComma          = 0x0000000200000000ull;  // ,
-    static constexpr uint64_t eTokenString         = 0x0000000400000000ull;  // string literal defined with double quotes, quotes part of string
-    static constexpr uint64_t eTokenComment        = 0x0000000800000000ull;  // contains comment and optional leading space prior to comment
-    static constexpr uint64_t eTokenCommentLine    = 0x0000001000000000ull;  // entire line is comment, may have space in front
-    static constexpr uint64_t eTokenBlankLine      = 0x0000002000000000ull;  // entire line is empty and not a comment. Will end event chain if within one
-    static constexpr uint64_t eTokenVariable       = 0x0000004000000000ull;  // also has eTokenName set, this is a user variable
-    static constexpr uint64_t eTokenEventChain     = 0x0000008000000000ull;  // also has eTokenName set, this is a user event chain name
-    static constexpr uint64_t eTokenBoolFalse      = 0x0000010000000000ull;  // also has eTokenInt set
-    static constexpr uint64_t eTokenBoolTrue       = 0x0000020000000000ull;  // also has eTokenInt set
-    static constexpr uint64_t eTokenArrowColor     = 0x0000040000000000ull;  // one of the arrow colors
-    static constexpr uint64_t eTokenSoundPath      = 0x0000080000000000ull;  // token is a path
-    static constexpr uint64_t eTokenNoQuoteString  = 0x0000100000000000ull;  // string token, no double quotes surrounding it
-    static constexpr uint64_t eTokenEventList      = 0x0000200000000000ull;  // ? preceding event for random selected event
-    static constexpr uint64_t eTokenFailedEmerge   = 0x0000400000000000ull;  // ~ preceding event for failed emerge event
-
-    static constexpr uint64_t eTokenChainNoOptimize= 0x2000000000000000ull;  // set if token is chainname and it should not be optimized
-    static constexpr uint64_t eTokenOptional       = 0x4000000000000000ull;  // set if token is optional
-    static constexpr uint64_t eTokenIgnore         = 0x8000000000000000ull;  // if set ignore the token completely. Set when ignorning invalid spaces
+    inline static constexpr uint64_t eUnknown             = 0x0000000000000000ull;  // unknown
+    inline static constexpr uint64_t eTokenFloat          = 0x0000000000000001ull;  // some sort of floating point number
+    inline static constexpr uint64_t eTokenInt            = 0x0000000000000002ull;  // number 
+    inline static constexpr uint64_t eTokenName           = 0x0000000000000004ull;  // starts with alpha, has nothing but more alpha or digits. If it starts with a numeric, it must have an alpha to identify it as a variable
+    inline static constexpr uint64_t eTokenSpace          = 0x0000000000000008ull;  // single space
+    inline static constexpr uint64_t eTokenSpaces         = 0x0000000000000010ull;  // more than 1 space
+    inline static constexpr uint64_t eTokenDot            = 0x0000000000000020ull;  // .
+    inline static constexpr uint64_t eTokenSemi           = 0x0000000000000040ull;  // ;
+    inline static constexpr uint64_t eTokenColon          = 0x0000000000000080ull;  // :
+    inline static constexpr uint64_t eTokenDColon         = 0x0000000000000100ull;  // ::
+    inline static constexpr uint64_t eTokenOBrace         = 0x0000000000000200ull;  // (
+    inline static constexpr uint64_t eTokenDOBrace        = 0x0000000000000400ull;  // ((
+    inline static constexpr uint64_t eTokenCBrace         = 0x0000000000000800ull;  // )
+    inline static constexpr uint64_t eTokenDCBrace        = 0x0000000000001000ull;  // ))
+    inline static constexpr uint64_t eTokenOBracket       = 0x0000000000002000ull;  // [
+    inline static constexpr uint64_t eTokenCBracket       = 0x0000000000004000ull;  // ]
+    inline static constexpr uint64_t eTokenPlus           = 0x0000000000008000ull;  // +
+    inline static constexpr uint64_t eTokenPlusAssign     = 0x0000000000010000ull;  // +=
+    inline static constexpr uint64_t eTokenMinus          = 0x0000000000020000ull;  // -
+    inline static constexpr uint64_t eTokenMinusAssign    = 0x0000000000040000ull;  // -=
+    inline static constexpr uint64_t eTokenMultiply       = 0x0000000000080000ull;  // *
+    inline static constexpr uint64_t eTokenMultiplyAssign = 0x0000000000100000ull;  // *=
+    inline static constexpr uint64_t eTokenFslash         = 0x0000000000200000ull;  //  /  special case, follows is an objective treat as a string
+    inline static constexpr uint64_t eTokenDivide         = 0x0000000000400000ull;  // //  divide   not supported on older versions of the engine
+    inline static constexpr uint64_t eTokenDivideAssign   = 0x0000000000800000ull;  // /=
+    inline static constexpr uint64_t eTokenAssignment     = 0x0000000001000000ull;  // =
+    inline static constexpr uint64_t eTokenEqual          = 0x0000000002000000ull;  // ==
+    inline static constexpr uint64_t eTokenObjStr         = 0x0000000004000000ull;  //  string after / is objective, until end of line
+    inline static constexpr uint64_t eTokenLess           = 0x0000000008000000ull;  // <
+    inline static constexpr uint64_t eTokenLessEqual      = 0x0000000010000000ull;  // <=
+    inline static constexpr uint64_t eTokenGreater        = 0x0000000020000000ull;  // >
+    inline static constexpr uint64_t eTokenGreaterEqual   = 0x0000000040000000ull;  // >=
+    inline static constexpr uint64_t eTokenNot            = 0x0000000080000000ull;  // !  mm engine does not support this currently, we will generate an error
+    inline static constexpr uint64_t eTokenNotEqual       = 0x0000000100000000ull;  // !=
+    inline static constexpr uint64_t eTokenComma          = 0x0000000200000000ull;  // ,
+    inline static constexpr uint64_t eTokenString         = 0x0000000400000000ull;  // string literal defined with double quotes, quotes part of string
+    inline static constexpr uint64_t eTokenComment        = 0x0000000800000000ull;  // contains comment and optional leading space prior to comment
+    inline static constexpr uint64_t eTokenCommentLine    = 0x0000001000000000ull;  // entire line is comment, may have space in front
+    inline static constexpr uint64_t eTokenBlankLine      = 0x0000002000000000ull;  // entire line is empty and not a comment. Will end event chain if within one
+    inline static constexpr uint64_t eTokenVariable       = 0x0000004000000000ull;  // also has eTokenName set, this is a user variable
+    inline static constexpr uint64_t eTokenEventChain     = 0x0000008000000000ull;  // also has eTokenName set, this is a user event chain name
+    inline static constexpr uint64_t eTokenBoolFalse      = 0x0000010000000000ull;  // also has eTokenInt set
+    inline static constexpr uint64_t eTokenBoolTrue       = 0x0000020000000000ull;  // also has eTokenInt set
+    inline static constexpr uint64_t eTokenArrowColor     = 0x0000040000000000ull;  // one of the arrow colors
+    inline static constexpr uint64_t eTokenSoundPath      = 0x0000080000000000ull;  // token is a path
+    inline static constexpr uint64_t eTokenNoQuoteString  = 0x0000100000000000ull;  // string token, no double quotes surrounding it
+    inline static constexpr uint64_t eTokenEventList      = 0x0000200000000000ull;  // ? preceding event for random selected event
+    inline static constexpr uint64_t eTokenFailedEmerge   = 0x0000400000000000ull;  // ~ preceding event for failed emerge event
+    inline static constexpr uint64_t eTokenCLSpace        = 0x0000800000000000ull;  // entire line is comment, it did have space in front eTokenCommentLine is also set
+    inline static constexpr uint64_t eTokenChainNoOptimize= 0x2000000000000000ull;  // set if token is chainname and it should not be optimized
+    inline static constexpr uint64_t eTokenOptional       = 0x4000000000000000ull;  // set if token is optional
+    inline static constexpr uint64_t eTokenIgnore         = 0x8000000000000000ull;  // if set ignore the token completely. Set when ignorning invalid spaces
 
     // multiple owners so all access will be via a shared_ptr.
     class variableType
@@ -1682,17 +1682,22 @@ protected:
             m_tokens = tokens;
         }
 
+        void setCommentLineSpace() { m_bCommentLineSpace = true; }
+        bool getCommentLineSpace() const { return m_bCommentLineSpace; }
+        void setCommentLineNoSpace() { m_bCommentLineNoSpace = true; }
+        bool getCommentLineNoSpace() const { return m_bCommentLineNoSpace; }
+
         InputLinePtr const & getLine() const { return m_line; }
         InputLinePtr       & getLine()       { return m_line; }
 
         // build line from the parsed tokens
-        // set bSkip to true to ignore this line, caller will ignore
+        // set bSkip to true to ignore this line, caller will ignore. Caller will do other checks for lines with eTokenCommentLine and eTokenCLSpace
         std::string serialize_out( const ScriptEngine & se, bool bNoComments, bool bOptimizeNames, bool &bSkip ) const
         {
             bSkip = false;
             std::string str;
             std::size_t len = m_line->getLine().length();
-            str.reserve( len ? len : 256 );
+            str.reserve( len ? len : 256 );  // serialize out never grows the output so this is ok.
             for (auto const & it : m_tokens)
             {
                 if (it.getID() & eTokenIgnore)  // if token is flag for ignore
@@ -1720,15 +1725,19 @@ protected:
                     continue;
                 else if ((it.getID() & eTokenCommentLine) && bNoComments && isIgnorableComment(it.getTokenlc()))
                 {
-                    bSkip = true;   // full line comment, we must exclude them from the output since they turn into empty strings
+                    bSkip = true;   // full line comment skip
                     break;          // all done nothing else on this line
+                }
+                else if ((it.getID() & eTokenCLSpace) && isIgnorableComment(it.getTokenlc()))
+                {
+                    bSkip = true;   // full line comment but with spaces. Ignore bNoComments since we may need to fix spaces. Set is only a recommendation
+                    break;
                 }
                 else
                     str += it.getToken();
             }
             if (!str.empty() && bSkip)  // should never happen
                 bSkip = false;          // return what it has
-            str.shrink_to_fit();
             return str;
         }
 
@@ -1796,19 +1805,21 @@ protected:
         {
             if (m_bProcessed)
                 return;
-            if (m_tokens.empty())   // should not happen, we always have some token for a line even if the line is blank.
+            if (m_bTrigger || m_bVariableDecl)  // skip triggers, variable declerations
                 return;
+            if (m_tokens.empty())   // should not happen but just in case
+                return;
+            if (m_tokens[0].getID() & (eTokenBlankLine || eTokenCommentLine)) // skip blank and comment lines
+                return;
+            // the only lines left are event chain declerations or event lines
+            // we want to see what is the last token that is not a comment or ignore. If a semi then this is an event line inside of event chain. If anything else, it is an event ending the chain
             size_t index = m_tokens.size();
-            if (index < 1)
-                return;
             index-=1;   // index of last item
             uint64_t id = m_tokens[index].getID();
-            if (id & se.eTokenCommentLine)      // entire line comment
-                return;
 
             if (id & se.eTokenComment)  // token comment
             {
-                if (index < 1)
+                if (index < 1)  // should never happen, that would be a commentline. Just in case
                     return;
                 index--;
                 id = m_tokens[index].getID(); // get id on prior comment
@@ -1820,9 +1831,36 @@ protected:
                 index--;
                 id = m_tokens[index].getID();
             }
-            if (id & se.eTokenSemi)  // ends in semi
-                m_bEvent = true;
+            m_bEvent = true;     // ends in semi or not, it is part of event chain.
+            if (!(id & se.eTokenSemi))  // if no semi, then this also ends the event chain.
+                m_bEventChainEnd = true; // this also ends the event chain
+
         }
+
+        bool isEmpty() const
+        {
+            if (m_tokens.empty())
+                return true;
+            if (m_tokens[0].getID() & eTokenBlankLine)
+                return true;
+            return false;
+        }
+
+        // this is full line comment, it has leading spaces. Convert to a comment with no leading spaces
+        // it was in the middle of event chain and we want to fix it and not end the chain.
+        void convert2CommentLineNoSpace()
+        {
+            m_bCommentLineNoSpace = true;
+            m_bCommentLineSpace = false;
+            m_bEventChainEnd = false;  // should already be false, but just in case
+            m_bProcessed = true;   // no need to process this line again
+            std::string token = m_tokens[0].getToken();
+            token = MMUtil::removeLeadingWhite(token);  // get token with leading spaces, remove them.
+            m_tokens.clear();
+            m_tokens.emplace_back(token, eTokenCommentLine );
+        }
+
+        void setEventChainEnd() { m_bEventChainEnd = true; }
 
         // process the tokens, see if this is a variable declaration. if so return true, if not return false
         // errors can be filled in if invalid, caller checks for any errors added.
@@ -1854,10 +1892,9 @@ protected:
             }
         }
 
-        // process the tokens, see if this is a variable declaration. if so return true, if not return false
+        // process the tokens, see if this is an event chain
         // errors can be filled in if invalid, caller checks for any errors added.
         // spaces can be removed if bFixSpace
-        // vars is updated as complete declarations are detected.
         void processEventChainName(ScriptEngine& se, allEventChainNames& eventchainnames, bool bFixSpace, ErrorWarning& errors)
         {
             if (m_bProcessed)    // line has been processed, don't process again.
@@ -1870,7 +1907,7 @@ protected:
                 return;               // no more tokens, not a variable line
 
             ScriptToken &it = m_tokens[index];  // get first usable token
-            if ((index <= 1) && (it.getID() & se.eTokenName))  // have token, see if it is one of the variable types (bool, int, float, string, intarrray, miner, building, vehicle, creature, arrow, timer)
+            if ((index <= 1) && (it.getID() & se.eTokenName))  // have token, it is a name type
             {
                 assert(it.getTokenlc().empty() == false);
                 assert(it.getToken().empty() == false);
@@ -1890,13 +1927,13 @@ protected:
 
                 if (se.isReservedEvent(m_tokens[nameindex].getToken()))   // cannot be a reserved word
                 {
-                    errors.setError(m_line,"Event Chain name is reserved word");
+                    errors.setWarning(m_line,"Event Chain name is reserved word");
                     return;
                 }
 
                 if (eventchainnames.contains(m_tokens[nameindex].getToken())) // check for duplicate
                 {
-                    errors.setError(m_line,"Event Chain already defined");
+                    errors.setWarning(m_line,"Event Chain already defined");
                     return;
                 }
                 eventchainnames.add(m_tokens[nameindex].getToken(), m_line );
@@ -1907,6 +1944,11 @@ protected:
                     m_tokens[nameindex].orID(eTokenChainNoOptimize);
                 else if (m_tokens[nameindex].getTokenlc() == se.kS_tick) // tick is not to be optimized
                     m_tokens[nameindex].orID(eTokenChainNoOptimize);
+
+                // we want to know if this line ends is a semi so we know the event chain may continue. If it ends in a space, it ends the chain.
+
+
+
 
             }
         }
@@ -2397,12 +2439,15 @@ protected:
         bool                    m_bProcessed = false;   // set to true when line has been completely processed
 
         bool                    m_bEventChain = false;  // true = this line starts an event chain.
-        bool                    m_bEvent = false;       // true = event within an event chain.
+        bool                    m_bEventChainEnd = false; // true = this line ends an event chain.
+        bool                    m_bEvent = false;       // true = event part of event chain.
         bool                    m_eventlist = false;   // true = ? event part of event list 
         bool                    m_failedEvent = false; // true = ~ event for failed emerge
         bool                    m_bVariableDecl = false; // true = variable decleration
         bool                    m_bTrigger = false;      // true = trigger defination
-    };
+        bool                    m_bCommentLineSpace = false;  // true = line is a full comment line with spaces before it.
+        bool                    m_bCommentLineNoSpace = false;  // true = line is a full comment line with no spaces before it.
+     };
 
 public:
     // called if ignoring map script and loading from a script file.
@@ -2517,6 +2562,8 @@ public:
 
     }
 
+    // build script output lines. Options are to remove comments, optimize names, and optimize blank lines
+
     std::deque<InputLinePtr> buildOutputLines( bool bNoComments, bool bOptimizeNames, bool bOptimizeBlank )
     {
                 // now generate the output. have each line serialize itself out, make into a new InputLine for output
@@ -2531,15 +2578,28 @@ public:
             const ScriptLine * slp = &(*itp);   // pointer to the script line
             bool bSkip = false;
             std::string str = slp->serialize_out(*this, bNoComments, bOptimizeNames, bSkip);
-            if (bSkip) // was it a full line comment and we are optimizing comments
-                continue; // then skip the line.
+            if (bSkip)   // recommendation is to skip but we need to do more full comment line checking.
+            {
+                // this is more complex. We have the following cases related to comments with leading spaces.
+                // - leading spaces may be inside of event chain, and we are fixing spaces, so line needs to be turned into a comment line with no leading spaces.
+                // - same as above but we are optimizing out comments, so the line is skipped.
+                // - This may be the last line in an event chain, so the leading spaces need to stay.
+                // - same as above but we are optimizing out comments, so the line turned into a blank line ending the chain.
+                // - line is outside of event chain so either keep the leading spaces or turn into an blank line if optimizing out comments.
+                if (slp->getCommentLineSpace())
+                {
 
-            if (bOptimizeBlank)   // optimizing blanks
+                }
+                else   // not a full comment line with spaces, so honor the skip
+                    continue;
+            }
+
+            if (bOptimizeBlank)   // optimizing blank lines
             {
                 if (str.empty())  // this is a blank line
                 {
                     bLastBlank = true;    // remember that we have a blank line pending
-                    continue;             // go to next line
+                    continue;             // don't output it yet, it may get optimized out
                 }
                 // a non-blank line. If we have a pending blank line it may or maynot be output depending on what this is and what the last non-blank was.
                 if (bLastBlank)   // have one or more sequences of blank lines before this line
@@ -2582,7 +2642,17 @@ protected:
         for (auto & it : m_inputlines)  // macros may change the input line
         {
             ScriptLine sl(it);
-            sl.setTokens(rawParseLine( sl.getLine(), sl.getLine()->getLine(), true, true, bFixSpace, m_errors));
+            auto tokens = rawParseLine( sl.getLine(), sl.getLine()->getLine(), true, true, bFixSpace, m_errors);
+            sl.setTokens(tokens);
+
+            // make sure the comment lines flags are set properly
+            if (!tokens.empty())
+            {
+                if (tokens[0].getID() & eTokenCLSpace)  // comment with spaces
+                    sl.setCommentLineSpace();  // line is a full comment line with spaces before it.
+                else if (tokens[0].getID() & eTokenCommentLine) // comment with no leading spaces
+                    sl.setCommentLineNoSpace();  // line is a full comment line with no leading spaces.
+            }
             m_scriptlines.push_back(sl);
         }
     }
@@ -2617,6 +2687,8 @@ protected:
             it.processSoundPath( *this, bFixSpace, m_errors );
         }
 
+        fullCommentLineWithSpacesProcessing( bFixSpace );
+
         // now we need to make sure ref counts are correct. Timer variables reference an event chain. If the chain is not defined, issue a warning.
         // TODO we need block processing so a timer is able to call a block event directly, and blocks can call an event chain directly
         for (auto const & it : m_variableNames.getTimerVars())
@@ -2634,7 +2706,90 @@ protected:
                 }
             }
         }
+    } // pass1Processing
+
+    // Now we need to perform full line comments with spaces processing
+    // Since we have the sfixspace options, comments with leading spaces may be inside of an event chain and those spaces need to be removed, turning it into a full comment line with no leading spaces.
+    // also comments with leading spaces may be at the end of an event chain. We need to tag that so the spaces are not removed.
+    void fullCommentLineWithSpacesProcessing(bool bFixSpace)
+    {
+        bool bInEventChain = false;
+        for (size_t index = 0; index < m_scriptlines.size(); index++)
+        {
+            ScriptLine& it = m_scriptlines[index];
+            if (bInEventChain)
+            {
+                if (it.m_bTrigger || it.m_bVariableDecl) // triggers and variables and new event chains not valid inside of event chain
+                {
+                    bInEventChain = false;  // these also end the event chain after this error
+                    m_errors.setWarning(it.getLine(), "Prior event chain not ended, trigger/variable ignored");
+                }
+                else if (it.m_bEventChain) // Event chain cannot be inside of an event chain
+                {
+                    m_errors.setWarning(it.getLine(), "Prior event chain not ended, contents of this chain now part of prior chain");
+                }
+                else if (it.isEmpty())
+                {
+                    it.setEventChainEnd();   // this ends the event chain
+                    bInEventChain = false; // blank line ends event chain
+                }
+                else if (it.getCommentLineNoSpace())    // can ignore full comment line with no spaces
+                    continue;
+                else if (it.getCommentLineSpace())  // full comment line with spaces
+                {
+                    // inside event chain and we have a comment with spaces. 
+                    // we have to determine what comes next to decide what to do.
+                    if (!bFixSpace)   // we are not fixing spaces, so it ends the chain
+                    {
+                        it.setEventChainEnd();   // this ends the event chain
+                        bInEventChain = false;   // ends the event chain
+                    }
+                    else  // remove spaces if this is inside of chain, otherwise it ends the chain.
+                    {
+                        bool bInside = false;
+                        for (size_t nextindex = index + 1; nextindex < m_scriptlines.size(); nextindex++)
+                        {
+                            ScriptLine& nit = m_scriptlines[nextindex];
+                            if (nit.getCommentLineSpace()) // another comment with spaces, keep looking (that one may also be inside of chain)
+                                continue;
+                            else if (nit.getCommentLineNoSpace()) // ignore comment
+                                continue;
+                            else if (nit.isEmpty())  // blank line ends the chain so our comment did end the chain
+                                break;
+                            else if (nit.m_bEventChain || nit.m_bTrigger || nit.m_bVariableDecl) // comment ended the chain
+                                break;
+                            else  // all that remains is event so we are inside of the chain. Safe to optimize
+                            {
+                                bInside = true;
+                                break;
+                            }
+                        }
+                        if (bInside)  // save to convert to full line no comment
+                        {
+                            it.convert2CommentLineNoSpace();
+                        }
+                        // and continue inside the chain looking at next line
+                    }
+                }
+            }  // bInEventChain
+            else
+            {
+                if (it.m_bTrigger || it.m_bVariableDecl || it.isEmpty() || it.getCommentLineNoSpace() || it.getCommentLineSpace()) // all of can be ignored outside of event chain
+                    continue;
+                else if (it.m_bEventChain)
+                {
+                    bInEventChain = true;
+                    if (it.m_bEventChainEnd)    // single line event chain (does not end in semi)
+                        bInEventChain = false;
+                }
+                else  // the only thing left is an event and they are not allowed outside of an event chain
+                {
+                    m_errors.setWarning(it.getLine(), "Event outside of event chain");
+                }
+            }
+        } // for all lines
     }
+
 
     void pass2Processing(bool bFixSpace)
     {
@@ -2988,10 +3143,10 @@ protected:
             std::size_t commentpos = input.find('#');
             if (!bAllowComments && (commentpos != input.npos))
             {
-                m_errors.setError(iline,"Script comments not allowed");
+                m_errors.setWarning(iline,"Script comments not allowed");
                 break;
             }
-            if (commentpos == 0)                          // line starts with comment, macros are not processed inside of comments.
+            if (commentpos == 0)                          // line starts with comment
             {
                 std::string comment(input);
                 if (comment.size() > 1 && comment[1] == '.')    // comments starting with #. we will expand macros into
@@ -3003,28 +3158,20 @@ protected:
                 parsedTokens.emplace_back(comment, eTokenCommentLine);     // entire line is comment
                 break;   // full length comment
             }
+            // full line comments that have leading space are allowed. They can be used to end event chains. But if we are fixing spaces, this is could just be an indented comment.
+            // we also include the eTokenCLSpace tag so we know they need more processing during output
             if ((commentpos > 0) && (commentpos < inputLen))  // see if all blank before comment
             {
-                bool bWhite = true;
-                for (std::size_t i = 0; i < commentpos; i++)
+                bool bWhite = MMUtil::isEmptyStr(input.substr(0, commentpos));
+                if (bWhite)   // all spaces prior to comment - this may be used to end event chains OR it could just be an indented comment via sfixspace option.
                 {
-                    if (std::isblank((unsigned char)input[i]))
-                        continue;
-                    else
-                    {
-                        bWhite = false;  // something is before the comment
-                        break;
-                    }
-                }
-                if (bWhite)   // all spaces prior to comment - this is allowed
-                {
-                    std::string comment(input);
-                    if (comment.size() > commentpos && comment[commentpos+1] == '.')    // comments starting with #. we will expaand macros
+                    std::string comment(input);         // use entire line as comment token
+                    if (comment.size() > commentpos && comment[commentpos+1] == '.')    // comments starting with #. we will expand macros
                     {
                         if (!embededMacro( iline, comment, errors, defines))
                             break;
                     }
-                    parsedTokens.emplace_back(comment, eTokenCommentLine);     // entire line is comment
+                    parsedTokens.emplace_back(comment, eTokenCommentLine | eTokenCLSpace);     // entire line is comment but has leading spaces
                     break;
                 }
 

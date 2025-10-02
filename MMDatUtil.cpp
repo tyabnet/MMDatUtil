@@ -502,7 +502,7 @@ class CommandLineParser
               return false;
 
           // Check for illegal characters
-          if (input.find_first_of(L"<>:\"|?*") != std::wstring::npos)
+          if (input.find_first_of(L"<>\"|?*") != std::wstring::npos)
               return false;
 
           // Check for reserved device names (case-insensitive)
@@ -932,7 +932,7 @@ int wmain(int , wchar_t ** )   // ignore all passed in parameters
     }
     else
     {
-        if (cmdParser.getOptions().m_bANSI || cmdParser.getOptions().m_bUTF8 || cmdParser.getOptions().m_bUTF16 || cmdParser.getOptions().m_bUTF32 || cmdParser.getOptions().m_bBOM || cmdParser.getOptions().m_bNoBOM  )
+        if (cmdParser.getOptions().m_bANSI || cmdParser.getOptions().m_bUTF8 || cmdParser.getOptions().m_bUTF16 || cmdParser.getOptions().m_bUTF32 || cmdParser.getOptions().m_bNoBOM  )
         {
             wprintf(L" ERROR: output format and BOM options require -outmap\n");
             showHelpOption();

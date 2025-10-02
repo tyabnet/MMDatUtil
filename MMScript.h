@@ -1728,11 +1728,6 @@ protected:
                     bSkip = true;   // full line comment skip
                     break;          // all done nothing else on this line
                 }
-                else if ((it.getID() & eTokenCLSpace) && isIgnorableComment(it.getTokenlc()))
-                {
-                    bSkip = true;   // full line comment but with spaces. Ignore bNoComments since we may need to fix spaces. Set is only a recommendation
-                    break;
-                }
                 else
                     str += it.getToken();
             }
@@ -2580,15 +2575,16 @@ public:
             std::string str = slp->serialize_out(*this, bNoComments, bOptimizeNames, bSkip);
             if (bSkip)   // recommendation is to skip but we need to do more full comment line checking.
             {
-                // this is more complex. We have the following cases related to comments with leading spaces.
-                // - leading spaces may be inside of event chain, and we are fixing spaces, so line needs to be turned into a comment line with no leading spaces.
-                // - same as above but we are optimizing out comments, so the line is skipped.
-                // - This may be the last line in an event chain, so the leading spaces need to stay.
-                // - same as above but we are optimizing out comments, so the line turned into a blank line ending the chain.
-                // - line is outside of event chain so either keep the leading spaces or turn into an blank line if optimizing out comments.
-                if (slp->getCommentLineSpace())
+                // we already know if a comment line with spaces is needed so just check the flags
+                if (slp->getCommentLineSpace())     // this is a full comment line with spaces before it.
                 {
-
+                    if (bNoComments)
+                    {
+                        if (slp->m_bEventChainEnd) // this comment is ending an event chain, so we must convert to blank lines
+                            str.clear();  // remove the comment, but keep the blank line
+                        else
+                            continue;     // skip the line
+                    }
                 }
                 else   // not a full comment line with spaces, so honor the skip
                     continue;
@@ -2708,13 +2704,13 @@ protected:
         }
     } // pass1Processing
 
-    // Now we need to perform full line comments with spaces processing
+    // perform full line comments with spaces processing
     // Since we have the sfixspace options, comments with leading spaces may be inside of an event chain and those spaces need to be removed, turning it into a full comment line with no leading spaces.
     // also comments with leading spaces may be at the end of an event chain. We need to tag that so the spaces are not removed.
     void fullCommentLineWithSpacesProcessing(bool bFixSpace)
     {
         bool bInEventChain = false;
-        for (size_t index = 0; index < m_scriptlines.size(); index++)
+        for (size_t index = 0; index < m_scriptlines.size(); index++)  // doing it this way for easy lookahead
         {
             ScriptLine& it = m_scriptlines[index];
             if (bInEventChain)

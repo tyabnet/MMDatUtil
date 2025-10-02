@@ -48,6 +48,7 @@ The order of options on the command line does not matter.
 | [ -soptnames ](options/soptnames.md) |  | Output script will have most event chain and variable names optimized. |
 | [ -soptblank ](options/soptblank.md) |  | Output script will have non-essential blank lines removed. |
 | [ -srcansi ](options/srcansi.md) |  | 8 bit input files without BOM are treated as Windows current code page. Default. |
+| [ -srcansi7 ](options/srcansi7.md) |  | input files generate warning if data has 8 bit characters. |
 | [ -srcmap ](options/srcmap.md) | filename | Source map to process. |
 | [ -srcutf8 ](options/srcutf8.md) |  | 8 bit input files without BOM are treated as UTF8. |
 | [ -success ](options/success.md) | filename | Contents of file replace briefingsuccess section. |

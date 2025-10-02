@@ -4,8 +4,7 @@ Parameter: `filename`
 
 Specifies a source map file.
 
-If the source and destination are the same file, the -srcmap option is optional.
-
+If the source and destination are the same file and no merging is being performed, the -srcmap option is optional.
 
 Example:
 

@@ -40,6 +40,7 @@
   - [ -soptnames ](options/soptnames.md)
   - [ -soptblank ](options/soptblank.md)
   - [ -srcansi ](options/srcansi.md)
+  - [ -srcansi7 ](options/srcansi7.md)
   - [ -srcmap ](options/srcmap.md)
   - [ -srcutf8 ](options/srcutf8.md)
   - [ -success ](options/success.md)

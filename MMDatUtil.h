@@ -772,8 +772,8 @@ class FileIO
                 retval = false;
                 switch (encoding)
                 {
-                    case ANSI:  // convert to unicode and then to windows system code page. We can use the UTF8 output
-                        retval = writeLineUTF8(fp,Unicode::wstring_to_ansi(Unicode::utf8_to_wstring(it)));
+                    case ANSI:  // output ANSI windows current code page
+                        retval = writeLineUTF8(fp,Unicode::utf8_to_ansi_string(it));
                         break;
                     case UTF8:
                         retval = writeLineUTF8(fp,it);
@@ -1088,7 +1088,7 @@ class FileIO
         // if callers wants to use ANSI format, have to convert ANSI to UTF8.
         if (m_encoding == ANSI)
         {
-            return Unicode::wstring_to_utf8(Unicode::ansi_to_wstring( line )); // convert ansi to wide, then back to utf8
+            return Unicode::ansi_to_utf8_string( line ); // convert ansi to wide, then back to utf8
         }
         return line;
     }
@@ -1123,7 +1123,7 @@ class FileIO
                 break;
             line += (char16_t)ch;
         }
-        return Unicode::utf16_to_utf8( line );
+        return Unicode::utf16_to_utf8_string( line );
     }
 
     // this supports both utf32 formats so it reads a byte at a time
@@ -1164,7 +1164,7 @@ class FileIO
                 break;
             u32line += ch;
         }
-        return Unicode::utf32_to_utf8( u32line );
+        return Unicode::utf32_to_utf8_string( u32line );
     }
 
     // this is also used to write out ANSI data once it is converted to ansi 8 bit.
@@ -1183,7 +1183,7 @@ class FileIO
 
     bool writeLineUTF16(FILE* fp, const std::string &line, bool hbf )  // write utf line
     {
-        std::u16string u16line = Unicode::utf8_to_utf16( line );
+        std::u16string u16line = Unicode::utf8_to_utf16_string( line );
         u16line += '\r';
         u16line += '\n';
 
@@ -1209,7 +1209,7 @@ class FileIO
 
     bool writeLineUTF32(FILE* fp, const std::string &line, bool hbf )  // write utf line
     {
-        std::u32string u32line = Unicode::utf8_to_utf32(line);
+        std::u32string u32line = Unicode::utf8_to_utf32_string(line);
         u32line += '\r';
         u32line += '\n';
 

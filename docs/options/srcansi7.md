@@ -8,7 +8,7 @@ Setting this option is a way to detect these characters. For each input line the
 
 If your goal is to have a 100% standard ANSI map, this setting will ensure that you are aware that some data in your output map contains extended ANSI data giving you the opportunity to correct the input files.
 
->If all of your input files are UTF on purpose and you want to use symbols and non-western ANSI characters then do not use this option, you may have many warnings.
+>If all of your input files are UTF on purpose and you want to use symbols and non-western ANSI characters then do not use this option.
 
 Example:
 

@@ -9,6 +9,8 @@ MMDatUtil -srcmap "source.DAT" -outmap "destination.DAT" -copysrc -ansi
 ```
 source.DAT is rewritten as destination.DAT using windows current code page format.
 
+> If your input files have Unicode characters - those will be lost saving in a non UTF format.
+
 ### Links
 - [Filenames](../filenames.md)
 - [File Encoding](../fileencoding.md)

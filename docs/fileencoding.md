@@ -11,15 +11,17 @@ However if you wish to include non-ANSI characters in your map, this section now
 
 Under windows, there are really only two ways text files work with text. 
 - Windows current code page. This is the default format for text data under windows. It is one byte per character and it perfectly encodes the ANSI characters. It also has the upper 128-255 values defined - but these can change depending on what code page (language) windows is configured for.  These files CANNOT have any character encodings over 255 - they are NOT UTF8.
-- Unicode. This is a two byte per character format that has extended characters to support all languages. This is UTF16 little-endian format.
+- Unicode (UTF16LE). This is a two byte per character format that has extended characters to support all languages. This is UTF16 little-endian format.
 
 > Windows has the concept of a current code page. This is how Windows deals with the language it is configured for and for the type of keyboard connected. The values of characters 128 and higher are unique per code page.
 
+Windows calls the characters 128-255 `Extended ANSI`. These are somewhat unique per language. What is important is this range is not binary compatible with UTF8. Every character in this extended ANSI range can be uniquely encoded to UTF8 but how UTF8 and extended ANSI describe those characters is vastly different.  This means that MMDatUtil when given 8 bit input files without a BOM must be told what format (ANSI or UTF8) it is in order to process it correctly.
+
 ## UTF
-UTF is an international standard on how to encode text so it is uniquely understood world wide. There are three major formats of UTF text.
-- UTF8. One byte per character    (Android and Linux)
-- UTF16. Two bytes per character  (Windows, IOS, MacOS)
-- UTF32. Four bytes per character (IOS and MacOS)
+UTF is an international standard on how to encode text so it is uniquely understood world wide. It supports every known language including ancient ones, and every glyph/symbol for all of those languages. The spec allows over 1 million unique characters of which over 100 thousand are defined.  There are three major formats of UTF text.
+- UTF8. One byte per character    (common on Android and Linux)
+- UTF16. Two bytes per character  (common on Windows, IOS, MacOS)
+- UTF32. Four bytes per character (common IOS and MacOS)
 
 UTF16 and UTF32 have themselves each two different formats, little-endian (LE) and big-endian (BE) which describes what byte comes first.
 
@@ -27,15 +29,15 @@ UTF16 and UTF32 have themselves each two different formats, little-endian (LE) a
 
 All modern text editors support reading and writing UTF8 and UTF16 text files - this includes Windows Notepad.  Some editors also support UTF32. JSON and Python can easily convert between all formats.
 
-UTF files usually have an optional BOM - Byte Order Marker. This is a sequence of bytes at the beginning of the file that uniquely identify the encoding of the file. The text file contents come after the BOM.  Any application that needs to work with text files needs to be able to deal with this initial optional data. It is always recommended to include a BOM if generating UTF files.
+UTF files usually have a BOM - Byte Order Marker. This is a sequence of bytes at the beginning of the file that uniquely identify the encoding of the file. The text file contents come after the BOM.  Any application that needs to work with text files needs to be able to deal with this initial optional data. It is always recommended to include a BOM if generating UTF files. 
 
 | BOM Encoding | Bytes Required |Byte 0 | Byte 1 | Byte 2 | Byte 3 |
 |----------|----------------|-------|--------|--------|--------|
 | UTF8 | 3 |0xEF | 0xBB | 0xBF | none |
 | UTF16BE | 2 | 0xFE | 0xFF | none | none |
 | UTF16LE | 2 | 0xFF | 0xFE | none | none |
-| UTF32BE | 2 | 0x00 | 0x00 | 0xFE | 0xFF |
-| UTF32LE | 2 | 0xFF | 0xFE | 0x00 | 0x00 |
+| UTF32BE | 4 | 0x00 | 0x00 | 0xFE | 0xFF |
+| UTF32LE | 4 | 0xFF | 0xFE | 0x00 | 0x00 |
 
 If a BOM is missing - knowing how to process a text file requires a sequence of tests. The JSON file format publishes a specification that is used world wide on how to autodetect the format of a .json file without a BOM.
 

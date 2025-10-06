@@ -2709,7 +2709,7 @@ protected:
     // also comments with leading spaces may be at the end of an event chain. We need to tag that so the spaces are not removed.
     void fullCommentLineWithSpacesProcessing(bool bFixSpace)
     {
-        bool bInEventChain = false;
+        bool bInEventChain = false;   // will be tracking if we are inside of an event chain
         for (size_t index = 0; index < m_scriptlines.size(); index++)  // doing it this way for easy lookahead
         {
             ScriptLine& it = m_scriptlines[index];
@@ -2718,7 +2718,7 @@ protected:
                 if (it.m_bTrigger || it.m_bVariableDecl) // triggers and variables and new event chains not valid inside of event chain
                 {
                     bInEventChain = false;  // these also end the event chain after this error
-                    m_errors.setWarning(it.getLine(), "Prior event chain not ended, trigger/variable ignored");
+                    m_errors.setWarning(it.getLine(), "Prior event chain not ended, trigger/variable will be ignored");
                 }
                 else if (it.m_bEventChain) // Event chain cannot be inside of an event chain
                 {
@@ -2742,7 +2742,7 @@ protected:
                     }
                     else  // remove spaces if this is inside of chain, otherwise it ends the chain.
                     {
-                        bool bInside = false;
+                        bool bInside = false;   // scan ahead to see if next non-comment line is also inside event chain
                         for (size_t nextindex = index + 1; nextindex < m_scriptlines.size(); nextindex++)
                         {
                             ScriptLine& nit = m_scriptlines[nextindex];
@@ -2760,13 +2760,15 @@ protected:
                                 break;
                             }
                         }
-                        if (bInside)  // save to convert to full line no comment
+                        if (bInside)  // safe to convert to full line no comment
                         {
                             it.convert2CommentLineNoSpace();
                         }
                         // and continue inside the chain looking at next line
                     }
                 }
+                else if (it.m_bEventChainEnd)   // this line ends the event chain
+                    bInEventChain = false;
             }  // bInEventChain
             else
             {

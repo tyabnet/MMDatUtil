@@ -1,0 +1,33 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Manifest Include="app.manifest" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="MMDatUtil.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="MMDatUtil.h" />
+    <ClInclude Include="MMScript.h" />
+    <ClInclude Include="mmunicode.h" />
+    <ClInclude Include="Generated\resource_generated.h">
+      <Filter>Generated</Filter>
+    </ClInclude>
+    <ClInclude Include="resource.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Generated">
+      <UniqueIdentifier>{b5f3695a-2a45-4e3a-8975-0ffe0e7bab78}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="resource.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="prebuild.ps1" />
+    <None Include="tools\generate_default_icon.ps1" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="Resources\app.ico" />
+  </ItemGroup>
+</Project>

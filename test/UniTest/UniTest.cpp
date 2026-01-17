@@ -772,7 +772,7 @@ void TestUniANSI_16()
     else
         std::cout << "ANSI <-> UTF-16 conversion failed!" << std::endl;
 
-    // test all single byte characters 0x160 to 0xff
+    // test all single byte characters 0x80 to 0xff
     ansi.clear();
     for (firstByte = 0x80; firstByte <= 0xff; firstByte++)
     {
@@ -812,7 +812,7 @@ void TestUniANSI_32()
     else
         std::cout << "ANSI <-> UTF-32 conversion failed!" << std::endl;
 
-    // test all single byte characters 0x320 to 0xff
+    // test all single byte characters 0x80 to 0xff
     ansi.clear();
     for (firstByte = 0x80; firstByte <= 0xff; firstByte++)
     {
@@ -831,6 +831,10 @@ void TestUniANSI_32()
 
 void TestUnicode()
 {
+    wprintf(L"Testing Unicode Conversions\n");
+    wprintf(L"all valid unicode characters from U+0001 to U+10FFFF are testing to/from UTF8/UTF16/UTF32\n");
+    wprintf(L"Windows current code page ANSI to/from UTF32/UTF16/UTF8\n");
+
     TestUni8_32();
     TestUni8_16();
     TestUni32_8();

@@ -1,0 +1,2476 @@
+comments{
+}
+info{
+rowcount:8
+colcount:8
+camerapos:Translation: X=1200.000 Y=1200.000 Z=0.000 Rotation: P=44.999989 Y=-89.999992 R=0.000002 Scale X=1.000 Y=1.000 Z=1.000
+biome:rock
+creator:Tyab
+spiderrate:10
+spidermin:2
+spidermax:4
+version:2023-08-14-1
+opencaves:3,4/
+levelname:TestMap
+}
+tiles{
+38,38,38,38,38,38,38,38,
+38,34,24,1,1,6,1,38,
+38,34,24,1,1,1,1,38,
+38,34,24,24,1,1,1,38,
+38,34,24,1,1,14,1,38,
+38,38,1,1,1,14,1,38,
+38,38,1,1,1,1,1,38,
+38,38,38,38,38,38,38,38,
+}
+height{
+0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,
+}
+resources{
+crystals:
+0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,
+ore:
+0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,
+}
+objectives{
+}
+buildings{
+BuildingToolStore_C,Translation: X=1650.000 Y=1350.000 Z=0.000 Rotation: P=0.000000 Y=-179.999954 R=0.000000 Scale X=1.000 Y=1.000 Z=1.000,Level=3,Teleport=True
+}
+landslidefrequency{
+}
+lavaspread{
+}
+miners{
+}
+briefing{
+     BRIEFING!!!
+
+URGENT. Pay attention
+  line 1
+  line 2
+  line 3
+
+paragraph
+}
+briefingsuccess{
+
+}
+briefingfailure{
+
+}
+vehicles{
+}
+creatures{
+}
+blocks{
+7/TriggerTimer:5,3,ScriptBlockTimerTrigger7,60,120,100
+6/TriggerEventChain:5,2,15.0,AnyTriggerEvent
+2/TriggerEnter:6,2,15.0,_,true,true
+3/TriggerEnter:6,3,0.0,_,true,true,VehicleSmallDigger_C
+4/TriggerChange:6,4,20.0
+5/TriggerChange:6,5,0.0,6
+}
+script{
+init::;
+return;
+sound:blah\bl01;
+
+timer MyTimerObj=2,0.4,0.5,MyTimer
+
+int 0_var=42
+
+1_chain::return;
+
+int blblah=2
+
+tick::;
+return;
+
+#.####################### TestScript ##############################
+#. "TestMap" (c) 2024 Tyab All Rights Reserved
+##pragma TyabScriptDate vy.m.d.g  v2025.04.01.c3fa145
+##pragma TyabMMDatUtil  MMDatUtil 2025-09-16 https://github.com/tyabnet/MMDatUtil
+#.-------------------------------------
+##pragma include "testscript2.scr"
+#.####################### testscript2 ##############################
+#. testscript2.scr (c) 2024 Tyab All Rights Reserved
+##pragma TyabScriptIncDate vy.m.d.g  v2025.03.27.faeaf0a
+#.-------------------------------------
+
+##pragma include "testscript3.scr"
+#.####################### testscript3 ##############################
+#. testscript3.scr (c) 2024 Tyab All Rights Reserved
+##pragma TyabScriptIncDate vy.m.d.g  v2024.09.03.a0bc6b0
+#.end --- testscript3
+#.-------------------------------------
+#.end --- testscript2
+#.-------------------------------------
+##pragma include "testscript4.scr"
+#.####################### testscript4 ##############################
+#. testscript4.scr (c) 2024 Tyab All Rights Reserved
+##pragma TyabScriptIncDate vy.m.d.g  v2025.03.27.faeaf0a
+##pragma define MyVar1=$(TyabUniqueName)
+##pragma define MyVar2=$( MyVar1)More
+##pragma define mychain1=$(  TyabUniqueName  )
+int TyUnique1more=42
+TyUnique2::;
+TyUnique1more=24;
+
+#.end --- testscript4
+#.-------------------------------------
+    #. indent
+
+##pragma include "TyabGenericScript.scr"	
+#.####################### Tyab Generic Script ##############################
+#. TyabGenericScript.scr (c) 2022 Tyab All Rights Reserved
+##pragma TyabScriptIncDate vy.m.d.g  v2024.09.02.
+##pragma define tGround=1
+##pragma define tRubble1=2
+##pragma define tRubble2=3
+##pragma define tRubble3=4
+##pragma define tRubble4=5
+##pragma define tLava=6
+##pragma define tErosion4=7
+##pragma define tErosion3=8
+##pragma define tErosion2=9
+##pragma define tErosion1=10
+##pragma define tWater=11
+##pragma define tSlimyHole=12
+##pragma define tPowerpathInProgress=13
+##pragma define tPowerpathBuilding=14
+##pragma define tPowerpathBuildingpowered=15
+##pragma define tPowerpath1=16
+##pragma define tPowerpath1Powered=17
+##pragma define tPowerpath2Adjacent=18
+##pragma define tPowerpath2AdjacentPowered=19
+##pragma define tPowerpath2Opposite=20
+##pragma define tPowerpath2OppositePowered=21
+##pragma define tPowerpath3=22
+##pragma define tPowerpath3Powered=23
+##pragma define tPowerpath4=24
+##pragma define tPowerpath4Powered=25
+##pragma define tDirtRegular=26
+##pragma define tDirtCorner=27
+##pragma define tDirtEdge=28
+##pragma define tDirtIntersect=29
+##pragma define tLooseRockRegular=30
+##pragma define tLooseRockCorner=31
+##pragma define tLooseRockEdge=32
+##pragma define tLooseRockIntersect=33
+##pragma define tHardRockRegular=34
+##pragma define tHardRockCorner=35
+##pragma define tHardRockEdge=36
+##pragma define tHardRockIntersect=37
+##pragma define tSolidRockRegular=38
+##pragma define tSolidRockCorner=39
+##pragma define tSolidRockEdge=40
+##pragma define tSolidRockIntersect=41
+##pragma define tCrystalSeamRegular=42
+##pragma define tCrystalSeamCorner=43
+##pragma define tCrystalSeamEdge=44
+##pragma define tCrystalSeamIntersect=45
+##pragma define tOreSeamRegular=46
+##pragma define tOreSeamCorner=47
+##pragma define tOreSeamEdge=48
+##pragma define tOreSeamIntersect=49
+##pragma define tRechargeSeamRegular=50
+##pragma define tRechargeSeamCorner=51
+##pragma define tRechargeSeamEdge=52
+##pragma define tRechargeSeamIntersect=53
+##pragma define tRoof=58
+##pragma define tFakeRubble1=60
+##pragma define tFakeRubble2=61
+##pragma define tFakeRubble3=62
+##pragma define tFakeRubble4=63
+##pragma define tCliff1=64                          # collision barrier looks like rubble experimental
+##pragma define tCliff2=65                          # collision barrier looks like solid rock experimental
+##pragma define tDirtRegularReenforced=76           # 76 = 26 + 50  
+##pragma define tLooseRockRegulaReenforced=80       # 80 = 30 + 50
+##pragma define tHardRockRegularReenforced=84       # 84 = 34 + 50
+##pragma define tSolidRockRegularReenforced=88      # 88 = 38 + 50
+##pragma define tDirtRegularHidden=126              # 126 = 26 + 100
+##pragma define tLooseRockRegulaHidden=130          # 130 = 30 + 100
+##pragma define tHardRockRegularHidden=134          # 134 = 34 + 100
+##pragma define tSolidRockRegularHidden=138         # 138 = 38 + 100
+
+int L01=0
+int L02=0
+int L03=0
+
+int PI01=0
+int PI02=0
+int PI03=0
+int PI04=0
+int PI05=0
+int PI06=0
+int PI07=0
+
+intarray PIA01
+intarray PIA02
+intarray PIA03
+intarray PIA04
+
+int PX1=0
+int PY1=0
+int PX2=0
+int PY2=0
+int PX3=0
+int PY3=0
+int PX4=0
+int PY4=0
+
+int RI01=0
+int RI02=0
+int RI03=0
+int RI04=0
+
+int TI01=0
+int TI02=0
+int TI03=0
+int TI04=0
+int TI05=0
+int TI06=0
+int TI07=0
+int TI08=0
+int TI09=0
+int TI10=0
+int TI11=0
+int TI12=0
+int TI13=0
+int TI14=0
+
+float TF01=0.0
+float TF02=0.0
+float TF03=0.0
+
+string TS01=""
+
+string S01="String01"
+string S02="String02"
+
+intarray TyMapTiles
+
+int TyNeg1=0
+int TynXtiles=0
+int TynYtiles=0
+int TynSize=0
+int TynX1=0
+int TynY1=0
+int TynX2=0
+int TynY2=0
+int TyabBusy=0
+int TyabTimerDraw=0
+
+#.############### TyabTriggerLock / TyabTriggerRelease #########################
+
+int TyabInMyTimer=0
+int TyTriggerNeedsControl=0
+int TyTriggerHasControl=0
+
+TyabTriggerLock::TyTriggerNeedsControl+=1;
+((TyabInMyTimer==0))[TyTriggerTimerDone][TyTriggerTimerLoop];
+
+TyTriggerTimerLoop::wait:random(0.035)(0.085);
+((TyabInMyTimer==0))[TyTriggerTimerDone][TyTriggerTimerLoop];
+
+TyTriggerTimerDone::((TyTriggerHasControl==0))[TyTriggerHasControl=1][TyTriggerWaitLoop];
+
+TyTriggerWaitLoop::wait:random(0.035)(0.085);
+((TyTriggerHasControl==0))[TyTriggerHasControl=1][TyTriggerWaitLoop]
+
+TyabTriggerRelease::TyTriggerHasControl=0;
+TyTriggerNeedsControl-=1;
+
+#.############### TyabEngineVer ##################################################
+int TyabMMEngineVer=0
+
+TyabEngineVer::TyTry20230414;
+((TyabMMEngineVer<20230414))TyNot20230414;
+
+TyTry20230414::TyabMMEngineVer=20230414;
+return;
+TyabMMEngineVer=0;
+
+TyNot20230414::TyabMMEngineVer=10;
+TyValid20220903;
+((TyabMMEngineVer==5))[Ty20220903orLater][TyabMMEngineVer=0];
+
+TyValid20220903::TyabMMEngineVer=TyabMMEngineVer//2;
+
+Ty20220903orLater::TyabMMEngineVer=10;
+TyInvalidEvent20221212;
+((TyabMMEngineVer==5))[TyabMMEngineVer=20220903][TyabMMEngineVer=20221212];
+
+TyInvalidEvent20221212::TyabMMEngineVer=5/
+
+#.############### TyabInit ##################################################
+
+TyabInit::TyNeg1=0-1;
+TyabBusy=0;
+TynX1=PX1;
+TynY1=PY1;
+TynX2=PX2;
+TynY2=PY2;
+TynYtiles=PY2-PY1;
+TynYtiles+=1;
+TynXtiles=PX2-PX1;
+TynXtiles+=1;
+TynSize=TynYtiles*TynXtiles;
+TyMapTiles[0]=0;
+TI01=TynSize-1;
+TyMapTiles[TI01]=0;
+TyInitWalkDrill;
+TyMzConstInit;
+TyFlInit;
+TyabNotificationInit;
+TyCmdEmpty;
+
+intarray TyWalkTile
+intarray TyDrillTile
+intarray TyLavaOrWater
+
+TyInitWalkDrill::L01=0;
+TyInitWDL;
+
+TyInitWDL::TI01=1;
+TI02=L01;
+((L01>100))TI02-=100;
+((TI02>=76))TI02-=50;
+TyLavaOrWater[L01]=0;
+((TI02==11))TyLavaOrWater[L01]=1;
+((TI02==6))TyLavaOrWater[L01]=1;
+((TI02<1))TI01=0;
+((TI02>25))TI01=0;
+((TI02==6))TI01=0;
+((TI02==11))TI01=0;
+((TI02==60))TI01=1;
+((TI02==61))TI01=1;
+((TI02==62))TI01=1;
+((TI02==63))TI01=1;
+TyWalkTile[L01]=TI01;
+TI01=1;
+((TI02<26))TI01=0;
+((TI02>49))TI01=0;
+((TI02==38))TI01=0;
+((TI02==39))TI01=0;
+((TI02==40))TI01=0;
+((TI02==41))TI01=0;
+TyDrillTile[L01]=TI01;
+L01+=1;
+((L01<256))TyInitWDL;
+
+#.############### TyabTimer #################################################
+
+TyabTimer::TI01=random(0)(1);
+TyabTimerDraw=TyabBusy;
+((TyabBusy>0))[TyTimerMz][TyDrawTimerChk];
+
+TyDrawTimerChk::((TyDRnChunks>0))[TyDRNext][TyCmdTimerChk];
+
+TyCmdTimerChk::((TyCmdRIndex<TyCmdWIndex))[TyCmdNextCommand][TyFlTimerChk];
+
+TyFlTimerChk::((TyFlNRegions>0))TyFlRegionLInit;
+
+TyTimerMz::((TyabBusy==2))TyabIMaze;
+((TyabBusy==1))TyabIMaze;
+((TyabBusy==4))TyabIPath;
+((TyabBusy==3))TyabIPath;
+((TyabBusy==5))TyabITightPath;
+
+#.############### TyabReadMapTiles ##########################################
+
+TyabReadMapTiles::L01=PY1;
+TyRMTRowL;
+
+TyRMTRowL::L02=PX1;
+TI01=L01-TynY1;
+TI01*=TynXtiles;
+TI01+=L02;
+TI01-=TynX1;
+TI02=PX2-L02;
+((TI02>=8))[TyRMTColLg][TyRMTColSm];
+L01+=1;
+((L01<=PY2))TyRMTRowL;
+
+TyRMTColSm::TyMapTiles[TI01]=get(L01)(L02);
+TI01+=1;
+L02+=1;
+((L02<=PX2))TyRMTColSm;
+
+TyRMTColLg::TyMapTiles[TI01]=get(L01)(L02);
+TI01+=1;
+L02+=1;
+TyMapTiles[TI01]=get(L01)(L02);
+TI01+=1;
+L02+=1;
+TyMapTiles[TI01]=get(L01)(L02);
+TI01+=1;
+L02+=1;
+TyMapTiles[TI01]=get(L01)(L02);
+TI01+=1;
+L02+=1;
+TyMapTiles[TI01]=get(L01)(L02);
+TI01+=1;
+L02+=1;
+TyMapTiles[TI01]=get(L01)(L02);
+TI01+=1;
+L02+=1;
+TyMapTiles[TI01]=get(L01)(L02);
+TI01+=1;
+L02+=1;
+TyMapTiles[TI01]=get(L01)(L02);
+TI01+=1;
+L02+=1;
+TI02=PX2-L02;
+((TI02>=8))[TyRMTColLg][TyRMTColSm];
+
+#.############### TyabFill ##########################################
+
+TyabFill::L01=PY1;
+TyFrRowL;
+
+TyFrRowL::L02=PX1;
+TI01=L01-TynY1;
+TI01*=TynXtiles;
+TI01+=L02;
+TI01-=TynX1;
+TI02=PX2-L02;
+((TI02>=8))[TyFrColLg][TyFrColSm];
+L01+=1;
+((L01<=PY2))TyFrRowL;
+
+TyFrColSm::TyMapTiles[TI01]=PI01;
+TI01+=1;
+L02+=1;
+((L02<=PX2))TyFrColSm;
+
+TyFrColLg::TyMapTiles[TI01]=PI01;
+TI01+=1;
+TyMapTiles[TI01]=PI01;
+TI01+=1;
+TyMapTiles[TI01]=PI01;
+TI01+=1;
+TyMapTiles[TI01]=PI01;
+TI01+=1;
+TyMapTiles[TI01]=PI01;
+TI01+=1;
+TyMapTiles[TI01]=PI01;
+TI01+=1;
+TyMapTiles[TI01]=PI01;
+TI01+=1;
+TyMapTiles[TI01]=PI01;
+TI01+=1;
+L02+=8;
+TI02=PX2-L02;
+((TI02>=8))[TyFrColLg][TyFrColSm];
+
+#.############### TyabDrilling ##########################################
+
+TyabDrilling::L01=PY1;
+TyDrillingRowL;
+
+TyDrillingRowL::L02=PX1;
+TyDrillingColSm;
+L01+=1;
+((L01<=PY2))TyDrillingRowL;
+
+TyDrillingColSm::drill:L01,L02;
+L02+=1;
+((L02<=PX2))TyDrillingColSm;
+
+#.############### TyabRandomRect ##########################################
+
+TyabRandomRect::L01=PY1;
+TyFrngRowL;
+
+TyFrngRowL::L02=PX1;
+TI01=L01-TynY1;
+TI01*=TynXtiles;
+TI01+=L02;
+TI01-=TynX1;
+TI02=PX2-L02;
+((TI02>=8))[TyFrngColLg][TyFrngColSm];
+L01+=1;
+((L01<=PY2))TyFrngRowL;
+
+TyFrngColSm::TyProbTile;
+TyMapTiles[TI01]=RI01;
+TI01+=1;
+L02+=1;
+((L02<=PX2))TyFrngColSm;
+
+TyFrngColLg::TyProbTile;
+TyMapTiles[TI01]=RI01;
+TI01+=1;
+TyProbTile;
+TyMapTiles[TI01]=RI01;
+TI01+=1;
+TyProbTile;
+TyMapTiles[TI01]=RI01;
+TI01+=1;
+TyProbTile;
+TyMapTiles[TI01]=RI01;
+TI01+=1;
+TyProbTile;
+TyMapTiles[TI01]=RI01;
+TI01+=1;
+TyProbTile;
+TyMapTiles[TI01]=RI01;
+TI01+=1;
+TyProbTile;
+TyMapTiles[TI01]=RI01;
+TI01+=1;
+TyProbTile;
+TyMapTiles[TI01]=RI01;
+TI01+=1;
+L02+=8;
+TI02=PX2-L02;
+((TI02>=8))[TyFrngColLg][TyFrngColSm];
+
+#.##################### Incremental DrawRect support ########################
+intarray TyDRY1Chunk
+intarray TyDRX1Chunk
+intarray TyDRY2Chunk
+intarray TyDRX2Chunk
+intarray TyDRTyChunk
+int TyDRnChunks=0
+int TyDRnMaxDraw=512
+
+TyDrTimer::((TyDRnChunks>0))TyDRNext;
+
+TyDRNext::TyDRnChunks-=1;
+TI04=TyDRY1Chunk[TyDRnChunks];
+TI05=TyDRX1Chunk[TyDRnChunks];
+TI06=TyDRY2Chunk[TyDRnChunks];
+TI07=TyDRX2Chunk[TyDRnChunks];
+TI08=TyDRTyChunk[TyDRnChunks];
+TI02=TI06-TI04;
+TI02+=1;
+TI03=TI07-TI05;
+TI03+=1;
+TI01=TI02*TI03;
+TyabTimerDraw=1;
+((TI01<=TyDRnMaxDraw))[TyDR][TyDRSubdivide];
+
+TyDRSubdivide::((TI02>1))[TyDRSubDivY][TyDRSubDivX];
+TyDRNext;
+
+TyDRSubDivY::TF01=TI02;
+TF01*=0.5;
+TF01+=0.00001;
+TI01=TF01;
+TI09=TI04+TI01;
+TyDRY1Chunk[TyDRnChunks]=TI04;
+TyDRX1Chunk[TyDRnChunks]=TI05;
+TyDRY2Chunk[TyDRnChunks]=TI09-1;
+TyDRX2Chunk[TyDRnChunks]=TI07;
+TyDRTyChunk[TyDRnChunks]=TI08;
+TyDRnChunks+=1;
+TyDRY1Chunk[TyDRnChunks]=TI09;
+TyDRX1Chunk[TyDRnChunks]=TI05;
+TyDRY2Chunk[TyDRnChunks]=TI06;
+TyDRX2Chunk[TyDRnChunks]=TI07;
+TyDRTyChunk[TyDRnChunks]=TI08;
+TyDRnChunks+=1;
+
+TyDRSubDivX::TF01=TI03;
+TF01*=0.5;
+TF01+=0.00001;
+TI01=TF01;
+TI09=TI05+TI01;
+TyDRY1Chunk[TyDRnChunks]=TI04;
+TyDRX1Chunk[TyDRnChunks]=TI05;
+TyDRY2Chunk[TyDRnChunks]=TI06;
+TyDRX2Chunk[TyDRnChunks]=TI09-1;
+TyDRTyChunk[TyDRnChunks]=TI08;
+TyDRnChunks+=1;
+TyDRY1Chunk[TyDRnChunks]=TI04;
+TyDRX1Chunk[TyDRnChunks]=TI09;
+TyDRY2Chunk[TyDRnChunks]=TI06;
+TyDRX2Chunk[TyDRnChunks]=TI07;
+TyDRTyChunk[TyDRnChunks]=TI08;
+TyDRnChunks+=1;
+
+#.############### TyabDrawRect ##########################################
+
+TyabDrawRect::TyabIQueueDrawRect;
+((TyabBusy==0))TyDRNext;
+
+TyabIQueueDrawRect::TyDRY1Chunk[TyDRnChunks]=PY1;
+TyDRX1Chunk[TyDRnChunks]=PX1;
+TyDRY2Chunk[TyDRnChunks]=PY2;
+TyDRX2Chunk[TyDRnChunks]=PX2;
+TyDRTyChunk[TyDRnChunks]=PI01;
+TyDRnChunks+=1;
+
+TyDR::L01=TI04;
+((TI08==0))TyDrRowL;
+((TI08==TyNeg1))TyDrRowLN1;
+((TI08>0))TyDrRowLID;
+
+TyDrRowL::L02=TI05;
+TI01=L01-TynY1;
+TI01*=TynXtiles;
+TI01+=L02;
+TI01-=TynX1;
+TI02=TI07-L02;
+((TI02>8))[TyDrColLg][TyDrColSm];
+L01+=1;
+((L01<=TI06))TyDrRowL;
+
+TyDrRowLN1::L02=TI05;
+TI01=L01-TynY1;
+TI01*=TynXtiles;
+TI01+=L02;
+TI01-=TynX1;
+TI02=TI07-L02;
+((TI02>=8))[TyDrColN1Lg][TyDrColN1Sm];
+L01+=1;
+((L01<=TI06))TyDrRowLN1;
+
+TyDrRowLID::L02=TI05;
+TI01=L01-TynY1;
+TI01*=TynXtiles;
+TI01+=L02;
+TI01-=TynX1;
+TI02=TI07-L02;
+((TI02>=8))[TyDrColIDLg][TyDrColIDSm];
+L01+=1;
+((L01<=TI06))TyDrRowLID;
+
+TyDrColSm::TI02=TyMapTiles[TI01];
+TI03=get(L01)(L02);
+((TI02!=TI03))place:L01,L02,TI02;
+TI01+=1;
+L02+=1;
+((L02<=TI07))TyDrColSm;
+
+TyDrColN1Sm::TI02=TyMapTiles[TI01];
+((TyLavaOrWater[TI02]==0))TyDrColDraw1;
+TI01+=1;
+L02+=1;
+((L02<=TI07))TyDrColN1Sm;
+
+TyDrColDraw1::TI03=get(L01)(L02);
+((TI02!=TI03))place:L01,L02,TI02;
+
+TyDrColIDSm::TI02=TyMapTiles[TI01];
+((TI02==TI08))TyDrColDraw1;
+TI01+=1;
+L02+=1;
+((L02<=TI07))TyDrColIDSm;
+
+TyDrColLg::TI02=TyMapTiles[TI01];
+TI03=get(L01)(L02);
+((TI02!=TI03))place:L01,L02,TI02;
+TI01+=1;
+L02+=1;
+TI02=TyMapTiles[TI01];
+TI03=get(L01)(L02);
+((TI02!=TI03))place:L01,L02,TI02;
+TI01+=1;
+L02+=1;
+TI02=TyMapTiles[TI01];
+TI03=get(L01)(L02);
+((TI02!=TI03))place:L01,L02,TI02;
+TI01+=1;
+L02+=1;
+TI02=TyMapTiles[TI01];
+TI03=get(L01)(L02);
+((TI02!=TI03))place:L01,L02,TI02;
+TI01+=1;
+L02+=1;
+TI02=TyMapTiles[TI01];
+TI03=get(L01)(L02);
+((TI02!=TI03))place:L01,L02,TI02;
+TI01+=1;
+L02+=1;
+TI02=TyMapTiles[TI01];
+TI03=get(L01)(L02);
+((TI02!=TI03))place:L01,L02,TI02;
+TI01+=1;
+L02+=1;
+TI02=TyMapTiles[TI01];
+TI03=get(L01)(L02);
+((TI02!=TI03))place:L01,L02,TI02;
+TI01+=1;
+L02+=1;
+TI02=TyMapTiles[TI01];
+TI03=get(L01)(L02);
+((TI02!=TI03))place:L01,L02,TI02;
+TI01+=1;
+L02+=1;
+TI02=TI07-L02;
+((TI02>=8))[TyDrColLg][TyDrColSm];
+
+TyDrColN1Lg::TI02=TyMapTiles[TI01];
+((TyLavaOrWater[TI02]==0))TyDrColDraw1;
+TI01+=1;
+L02+=1;
+TI02=TyMapTiles[TI01];
+((TyLavaOrWater[TI02]==0))TyDrColDraw1;
+TI01+=1;
+L02+=1;
+TI02=TyMapTiles[TI01];
+((TyLavaOrWater[TI02]==0))TyDrColDraw1;
+TI01+=1;
+L02+=1;
+TI02=TyMapTiles[TI01];
+((TyLavaOrWater[TI02]==0))TyDrColDraw1;
+TI01+=1;
+L02+=1;
+TI02=TyMapTiles[TI01];
+((TyLavaOrWater[TI02]==0))TyDrColDraw1;
+TI01+=1;
+L02+=1;
+TI02=TyMapTiles[TI01];
+((TyLavaOrWater[TI02]==0))TyDrColDraw1;
+TI01+=1;
+L02+=1;
+TI02=TyMapTiles[TI01];
+((TyLavaOrWater[TI02]==0))TyDrColDraw1;
+TI01+=1;
+L02+=1;
+TI02=TyMapTiles[TI01];
+((TyLavaOrWater[TI02]==0))TyDrColDraw1;
+TI01+=1;
+L02+=1;
+TI02=TI07-L02;
+((TI02>=8))[TyDrColN1Lg][TyDrColN1Sm];
+
+TyDrColIDLg::TI02=TyMapTiles[TI01];
+((TI02==TI08))TyDrColDraw1;
+TI01+=1;
+L02+=1;
+TI02=TyMapTiles[TI01];
+((TI02==TI08))TyDrColDraw1;
+TI01+=1;
+L02+=1;
+TI02=TyMapTiles[TI01];
+((TI02==TI08))TyDrColDraw1;
+TI01+=1;
+L02+=1;
+TI02=TyMapTiles[TI01];
+((TI02==TI08))TyDrColDraw1;
+TI01+=1;
+L02+=1;
+TI02=TyMapTiles[TI01];
+((TI02==TI08))TyDrColDraw1;
+TI01+=1;
+L02+=1;
+TI02=TyMapTiles[TI01];
+((TI02==TI08))TyDrColDraw1;
+TI01+=1;
+L02+=1;
+TI02=TyMapTiles[TI01];
+((TI02==TI08))TyDrColDraw1;
+TI01+=1;
+L02+=1;
+TI02=TyMapTiles[TI01];
+((TI02==TI08))TyDrColDraw1;
+TI01+=1;
+L02+=1;
+TI02=TI07-L02;
+((TI02>8))[TyDrColIDLg][TyDrColIDSm];
+
+#.############################ TyabDrawTile #################################
+
+TyabDrawTile::TI01=PY1-TynY1;
+TI01*=TynXtiles;
+TI01+=PX1;
+TI01-=TynX1;
+TyMapTiles[TI01]=PI01;
+place:PY1,PX1,PI01;
+
+int iPY1=0
+int iPX1=0
+int iPI01=0
+int iRI01=0
+
+#.############################ iTyabDrawTile #################################
+iTyabDrawTile::TI01=iPY1-TynY1;
+TI01*=TynXtiles;
+TI01+=iPX1;
+TI01-=TynX1;
+TyMapTiles[TI01]=iPI01;
+place:iPY1,iPX1,iPI01;
+
+#.############################ iTyabSetTile #################################
+iTyabSetTile::TI01=iPY1-TynY1;
+TI01*=TynXtiles;
+TI01+=iPX1;
+TI01-=TynX1;
+TyMapTiles[TI01]=iPI01;
+
+#.############################ TyabGetTile #################################
+
+TyabGetTile::TI01=PY1-TynY1;
+TI01*=TynXtiles;
+TI01+=PX1;
+TI01-=TynX1;
+RI01=get(PY1)(PX1);
+TyMapTiles[TI01]=RI01;
+
+#.############################ iTyabGetTile #################################
+
+iTyabGetTile::TI01=iPY1-TynY1;
+TI01*=TynXtiles;
+TI01+=iPX1;
+TI01-=TynX1;
+iRI01=get(iPY1)(iPX1);
+TyMapTiles[TI01]=iRI01;
+
+#.################### TyabWalkRect ##########################################
+
+TyabWalkRect::L01=PY1;
+TyWRowL;
+
+TyWRowL::L02=PX1;
+TI01=L01-TynY1;
+TI01*=TynXtiles;
+TI01+=L02;
+TI01-=TynX1;
+TI02=PX2-L02;
+((TI02>=8))[TyWColLg][TyWColSm];
+L01+=1;
+((L01<=PY2))TyWRowL;
+
+TyWDR1::TyProbTile;
+TyMapTiles[TI01]=RI01;
+
+TyWColSm::RI01=TyMapTiles[TI01];
+((TyWalkTile[RI01]==1))TyWDR1;
+TI01+=1;
+L02+=1;
+((L02<=PX2))TyWColSm;
+
+TyWColLg::RI01=TyMapTiles[TI01];
+((TyWalkTile[RI01]==1))TyWDR1;
+TI01+=1;
+RI01=TyMapTiles[TI01];
+((TyWalkTile[RI01]==1))TyWDR1;
+TI01+=1;
+RI01=TyMapTiles[TI01];
+((TyWalkTile[RI01]==1))TyWDR1;
+TI01+=1;
+RI01=TyMapTiles[TI01];
+((TyWalkTile[RI01]==1))TyWDR1;
+TI01+=1;
+RI01=TyMapTiles[TI01];
+((TyWalkTile[RI01]==1))TyWDR1;
+TI01+=1;
+RI01=TyMapTiles[TI01];
+((TyWalkTile[RI01]==1))TyWDR1;
+TI01+=1;
+RI01=TyMapTiles[TI01];
+((TyWalkTile[RI01]==1))TyWDR1;
+TI01+=1;
+RI01=TyMapTiles[TI01];
+((TyWalkTile[RI01]==1))TyWDR1;
+TI01+=1;
+L02+=8;
+TI02=PX2-L02;
+((TI02>=8))[TyWColLg][TyWColSm];
+
+#.################### TyabDrillRect ##########################################
+
+TyabDrillRect::L01=PY1;
+TyDrillRowL;
+
+TyDrillRowL::L02=PX1;
+TI01=L01-TynY1;
+TI01*=TynXtiles;
+TI01+=L02;
+TI01-=TynX1;
+TI02=PX2-L02;
+((TI02>=8))[TyDrillColLg][TyDrillColSm];
+L01+=1;
+((L01<=PY2))TyDrillRowL;
+
+TyDrillColSm::RI01=TyMapTiles[TI01];
+((TyDrillTile[RI01]==1))TyWDR1;
+TI01+=1;
+L02+=1;
+((L02<=PX2))TyDrillColSm;
+
+TyDrillColLg::RI01=TyMapTiles[TI01];
+((TyDrillTile[RI01]==1))TyWDR1;
+TI01+=1;
+RI01=TyMapTiles[TI01];
+((TyDrillTile[RI01]==1))TyWDR1;
+TI01+=1;
+RI01=TyMapTiles[TI01];
+((TyDrillTile[RI01]==1))TyWDR1;
+TI01+=1;
+RI01=TyMapTiles[TI01];
+((TyDrillTile[RI01]==1))TyWDR1;
+TI01+=1;
+RI01=TyMapTiles[TI01];
+((TyDrillTile[RI01]==1))TyWDR1;
+TI01+=1;
+RI01=TyMapTiles[TI01];
+((TyDrillTile[RI01]==1))TyWDR1;
+TI01+=1;
+RI01=TyMapTiles[TI01];
+((TyDrillTile[RI01]==1))TyWDR1;
+TI01+=1;
+RI01=TyMapTiles[TI01];
+((TyDrillTile[RI01]==1))TyWDR1;
+TI01+=1;
+L02+=8;
+TI02=PX2-L02;
+((TI02>=8))[TyDrillColLg][TyDrillColSm];
+
+#.################### TyabReplaceRect ##########################################
+
+TyabReplaceRect::L01=PY1;
+TyReplaceRowL;
+
+TyReplaceRowL::L02=PX1;
+TI01=L01-TynY1;
+TI01*=TynXtiles;
+TI01+=L02;
+TI01-=TynX1;
+TI02=PX2-L02;
+((TI02>=8))[TyReplaceColLg][TyReplaceColSm];
+L01+=1;
+((L01<=PY2))TyReplaceRowL;
+
+TyReplaceColSm::((TyMapTiles[TI01]==PI01))TyWDR1;
+TI01+=1;
+L02+=1;
+((L02<=PX2))TyReplaceColSm;
+
+TyReplaceColLg::((TyMapTiles[TI01]==PI01))TyWDR1;
+TI01+=1;
+((TyMapTiles[TI01]==PI01))TyWDR1;
+TI01+=1;
+((TyMapTiles[TI01]==PI01))TyWDR1;
+TI01+=1;
+((TyMapTiles[TI01]==PI01))TyWDR1;
+TI01+=1;
+((TyMapTiles[TI01]==PI01))TyWDR1;
+TI01+=1;
+((TyMapTiles[TI01]==PI01))TyWDR1;
+TI01+=1;
+((TyMapTiles[TI01]==PI01))TyWDR1;
+TI01+=1;
+((TyMapTiles[TI01]==PI01))TyWDR1;
+TI01+=1;
+L02+=8;
+TI02=PX2-L02;
+((TI02>=8))[TyReplaceColLg][TyReplaceColSm];
+
+TyProbTile::TI10=0;
+TI12=0;
+TI11=random(1)(1000);
+TyProbTileL;
+
+TyProbTileL::TI10+=PIA02[TI12];
+RI01=PIA01[TI12];
+((TI11<=TI10))return;
+TI12+=1;
+((TI12<PI04))TyProbTileL;
+
+int iPI04=0
+intarray iPIA01
+intarray iPIA02
+int iPSum=0
+int iPLoop=0
+int iPFind=0
+
+TyiProbTile::iPSum=0;
+iPLoop=0;
+iPFind=random(1)(1000);
+TyiProbTileL;
+
+TyiProbTileL::iPSum+=iPIA02[iPLoop];
+iRI01=iPIA01[iPLoop];
+((iPFind<=iPSum))return;
+iPLoop+=1;
+((iPLoop<iPI04))TyiProbTileL;
+
+#.################################## Random Maze #############
+#. Random Maze generation. Based on Growing Tree Algorithm.
+#. see: https://weblog.jamisbuck.org/2011/1/27/maze-generation-growing-tree-algorithm
+
+int TyMzYsize=0
+int TyMzXsize=0
+int TyMzSize=0
+intarray TyMzXset
+intarray TyMzYset
+int TyMzSizeSet=0
+intarray TyMzNeighbors
+int TyMzSizeNeighbors=0
+intarray TyMzVisited
+int TyMzMapScale=0
+float TyMzfMap2Cell=0.0
+intarray TyMzDirXInc
+intarray TyMzDirYInc
+intarray TyMzDir2Bit
+intarray TyMzDirB2Bit
+intarray TyMzDirN
+intarray TyMzDirS
+intarray TyMzDirE
+intarray TyMzDirW
+intarray TyTpBack1
+intarray TyTpBack2
+intarray TyTpDDir
+
+TyMzConstInit::;
+TyMzDirXInc[0]=0;
+TyMzDirYInc[0]=0;
+TyMzDirXInc[1]=0;
+TyMzDirYInc[1]=TyNeg1;
+TyMzDirXInc[2]=0;
+TyMzDirYInc[2]=1;
+TyMzDirXInc[3]=1;
+TyMzDirYInc[3]=0;
+TyMzDirXInc[4]=TyNeg1;
+TyMzDirYInc[4]=0;
+TyMzDirXInc[5]=1;
+TyMzDirYInc[5]=TyNeg1;
+TyMzDirXInc[6]=1;
+TyMzDirYInc[6]=1;
+TyMzDirXInc[7]=TyNeg1;
+TyMzDirYInc[7]=1;
+TyMzDirXInc[8]=TyNeg1;
+TyMzDirYInc[8]=TyNeg1;
+TyMzDir2Bit[0]=0;
+TyMzDir2Bit[1]=1;
+TyMzDir2Bit[2]=2;
+TyMzDir2Bit[3]=4;
+TyMzDir2Bit[4]=8;
+TyMzDirB2Bit[0]=0;
+TyMzDirB2Bit[1]=2;
+TyMzDirB2Bit[2]=1;
+TyMzDirB2Bit[3]=8;
+TyMzDirB2Bit[4]=4;
+TyMzDirN[0]=0;
+TyMzDirN[1]=1;
+TyMzDirN[2]=0;
+TyMzDirN[3]=1;
+TyMzDirN[4]=0;
+TyMzDirN[5]=1;
+TyMzDirN[6]=0;
+TyMzDirN[7]=1;
+TyMzDirN[8]=0;
+TyMzDirN[9]=1;
+TyMzDirN[10]=0;
+TyMzDirN[11]=1;
+TyMzDirN[12]=0;
+TyMzDirN[13]=1;
+TyMzDirN[14]=0;
+TyMzDirN[15]=1;
+TyMzDirS[0]=0;
+TyMzDirS[1]=0;
+TyMzDirS[2]=2;
+TyMzDirS[3]=2;
+TyMzDirS[4]=0;
+TyMzDirS[5]=0;
+TyMzDirS[6]=2;
+TyMzDirS[7]=2;
+TyMzDirS[8]=0;
+TyMzDirS[9]=0;
+TyMzDirS[10]=2;
+TyMzDirS[11]=2;
+TyMzDirS[12]=0;
+TyMzDirS[13]=0;
+TyMzDirS[14]=2;
+TyMzDirS[15]=2;
+TyMzDirE[0]=0;
+TyMzDirE[1]=0;
+TyMzDirE[2]=0;
+TyMzDirE[3]=0;
+TyMzDirE[4]=4;
+TyMzDirE[5]=4;
+TyMzDirE[6]=4;
+TyMzDirE[7]=4;
+TyMzDirE[8]=0;
+TyMzDirE[9]=0;
+TyMzDirE[10]=0;
+TyMzDirE[11]=0;
+TyMzDirE[12]=4;
+TyMzDirE[13]=4;
+TyMzDirE[14]=4;
+TyMzDirE[15]=4;
+TyMzDirW[0]=0;
+TyMzDirW[1]=0;
+TyMzDirW[2]=0;
+TyMzDirW[3]=0;
+TyMzDirW[4]=0;
+TyMzDirW[5]=0;
+TyMzDirW[6]=0;
+TyMzDirW[7]=0;
+TyMzDirW[8]=8;
+TyMzDirW[9]=8;
+TyMzDirW[10]=8;
+TyMzDirW[11]=8;
+TyMzDirW[12]=8;
+TyMzDirW[13]=8;
+TyMzDirW[14]=8;
+TyMzDirW[15]=8;
+TyTpBack1[0]=0;
+TyTpBack1[1]=3;
+TyTpBack1[2]=3;
+TyTpBack1[3]=1;
+TyTpBack1[4]=1;
+TyTpBack2[0]=0;
+TyTpBack2[1]=4;
+TyTpBack2[2]=4;
+TyTpBack2[3]=2;
+TyTpBack2[4]=2;
+TyTpDDir[0]=3;
+TyTpDDir[1]=2;
+TyTpDDir[2]=2;
+TyTpDDir[3]=2;
+TyTpDDir[4]=4;
+TyTpDDir[5]=3;
+TyTpDDir[6]=3;
+TyTpDDir[7]=2;
+TyTpDDir[8]=4;
+TyTpDDir[9]=4;
+TyTpDDir[10]=3;
+TyTpDDir[11]=3;
+TyTpDDir[12]=0;
+TyTpDDir[13]=4;
+TyTpDDir[14]=4;
+TyTpDDir[15]=3;
+TyTpDDir[16]=3;
+TyTpDDir[17]=1;
+TyTpDDir[18]=4;
+TyTpDDir[19]=4;
+TyTpDDir[20]=3;
+TyTpDDir[21]=1;
+TyTpDDir[22]=1;
+TyTpDDir[23]=1;
+TyTpDDir[24]=4;
+
+int TyMzSPX1=0
+int TyMzSPY1=0
+int TyMzSPX2=0
+int TyMzSPY2=0
+int TyMzSPX3=0
+int TyMzSPY3=0
+int TyMzSPX4=0
+int TyMzSPY4=0
+int TyMzSPX5=0
+int TyMzSPY5=0
+int TyMzSPX6=0
+int TyMzSPY6=0
+int TyMzSPI01=0
+int TyMzSPI02=0
+int TyMzSPI03=0
+int TyMzSPI05=0
+int TyMzSRI05=0
+int TyMzSRI06=0
+int TyMzSL01=0
+int TyMzSL02=0
+int TyMzSL03=0
+int TyMzSL05=0
+int TyMzSL06=0
+int TyMzSL07=0
+int TyMzSL08=0
+int TyMzSL09=0
+int TyMzSL10=0
+
+TyMzSaveVars::TyMzSPX1=PX1;
+TyMzSPY1=PY1;
+TyMzSPX2=PX2;
+TyMzSPY2=PY2;
+TyMzSPX3=PX3;
+TyMzSPY3=PY3;
+TyMzSPX4=PX4;
+TyMzSPY4=PY4;
+TyMzSPI01=PI01;
+TyMzSPI02=PI02;
+TyMzSPI03=PI03;
+TyMzSPI05=PI05;
+
+TyMzVarInit::TyMzSL01=0;
+TI01=0;
+TyMz01IRowL;
+
+TyMz01IRowL::TyMzSL02=0;
+((TyMzXsize>=8))[TyMz02IColLg][TyMz02IColSm];
+TyMzSL01+=1;
+((TyMzSL01<TyMzYsize))TyMz01IRowL;
+
+TyMz02IColSm::TyMzVisited[TI01]=0;
+TI01+=1;
+TyMzSL02+=1;
+((TyMzSL02<TyMzXsize))TyMz02IColSm;
+
+TyMz02IColLg::TyMzVisited[TI01]=0;
+TI01+=1;
+TyMzVisited[TI01]=0;
+TI01+=1;
+TyMzVisited[TI01]=0;
+TI01+=1;
+TyMzVisited[TI01]=0;
+TI01+=1;
+TyMzVisited[TI01]=0;
+TI01+=1;
+TyMzVisited[TI01]=0;
+TI01+=1;
+TyMzVisited[TI01]=0;
+TI01+=1;
+TyMzVisited[TI01]=0;
+TI01+=1;
+TyMzSL02+=8;
+TI02=TyMzXsize-TyMzSL02;
+((TI02>=8))[TyMz02IColLg][TyMz02IColSm];
+
+#.##########################  TyabMaze ######################################
+
+TyIMaze::TyabBusy=0;
+TyabIMaze;
+
+TyabIMaze::((TyabBusy==0))[TyMz0][TyMzContinue12];
+
+TyMzContinue12::((TyabBusy==1))[TyMzBusy1][TyMzBusy2];
+
+TyMzBusy1::TyMzGenerateBegin;
+((TyabBusy==0))TyabBusy=2;
+((TyabBusy==2))TyMzDrawInit;
+
+TyMzBusy2::((TyabBusy==2))TyMzUpdateMap;
+
+TyMz0::TyMzSaveVars;
+TyMzStartNew;
+TyMzAddRndCell;
+TyMzGenerateBegin;
+((TyabBusy!=0))return;
+TyMzDrawInit;
+TyMzUpdateMap;
+
+TyMzStartNew::TyMzInit;
+TyMzSize=TyMzYsize*TyMzXsize;
+TyMzSizeSet=0;
+TyMzVarInit;
+
+TyMzAddRndCell::TI03=TyMzYsize-1;
+TI01=random(0)(TI03);
+TI03=TyMzXsize-1;
+TI02=random(0)(TI03);
+TI03=TI01*TyMzXsize;
+TI03+=TI02;
+TyMzVisited[TI03]=16;
+TyMzYset[0]=TI01;
+TyMzXset[0]=TI02;
+TyMzSizeSet=1;
+
+TyMzGenerateBegin::TyabBusy=0;
+TyMzSL03=50;
+TyMzGenerate;
+((TyMzSizeSet>0))TyabBusy=1;
+
+TyMzInit::TyMzMapScale=TyMzSPI02;
+TyMzfMap2Cell=1.0//TyMzMapScale;
+TI01=TyMzSPY2-TyMzSPY1;
+TI01+=1;
+TI01+=TyMzMapScale;
+TI01-=1;
+TF01=TI01;
+TF01*=TyMzfMap2Cell;
+TF01+=0.00001;
+TyMzYsize=TF01;
+TI01=TyMzSPX2-TyMzSPX1;
+TI01+=1;
+TI01+=TyMzMapScale;
+TI01-=1;
+TF01=TI01;
+TF01*=TyMzfMap2Cell;
+TF01+=0.00001;
+TyMzXsize=TF01;
+
+TyMzGenerate::TI04=TyMzSizeSet-1;
+((random(0)(1)==0))TI04=random(0)(TI04);
+TI02=TyMzYset[TI04];
+TI03=TyMzXset[TI04];
+TyMzSizeNeighbors=0;
+TI05=1;
+TI06=TI02-1;
+TI07=TI03;
+((TI06>=0))TyMzBNChkDirVis;
+TI05=2;
+TI06=TI02+1;
+((TI06<TyMzYsize))TyMzBNChkDirVis;
+TI05=3;
+TI06=TI02;
+TI07=TI03+1;
+((TI07<TyMzXsize))TyMzBNChkDirVis;
+TI05=4;
+TI07=TI03-1;
+((TI07>=0))TyMzBNChkDirVis;
+((TyMzSizeNeighbors>0))[TyMz05CP2N][TyMz06RemoveCell];
+TyMzSL03-=1;
+((TyMzSizeSet<=0))return;
+((TyMzSL03>0))TyMzGenerate;
+
+TyMz06RemoveCell::TyMzSizeSet-=1;
+TyMzYset[TI04]=TyMzYset[TyMzSizeSet];
+TyMzXset[TI04]=TyMzXset[TyMzSizeSet];
+
+TyMzBNChkDirVis::TI08=TI06*TyMzXsize;
+TI08+=TI07;
+TI01=TyMzVisited[TI08];
+TyMzNeighbors[TyMzSizeNeighbors]=TI05;
+((TI01==0))TyMzSizeNeighbors+=1;
+
+TyMz05CP2N::TI01=TyMzSizeNeighbors-1;
+TI05=TyMzNeighbors[random(0)(TI01)];
+TI06=TI02*TyMzXsize;
+TI06+=TI03;
+TI01=TyMzVisited[TI06];
+((TI01==16))TI01=0;
+TyMzVisited[TI06]=TI01+TyMzDir2Bit[TI05];
+TI06=TyMzDirYInc[TI05]+TI02;
+TI07=TyMzDirXInc[TI05]+TI03;
+TyMzYset[TyMzSizeSet]=TI06;
+TyMzXset[TyMzSizeSet]=TI07;
+TyMzSizeSet+=1;
+TI08=TI06*TyMzXsize;
+TI08+=TI07;
+TyMzVisited[TI08]+=TyMzDirB2Bit[TI05];
+
+TyMzUpdateMap::((TyabBusy==0))TyMzDrawInit;
+TI01=TyMzVisited[0];
+((TI01==16))TyMzVisited[0]=0;
+TyabBusy=0;
+TyMzSL10=50;
+TyMz19MMRL;
+((TyMzSL01<TyMzYsize))TyabBusy=2;
+
+TyMzDrawInit::TyMzSL01=0;
+
+TyMz19MMRL::TyMzSL02=0;
+TyMz20MMCL;
+TyMzSL01+=1;
+TI01=1;
+((TyMzSL10<=0))TI01=0;
+((TyMzSL01>=TyMzYsize))TI01=0;
+((TI01==1))TyMz19MMRL;
+
+TyMz20MMCL::TyMzSL10-=1;
+TI02=TyMzSL01*TyMzXsize;
+TI02+=TyMzSL02;
+TI03=TyMzSL01*TyMzMapScale;
+TI03+=TyMzSPY1;
+TI04=TyMzSL02*TyMzMapScale;
+TI04+=TyMzSPX1;
+TI01=TyMzVisited[TI02];
+RI02=TyMzDirS[TI01];
+RI03=TyMzDirE[TI01];
+TI09=1;
+TyMzSL05=0;
+TyMzSL06=TyMzSPI01;
+TyMzSL07=TyMzSPI01;
+TyMzSL08=0;
+TyMzFRRL;
+TyMzSL05=TyMzSPI01;
+TyMzSL06=TyMzSPI01;
+TyMzSL07=TyMzMapScale;
+TI09=RI03;
+TI01=TyMzXsize-1;
+((TyMzSL02>=TI01))TI09=1;
+TyMzSL08=0;
+TyMzFRRL;
+TyMzSL05=0;
+TyMzSL06=TyMzMapScale;
+TyMzSL07=TyMzSPI01;
+TI09=RI02;
+TI01=TyMzYsize-1;
+((TyMzSL01>=TI01))TI09=1;
+TyMzSL08=TyMzSPI01;
+TI01=1;
+((TyMzSL08>=TyMzSL06))TI01=0;
+((TyMzSL08>=TyMzMapScale))TI01=0;
+((TI01==1))TyMzFRRL;
+TyMzSL05=TyMzSPI01;
+TyMzSL07=TyMzMapScale;
+TI09=0;
+TyMzSL08=TyMzSPI01;
+TI01=1;
+((TyMzSL08>=TyMzSL06))TI01=0;
+((TyMzSL08>=TyMzMapScale))TI01=0;
+((TI01==1))TyMzFRRL;
+TyMzSL02+=1;
+((TyMzSL02<TyMzXsize))TyMz20MMCL;
+
+TyMzFRRL::TyMzSL09=TyMzSL05;
+TI05=TI03+TyMzSL08;
+TI01=1;
+((TyMzSL09>=TyMzSL07))TI01=0;
+((TyMzSL09>=TyMzMapScale))TI01=0;
+((TI05>TyMzSPY2))TI01=0;
+((TI01==1))TyMzFRRC;
+TyMzSL08+=1;
+((TyMzSL08>=TyMzSL06))return;
+((TyMzSL08<TyMzMapScale))TyMzFRRL;
+
+TyMzFRRC::((TI09>0))[TyProbTile][RI01=TyMzSPI03];
+TI06=TI04+TyMzSL09;
+TI01=TI05-TynY1;
+TI01*=TynXtiles;
+TI01+=TI06;
+TI01-=TynX1;
+((TI06<=TyMzSPX2))TyMapTiles[TI01]=RI01;
+TyMzSL09+=1;
+((TyMzSL09>=TyMzSL07))return;
+((TyMzSL09<TyMzMapScale))TyMzFRRC;
+
+#.############################ TyabPath ##################
+
+TyIPath::TyabBusy=0;
+TyabIPath;
+
+TyabIPath::((TyabBusy==0))[TyRp0][TyRpContinue34];
+
+TyRp0::TyMzSaveVars;
+TyMzStartNew;
+TyRpStartNew;
+TyRpGenerateBegin;
+((TyabBusy==0))TyRpUpdateMap;
+
+TyRpStartNew::;
+TF01=TyMzSPY3-TyMzSPY1;
+TF01*=TyMzfMap2Cell;
+TF01+=0.00001;
+TyMzYset[0]=TF01;
+TF01=TyMzSPX3-TyMzSPX1;
+TF01*=TyMzfMap2Cell;
+TF01+=0.00001;
+TyMzXset[0]=TF01;
+TF01=TyMzSPY4-TyMzSPY1;
+TF01*=TyMzfMap2Cell;
+TF01+=0.00001;
+TyMzSPY6=TF01;
+TF01=TyMzSPX4-TyMzSPX1;
+TF01*=TyMzfMap2Cell;
+TF01+=0.00001;
+TyMzSPX6=TF01;
+TyMzSizeSet=1;
+((TyMzSPI05>0))TyRpObstructions;
+
+TyRpObstructions::TyMzSL01=0;
+TyRpLObstruct;
+
+TyRpLObstruct::TF01=PIA03[TyMzSL01]-TyMzSPY1;
+TF01*=TyMzfMap2Cell;
+TF01+=0.00001;
+TI02=TF01;
+TF01=PIA04[TyMzSL01]-TyMzSPX1;
+TF01*=TyMzfMap2Cell;
+TF01+=0.00001;
+TI03=TF01;
+TI01=1;
+((TI02<0))TI01=0;
+((TI02>=TyMzYsize))TI01=0;
+((TI03<0))TI01=0;
+((TI03>=TyMzXsize))TI01=0;
+((TI01==1))TyRpLObstructAdd;
+TyMzSL01+=1;
+((TyMzSL01<TyMzSPI05))TyRpLObstruct;
+
+TyRpLObstructAdd::TI01=TI02*TyMzXsize;
+TI01+=TI03;
+TyMzVisited[TI01]=TyNeg1;
+
+TyRpContinue34::((TyabBusy==3))[TyRpBusy3][TyRpBusy4];
+
+TyRpBusy3::TyRpGenerateBegin;
+((TyabBusy==0))TyabBusy=4;
+((TyabBusy==4))TyRpDrawInit;
+
+TyRpBusy4::((TyabBusy==4))TyRpUpdateMap;
+
+TyRpGenerateBegin::TyMzSRI05=0;
+TyMzSL03=50;
+TI04=TyMzSizeSet-1;
+TI02=TyMzYset[TI04];
+TI03=TyMzXset[TI04];
+TI01=0;
+((TI02!=TyMzSPY6))TI01=1;
+((TI03!=TyMzSPX6))TI01=1;
+TyabBusy=0;
+((TI01==1))TyRpGenerate;
+((TyMzSRI05==0))TyabBusy=3;
+
+TyRpGenerate::TyMzSizeNeighbors=0;
+TI05=1;
+TI06=TI02-1;
+TI07=TI03;
+((TI06>=0))TyMzBNChkDirVis;
+TI05=2;
+TI06=TI02+1;
+((TI06<TyMzYsize))TyMzBNChkDirVis;
+TI05=3;
+TI06=TI02;
+TI07=TI03+1;
+((TI07<TyMzXsize))TyMzBNChkDirVis;
+TI05=4;
+TI07=TI03-1;
+((TI07>=0))TyMzBNChkDirVis;
+((TyMzSizeNeighbors>0))[TyRpPickNext][TyMzSizeSet-=1];
+TI04=TyMzSizeSet-1;
+TI02=TyMzYset[TI04];
+TI03=TyMzXset[TI04];
+TyMzSRI05=1;
+((TI02!=TyMzSPY6))TyMzSRI05=0;
+((TI03!=TyMzSPX6))TyMzSRI05=0;
+((TyMzSRI05==1))return;
+TyMzSL03-=1;
+((TyMzSL03>0))TyRpGenerate;
+
+TyRpPickNext::TI01=TyMzSizeNeighbors-1;
+TI01=random(0)(TI01);
+TI05=TyMzNeighbors[TI01];
+TI06=TI02*TyMzXsize;
+TI06+=TI03;
+TyMzVisited[TI06]=TyMzDir2Bit[TI05];
+TI06=TyMzDirYInc[TI05]+TI02;
+TI07=TyMzDirXInc[TI05]+TI03;
+TyMzYset[TyMzSizeSet]=TI06;
+TyMzXset[TyMzSizeSet]=TI07;
+TyMzSizeSet+=1;
+TI08=TI06*TyMzXsize;
+TI08+=TI07;
+TyMzVisited[TI08]=TyMzDirB2Bit[TI05];
+
+TyRpDrawInit::TI03=TyMzSizeSet-1;
+TyMzSL01=TyMzYset[TI03];
+TyMzSL02=TyMzXset[TI03];
+TI02=TyMzSL01*TyMzXsize;
+TI02+=TyMzSL02;
+TI01=0;
+TI03=TyMzYsize-1;
+((TyMzSL01==TI03))TyMzVisited[TI02]+=2;
+TI04=TyMzXsize-1;
+((TyMzSL02==TI04))TyMzVisited[TI02]+=4;
+TyMzSL01=TyMzYset[0];
+TyMzSL02=TyMzXset[0];
+TI02=TyMzSL01*TyMzXsize;
+TI02+=TyMzSL02;
+TI01=0;
+TI03=TyMzYsize-1;
+TyMzSRI05=0;
+TyMzSRI06=0;
+((TyMzSL01==TI03))TyMzSRI05=1;
+((TyMzSPI01==TyMzSPI02))TyMzSRI05=0;
+TI04=TyMzXsize-1;
+((TyMzSL02==TI04))TyMzSRI06=1;
+((TyMzSPI01==TyMzSPI02))TyMzSRI06=0;
+TyMzSL03=0;
+
+TyRpUpdateMap::((TyabBusy==0))TyRpDrawInit;
+TyMzSL10=100;
+TyRp20MMCL;
+
+TyRp20MMCL::TyMzSL01=TyMzYset[TyMzSL03];
+TyMzSL02=TyMzXset[TyMzSL03];
+TI02=TyMzSL01*TyMzXsize;
+TI02+=TyMzSL02;
+TI03=TyMzSL01*TyMzMapScale;
+TI03+=TyMzSPY1;
+TI04=TyMzSL02*TyMzMapScale;
+TI04+=TyMzSPX1;
+TI01=TyMzVisited[TI02];
+((TyMzSPI01==TyMzSPI02))TI01=0;
+RI01=TyMzDirN[TI01];
+RI02=TyMzDirS[TI01];
+RI03=TyMzDirE[TI01];
+RI04=TyMzDirW[TI01];
+RI02+=TyMzSRI05;
+RI03+=TyMzSRI06;
+((RI01>0))[TyMzSRI05=1][TyMzSRI05=0];
+((RI04>0))[TyMzSRI06=1][TyMzSRI06=0];
+TI09=1;
+TyMzSL05=0;
+TyMzSL06=TyMzSPI01;
+TyMzSL07=TyMzSPI01;
+TyMzSL08=0;
+TyMzFRRL;
+TyMzSL05=TyMzSPI01;
+TyMzSL06=TyMzSPI01;
+TyMzSL07=TyMzMapScale;
+TyMzSL08=0;
+((RI03>0))TyMzFRRL;
+TyMzSL05=0;
+TyMzSL06=TyMzMapScale;
+TyMzSL07=TyMzSPI01;
+TyMzSL08=TyMzSPI01;
+TI01=1;
+((TyMzSL08>=TyMzMapScale))TI01=0;
+((RI02==0))TI01=0;
+((TI01==1))TyMzFRRL;
+TyMzSL03+=1;
+TI01=1;
+((TyMzSL03>=TyMzSizeSet))TI01=0;
+TyMzSL10-=1;
+((TyMzSL10<=0))TI01=0;
+((TI01==1))TyRp20MMCL;
+((TyMzSL03>=TyMzSizeSet))[TyabBusy=0][TyabBusy=4];
+
+#.############################ TyabTightPath ##################
+
+TyITightPath::TyabBusy=0;
+TyabITightPath;
+
+TyabITightPath::((TyabBusy==0))[TyTp0][TyTpContinue5];
+
+TyTp0::TyMzSaveVars;
+TyMzSPI01=1;
+TyMzSPI02=1;
+TyMzStartNew;
+TyRpStartNew;
+TyTpGenerateBegin;
+((TyabBusy==0))TyTpDraw;
+
+TyTpContinue5::((TyabBusy==5))TyTpBusy5;
+
+TyTpBusy5::TyTpGenerateBegin;
+((TyabBusy==0))TyTpDraw;
+
+TyTpGenerateBegin::TyMzSL03=50;
+TI04=TyMzSizeSet-1;
+TI02=TyMzYset[TI04];
+TI03=TyMzXset[TI04];
+TI01=0;
+((TI02!=TyMzSPY6))TI01=1;
+((TI03!=TyMzSPX6))TI01=1;
+TyabBusy=0;
+TyMzSRI05=1;
+((TI01==1))TyTpGenerate;
+((TyMzSRI05==0))TyabBusy=5;
+
+TyTpGenerate::TI04=TI02*TyMzXsize;
+TI04+=TI03;
+TyMzSizeNeighbors=0;
+TI05=1;
+TI06=TI02-1;
+TI07=TI03;
+TI04=TyMzVisited[TI04];
+TI01=TyMzDirN[TI04];
+((TI06<0))TI01=1;
+((TI01==0))TyTpChkDirVis;
+TI05=2;
+TI06=TI02+1;
+TI01=TyMzDirS[TI04];
+((TI06>=TyMzYsize))TI01=1;
+((TI01==0))TyTpChkDirVis;
+TI05=3;
+TI06=TI02;
+TI07=TI03+1;
+TI01=TyMzDirE[TI04];
+((TI07>=TyMzXsize))TI01=1;
+((TI01==0))TyTpChkDirVis;
+TI05=4;
+TI07=TI03-1;
+TI01=TyMzDirW[TI04];
+((TI07<0))TI01=1;
+((TI01==0))TyTpChkDirVis;
+((TyMzSizeNeighbors>0))[TyTpPickNext][TyTpRemoveCell];
+TI04=TyMzSizeSet-1;
+((TI04<0))TI04=0;
+TI02=TyMzYset[TI04];
+TI03=TyMzXset[TI04];
+TyTpDestAttract;
+((TyMzSizeSet<=0))TyMzSRI05=1;
+((TyMzSRI05==1))return;
+TyMzSL03-=1;
+((TyMzSL03>0))TyTpGenerate;
+
+TyTpDestAttract::TyMzSRI05=0;
+TI04=TI02-TyMzSPY6;
+TI04+=2;
+TI05=TI03-TyMzSPX6;
+TI05+=2;
+((TI04<0))return;
+((TI04>4))return;
+((TI05<0))return;
+((TI05>4))return;
+TyMzSRI05=1;
+TyTpAtDest;
+
+TyTpAtDest::TI06=TI04*5;
+TI06+=TI05;
+((TI06!=12))TyTpMove2Dest;
+
+TyTpMove2Dest::TI01=TyTpDDir[TI06];
+TI02+=TyMzDirYInc[TI01];
+TI03+=TyMzDirXInc[TI01];
+TyMzYset[TyMzSizeSet]=TI02;
+TyMzXset[TyMzSizeSet]=TI03;
+TyMzSizeSet+=1;
+TI04+=TyMzDirYInc[TI01];
+TI05+=TyMzDirXInc[TI01];
+TyTpAtDest;
+
+TyTpRemoveCell::((TyMzSizeSet>20))[TyTpRemoveMore][TyTpRemoveOne];
+
+TyTpRemoveOne::;
+TI01=TyMzSizeSet-1;
+TI04=TyMzYset[TI01]*TyMzXsize;
+TI04+=TyMzXset[TI01];
+TyMzVisited[TI04]=0;
+TyMzSizeSet-=1;
+
+TyTpRemoveMore::TF01=TyMzSizeSet;
+TF01*=0.2;
+TI05=TF01;
+TyTpRemoveMoreL;
+
+TyTpRemoveMoreL::TyTpRemoveOne;
+TI05-=1;
+((TI05>0))TyTpRemoveMoreL;
+
+TyTpChkDirVis::TI01=TI06*TyMzXsize;
+TI01+=TI07;
+((TyMzVisited[TI01]==0))TyTpUnVisted;
+
+TyTpUnVisted::TI08=TI05;
+TI01=1;
+TyTpChkDirection;
+TI08=TyTpBack1[TI05];
+((TI01==1))TyTpChkDirection;
+TI08=TyTpBack2[TI05];
+((TI01==1))TyTpChkDirection;
+TI08=5;
+((TI01==1))TyTpChkDDirection;
+TI08=6;
+((TI01==1))TyTpChkDDirection;
+TI08=7;
+((TI01==1))TyTpChkDDirection;
+TI08=8;
+((TI01==1))TyTpChkDDirection;
+TyMzNeighbors[TyMzSizeNeighbors]=TI05;
+((TI01==1))TyMzSizeNeighbors+=1;
+
+TyTpChkDirection::TI09=TI06+TyMzDirYInc[TI08];
+TI10=TI07+TyMzDirXInc[TI08];
+TyTpChkWallObstruct;
+TI09+=TyMzDirYInc[TI08];
+TI10+=TyMzDirXInc[TI08];
+((TI01==1))TyTpChkWallObstruct;
+
+TyTpChkWallObstruct::((TI09<0))return;
+((TI09>=TyMzYsize))return;
+((TI10<0))return;
+((TI10<TyMzXsize))TyTpChkWOInside;
+
+TyTpChkWOInside::TI01=TI09*TyMzXsize;
+TI01+=TI10;
+((TyMzVisited[TI01]<=0))[TI01=1][TI01=0];
+
+TyTpChkDDirection::TI09=TI06+TyMzDirYInc[TI08];
+TI10=TI07+TyMzDirXInc[TI08];
+TI11=TyMzSizeSet-2;
+((TI11<0))[TyTpChkWallObstruct][TyTpDiag1];
+
+TyTpDiag1::((TI09==TyMzYset[TI11]))return;
+((TI10!=TyMzXset[TI11]))TyTpChkWallObstruct;
+
+TyTpPickNext::TI01=TyMzSizeNeighbors-1;
+TI01=random(0)(TI01);
+TI05=TyMzNeighbors[TI01];
+TI06=TI02*TyMzXsize;
+TI06+=TI03;
+TyMzVisited[TI06]+=TyMzDir2Bit[TI05];
+TI06=TyMzDirYInc[TI05]+TI02;
+TI07=TyMzDirXInc[TI05]+TI03;
+TyMzYset[TyMzSizeSet]=TI06;
+TyMzXset[TyMzSizeSet]=TI07;
+TyMzSizeSet+=1;
+TI08=TI06*TyMzXsize;
+TI08+=TI07;
+TyMzVisited[TI08]=TyMzDirB2Bit[TI05];
+
+TyTpDraw::TyMzSL03=0;
+TyTpDrawLoop;
+TyabBusy=0;
+
+TyTpDrawLoop::TyProbTile;
+TI02=TyMzYset[TyMzSL03]+TyMzSPY1;
+TI03=TyMzXset[TyMzSL03]+TyMzSPX1;
+TI01=TI02-TynY1;
+TI01*=TynXtiles;
+TI01+=TI03;
+TI01-=TynX1;
+TyMapTiles[TI01]=RI01;
+TyMzSL03+=1;
+((TyMzSL03<TyMzSizeSet))TyTpDrawLoop;
+
+#.#################### TyabObstructAdd #####################################
+TyabObstructAdd::L01=PY1;
+TyObAddRL;
+
+TyObAddRL::L02=PX1;
+TyObAddCL;
+L01+=1;
+((L01<=PY2))TyObAddRL;
+
+TyObAddCL::PIA03[PI05]=L01;
+PIA04[PI05]=L02;
+PI05+=1;
+L02+=1;
+((L02<=PX2))TyObAddCL;
+
+#.############################# TyabFlood ##################################
+
+intarray TyFlPY1
+intarray TyFlPX1
+intarray TyFlPX2
+intarray TyFlPY2
+intarray TyFlPI01
+intarray TyFlPI02
+intarray TyFlPI03
+intarray TyFlPI05
+intarray TyFlFIndex
+intarray TyFlLIndex
+
+int TyFlNRegions=0
+int TyFlRegNum=0
+
+intarray TyFlRow
+intarray TyFlCol
+intarray TyFlTime
+intarray TyFlNext
+intarray TyFlDir
+
+int TyFlLLSize=0
+int TyFlTNow=0
+intarray TyFlRndDir
+intarray TyFlDiag1
+intarray TyFlDiag2
+
+TyFlInit::TyFlRow[0]=0;
+TyFlCol[0]=0;
+TyFlTime[0]=0;
+TyFlNext[0]=0;
+TyFlDir[0]=0;
+TyFlLLSize=0;
+TyFlNRegions=0;
+TyFlRegNum=0;
+TyFlDiag1[0]=0;
+TyFlDiag2[0]=0;
+TyFlDiag1[1]=5;
+TyFlDiag2[1]=8;
+TyFlDiag1[2]=6;
+TyFlDiag2[2]=7;
+TyFlDiag1[3]=5;
+TyFlDiag2[3]=6;
+TyFlDiag1[4]=7;
+TyFlDiag2[4]=8;
+TyFlDiag1[5]=1;
+TyFlDiag2[5]=3;
+TyFlDiag1[6]=2;
+TyFlDiag2[6]=3;
+TyFlDiag1[7]=2;
+TyFlDiag2[7]=4;
+TyFlDiag1[8]=1;
+TyFlDiag2[8]=4;
+
+TyabFlood::;
+TyFlPY1[TyFlNRegions]=PY1;
+TyFlPX1[TyFlNRegions]=PX1;
+TyFlPY2[TyFlNRegions]=PY2;
+TyFlPX2[TyFlNRegions]=PX2;
+TyFlPI01[TyFlNRegions]=PI01;
+TyFlPI02[TyFlNRegions]=PI02;
+TyFlPI03[TyFlNRegions]=PI03;
+TyFlPI05[TyFlNRegions]=PI05;
+TF01=time;
+TF01*=100.0;
+TF01+=0.5;
+TyFlTNow=TF01;
+TyFlTNow+=PI04;
+TyFlLLSize+=1;
+TyFlRow[TyFlLLSize]=PY3;
+TyFlCol[TyFlLLSize]=PX3;
+TyFlTime[TyFlLLSize]=TyFlTNow;
+TyFlNext[TyFlLLSize]=0;
+TyFlDir[TyFlLLSize]=TyNeg1;
+TyFlFIndex[TyFlNRegions]=TyFlLLSize;
+TyFlLIndex[TyFlNRegions]=TyFlLLSize;
+TyFlRegNum=TyFlNRegions;
+TyFlNRegions+=1;
+((PI05>0))TyFlSetupRays;
+
+TyFlSetupRays::TI03=TyFlLLSize;
+TI05=PY3;
+TI06=PX3;
+TyFlRndDir14;
+TI07=TyFlRndDir[0];
+TyFlAddNInRange;
+TI07=TyFlRndDir[1];
+TyFlAddNInRange;
+TI07=TyFlRndDir[2];
+TyFlAddNInRange;
+TI07=TyFlRndDir[3];
+TyFlAddNInRange;
+TyFlRndDir58;
+TI07=TyFlRndDir[4];
+TyFlAddNInRange;
+TI07=TyFlRndDir[5];
+TyFlAddNInRange;
+TI07=TyFlRndDir[6];
+TyFlAddNInRange;
+TI07=TyFlRndDir[7];
+TyFlAddNInRange;
+
+TyFlRndDir14::TyFlRndDir[0]=1;
+TyFlRndDir[1]=2;
+TyFlRndDir[2]=3;
+TyFlRndDir[3]=4;
+TI10=random(0)(3);
+TI11=TyFlRndDir[0];
+TyFlRndDir[0]=TyFlRndDir[TI10];
+TyFlRndDir[TI10]=TI11;
+TI10=random(1)(3);
+TI11=TyFlRndDir[1];
+TyFlRndDir[1]=TyFlRndDir[TI10];
+TyFlRndDir[TI10]=TI11;
+TI10=random(2)(3);
+TI11=TyFlRndDir[2];
+TyFlRndDir[2]=TyFlRndDir[TI10];
+TyFlRndDir[TI10]=TI11;
+
+TyFlRndDir58::TyFlRndDir[4]=5;
+TyFlRndDir[5]=6;
+TyFlRndDir[6]=7;
+TyFlRndDir[7]=8;
+TI10=random(4)(7);
+TI11=TyFlRndDir[4];
+TyFlRndDir[4]=TyFlRndDir[TI10];
+TyFlRndDir[TI10]=TI11;
+TI10=random(5)(7);
+TI11=TyFlRndDir[5];
+TyFlRndDir[5]=TyFlRndDir[TI10];
+TyFlRndDir[TI10]=TI11;
+TI10=random(6)(7);
+TI11=TyFlRndDir[6];
+TyFlRndDir[6]=TyFlRndDir[TI10];
+TyFlRndDir[TI10]=TI11;
+
+TyabFloodStop::TyFlInit;
+
+TyFlRegionLInit::TF01=time;
+TF01*=100.0;
+TF01+=0.5;
+TyFlTNow=TF01;
+L01=0;
+L03=60;
+TyabTimerDraw=0;
+RI02=0;
+TyFlRegionLoop;
+((RI02==0))TyFlInit;
+
+TyFlRegionLoop::((TyFlRegNum>=TyFlNRegions))TyFlRegNum=0;
+TyFlBeginProcessRegion;
+TyFlRegNum+=1;
+TI01=TyabTimerDraw;
+L01+=1;
+((L01>=TyFlNRegions))TI01=1;
+((L03<=0))TI01=1;
+((TI01==0))TyFlRegionLoop;
+
+TyFlBeginProcessRegion::L02=TyFlPI03[TyFlRegNum];
+TyFlProcessRegion;
+
+TyFlProcessRegion::TI03=TyFlFIndex[TyFlRegNum];
+((TI03>0))TyFlProcessCell;
+
+TyFlProcessCell::RI02=1;
+((TyFlTNow>=TyFlTime[TI03]))TyFlCellTimeExpired;
+
+TyFlCellTimeExpired::TI05=TyFlRow[TI03];
+TI06=TyFlCol[TI03];
+TI02=TI05-TynY1;
+TI02*=TynXtiles;
+TI02+=TI06;
+TI02-=TynX1;
+iRI01=get(TI05)(TI06);
+TyMapTiles[TI02]=iRI01;
+TI01=TyWalkTile[iRI01];
+((TyFlDir[TI03]==TyNeg1))TI01=1;
+((TyFlPI05[TyFlRegNum]==2))TI01=1;
+((TI01==1))TyFlWalkable;
+TyFlRemoveCell;
+((TyFlPI05[TyFlRegNum]>0))TyFlCellAddDirs;
+L03-=1;
+((L02<=0))return;
+((L03>0))TyFlProcessRegion;
+
+TyFlWalkable::((TyFlPI05[TyFlRegNum]==2))[TyFlFillWalkable][TyFlNonFillWalkable];
+
+TyFlNonFillWalkable::TI01=0;
+((TyFlDir[TI03]==TyNeg1))TI01=1;
+TI07=1;
+((TI01==0))TyFlCheckDirFlood;
+TI07=2;
+((TI01==0))TyFlCheckDirFlood;
+TI07=3;
+((TI01==0))TyFlCheckDirFlood;
+TI07=4;
+((TI01==0))TyFlCheckDirFlood;
+((TI01==1))TyFlDrawTile;
+
+TyFlFillWalkable::iPI01=TyFlPI01[TyFlRegNum];
+((iPI01==iRI01))return;
+TyMapTiles[TI02]=iPI01;
+place:TI05,TI06,iPI01;
+L02-=1;
+TyabTimerDraw=1;
+
+TyFlCheckDirFlood::TI08=TyMzDirYInc[TI07]+TI05;
+TI09=TyMzDirXInc[TI07]+TI06;
+((TI08<TyFlPY1[TyFlRegNum]))return;
+((TI08>TyFlPY2[TyFlRegNum]))return;
+((TI09<TyFlPX1[TyFlRegNum]))return;
+((TI09>TyFlPX2[TyFlRegNum]))return;
+TI01=TI08-TynY1;
+TI01*=TynXtiles;
+TI01+=TI09;
+TI01-=TynX1;
+iRI01=get(TI08)(TI09);
+TyMapTiles[TI01]=iRI01;
+((iRI01==TyFlPI01[TyFlRegNum]))[TI01=1][TI01=0];
+
+TyFlDrawTile::iPY1=TI05;
+iPX1=TI06;
+iPI01=TyFlPI01[TyFlRegNum];
+iTyabDrawTile;
+L02-=1;
+TyabTimerDraw=1;
+TI01=TyFlPI05[TyFlRegNum];
+((TyFlDir[TI03]==0))TI01=0;
+((TI01==1))[TyFlChkWalkRays][TyFlChkWalkNoRays];
+
+TyFlChkWalkRays::((TyFlDir[TI03]>0))TyFldoChkWalkRays;
+
+TyFldoChkWalkRays::TyFlRndDir14;
+TI07=TyFlRndDir[0];
+TI01=1;
+((TyFlDir[TI03]==TI07))TI01=0;
+((TyFlDir[TI03]==TyFlDiag1[TI07]))TI01=0;
+((TyFlDir[TI03]==TyFlDiag2[TI07]))TI01=0;
+((TI01==1))TyFlAddWalkableNeighbor;
+TI07=TyFlRndDir[1];
+TI01=1;
+((TyFlDir[TI03]==TI07))TI01=0;
+((TyFlDir[TI03]==TyFlDiag1[TI07]))TI01=0;
+((TyFlDir[TI03]==TyFlDiag2[TI07]))TI01=0;
+((TI01==1))TyFlAddWalkableNeighbor;
+TI07=TyFlRndDir[2];
+TI01=1;
+((TyFlDir[TI03]==TI07))TI01=0;
+((TyFlDir[TI03]==TyFlDiag1[TI07]))TI01=0;
+((TyFlDir[TI03]==TyFlDiag2[TI07]))TI01=0;
+((TI01==1))TyFlAddWalkableNeighbor;
+TI07=TyFlRndDir[3];
+TI01=1;
+((TyFlDir[TI03]==TI07))TI01=0;
+((TyFlDir[TI03]==TyFlDiag1[TI07]))TI01=0;
+((TyFlDir[TI03]==TyFlDiag2[TI07]))TI01=0;
+((TI01==1))TyFlAddWalkableNeighbor;
+
+TyFlChkWalkNoRays::TyFlRndDir14;
+TI07=TyFlRndDir[0];
+TyFlAddWalkableNeighbor;
+TI07=TyFlRndDir[1];
+TyFlAddWalkableNeighbor;
+TI07=TyFlRndDir[2];
+TyFlAddWalkableNeighbor;
+TI07=TyFlRndDir[3];
+TyFlAddWalkableNeighbor;
+
+TyFlAddWalkableNeighbor::TI08=TyMzDirYInc[TI07]+TI05;
+TI09=TyMzDirXInc[TI07]+TI06;
+TI07=0;
+((TI08<TyFlPY1[TyFlRegNum]))return;
+((TI08>TyFlPY2[TyFlRegNum]))return;
+((TI09<TyFlPX1[TyFlRegNum]))return;
+((TI09>TyFlPX2[TyFlRegNum]))return;
+TI01=TI08-TynY1;
+TI01*=TynXtiles;
+TI01+=TI08;
+TI01-=TynX1;
+iRI01=get(TI08)(TI09);
+TyMapTiles[TI01]=iRI01;
+((TyWalkTile[iRI01]==1))TyFlAddNDir;
+
+TyFlAddNInRange::TI08=TyMzDirYInc[TI07]+TI05;
+TI09=TyMzDirXInc[TI07]+TI06;
+TI01=1;
+((TI08<TyFlPY1[TyFlRegNum]))return;
+((TI08>TyFlPY2[TyFlRegNum]))return;
+((TI09<TyFlPX1[TyFlRegNum]))return;
+((TI09<=TyFlPX2[TyFlRegNum]))TyFlAddNDir;
+
+TyFlAddNDir::TyFlLLSize+=1;
+TyFlRow[TyFlLLSize]=TI08;
+TyFlCol[TyFlLLSize]=TI09;
+TI01=TyFlPI02[TyFlRegNum];
+((TI07>4))TI01*=2;
+TyFlTime[TyFlLLSize]=TyFlTNow+TI01;
+TyFlNext[TyFlLLSize]=0;
+TyFlDir[TyFlLLSize]=TI07;
+((TyFlFIndex[TyFlRegNum]==0))TyFlFIndex[TyFlRegNum]=TyFlLLSize;
+TI01=TyFlLIndex[TyFlRegNum];
+TyFlLIndex[TyFlRegNum]=TyFlLLSize;
+((TI01>0))TyFlNext[TI01]=TyFlLLSize;
+
+TyFlRemoveCell::TI01=TyFlNext[TI03];
+TyFlFIndex[TyFlRegNum]=TI01;
+((TI01==0))TyFlLIndex[TyFlRegNum]=TI01;
+
+TyFlCellAddDirs::TI07=TyFlDir[TI03];
+((TI07>0))TyFlRayCellAddDirs;
+
+TyFlRayCellAddDirs::((TI07<=4))[TyFlAddNInRange][TyFlAdd58NInRange];
+
+TyFlAdd58NInRange::;
+TyFlRndDir[0]=TyFlDiag1[TI07];
+TyFlRndDir[1]=TyFlDiag2[TI07];
+TI10=random(0)(1);
+TI11=TyFlRndDir[0];
+TyFlRndDir[0]=TyFlRndDir[TI10];
+TyFlRndDir[TI10]=TI11;
+TI07=TyFlRndDir[0];
+TyFlAddNInRange;
+TI07=TyFlRndDir[1];
+TyFlAddNInRange;
+TI07=TyFlDir[TI03];
+TyFlAddNInRange;
+
+#.############################# TyabNotification ##################################
+intarray TyabNotification
+intarray TyabNotificationDone
+int      TyabNotificationSize=0
+
+TyabNotificationInit::TyabNotification[0]=2;
+TyabNotification[1]=3;
+TyabNotification[2]=4;
+TyabNotification[3]=5;
+TyabNotification[4]=6;
+TyabNotification[5]=7;
+TyabNotification[6]=9;
+TyabNotification[7]=11;
+TyabNotification[8]=16;
+TyabNotification[9]=21;
+TyabNotification[10]=26;
+TyabNotification[11]=31;
+TyabNotification[12]=41;
+TyabNotification[13]=51;
+TyabNotification[14]=61;
+TyabNotification[15]=81;
+TyabNotification[16]=101;
+TyabNotification[17]=126;
+TyabNotification[18]=151;
+TyabNotification[19]=176;
+TyabNotification[20]=201;
+TyabNotification[21]=251;
+TyabNotification[22]=301;
+TyabNotification[23]=351;
+TyabNotification[24]=401;
+TyabNotification[25]=501;
+TyabNotification[26]=601;
+TyabNotification[27]=701;
+TyabNotification[28]=801;
+TyabNotification[29]=901;
+TyabNotification[30]=1001;
+TyabNotificationSize=31;
+TyabNotificationReset;
+
+TyabNotificationReset::TyabNotificationDone[0]=0;
+TyabNotificationDone[1]=0;
+TyabNotificationDone[2]=0;
+TyabNotificationDone[3]=0;
+TyabNotificationDone[4]=0;
+TyabNotificationDone[5]=0;
+TyabNotificationDone[6]=0;
+TyabNotificationDone[7]=0;
+TyabNotificationDone[8]=0;
+TyabNotificationDone[9]=0;
+TyabNotificationDone[10]=0;
+TyabNotificationDone[11]=0;
+TyabNotificationDone[12]=0;
+TyabNotificationDone[13]=0;
+TyabNotificationDone[14]=0;
+TyabNotificationDone[15]=0;
+TyabNotificationDone[16]=0;
+TyabNotificationDone[17]=0;
+TyabNotificationDone[18]=0;
+TyabNotificationDone[19]=0;
+TyabNotificationDone[20]=0;
+TyabNotificationDone[21]=0;
+TyabNotificationDone[22]=0;
+TyabNotificationDone[23]=0;
+TyabNotificationDone[24]=0;
+TyabNotificationDone[25]=0;
+TyabNotificationDone[26]=0;
+TyabNotificationDone[27]=0;
+TyabNotificationDone[28]=0;
+TyabNotificationDone[29]=0;
+TyabNotificationDone[30]=0;
+
+TyabNotificationCheckAndSet::L01=0;
+RI01=0;
+((TyabNotificationSize>0))TyNChkL;
+
+TyNChkL::((PI01==TyabNotification[L01]))[TyNGetAndSet][TyNChkL1];
+
+TyNChkL1::((PI01>TyabNotification[L01]))[TyNChkNext][TyNChkPast];
+
+TyNChkNext::L01+=1;
+((L01<TyabNotificationSize))[TyNChkL][TyNChkPast];
+
+TyNChkPast::L01-=1;
+((L01<0))return;
+RI01=TyabNotificationDone[L01];
+TyabNotificationDone[L01]=1;
+
+TyNGetAndSet::RI01=TyabNotificationDone[L01];
+TyabNotificationDone[L01]=1;
+
+intarray TyCmdQueue
+int      TyCmdWIndex=0
+int      TyCmdRIndex=0
+
+TyCmdEmpty::TyCmdWIndex=0;
+TyCmdRIndex=0;
+RI01=0;
+
+TyabPath::TI01=2;
+TyPathorTightSerialize;
+
+TyabTightPath::TI01=3;
+TyPathorTightSerialize;
+
+TyPathorTightSerialize::TI02=TyCmdWIndex;
+TyCmdQueue[TyCmdWIndex]=TI01;
+TyCmdWIndex+=1;
+TyCmdQueue[TyCmdWIndex]=0;
+TyCmdWIndex+=1;
+TyCmdQueue[TyCmdWIndex]=PY1;
+TyCmdWIndex+=1;
+TyCmdQueue[TyCmdWIndex]=PX1;
+TyCmdWIndex+=1;
+TyCmdQueue[TyCmdWIndex]=PY2;
+TyCmdWIndex+=1;
+TyCmdQueue[TyCmdWIndex]=PX2;
+TyCmdWIndex+=1;
+TyCmdQueue[TyCmdWIndex]=PY3;
+TyCmdWIndex+=1;
+TyCmdQueue[TyCmdWIndex]=PX3;
+TyCmdWIndex+=1;
+TyCmdQueue[TyCmdWIndex]=PY4;
+TyCmdWIndex+=1;
+TyCmdQueue[TyCmdWIndex]=PX4;
+TyCmdWIndex+=1;
+TyCmdQueue[TyCmdWIndex]=PI01;
+TyCmdWIndex+=1;
+TyCmdQueue[TyCmdWIndex]=PI02;
+TyCmdWIndex+=1;
+TyCmdSerializeProbData;
+TyCmdSerializeObstruct;
+TyCmdSetSize;
+
+TyabMaze::TI02=TyCmdWIndex;
+TyCmdQueue[TyCmdWIndex]=1;
+TyCmdWIndex+=1;
+TyCmdQueue[TyCmdWIndex]=0;
+TyCmdWIndex+=1;
+TyCmdQueue[TyCmdWIndex]=PY1;
+TyCmdWIndex+=1;
+TyCmdQueue[TyCmdWIndex]=PX1;
+TyCmdWIndex+=1;
+TyCmdQueue[TyCmdWIndex]=PY2;
+TyCmdWIndex+=1;
+TyCmdQueue[TyCmdWIndex]=PX2;
+TyCmdWIndex+=1;
+TyCmdQueue[TyCmdWIndex]=PI01;
+TyCmdWIndex+=1;
+TyCmdQueue[TyCmdWIndex]=PI02;
+TyCmdWIndex+=1;
+TyCmdQueue[TyCmdWIndex]=PI03;
+TyCmdWIndex+=1;
+TyCmdSerializeProbData;
+TyCmdSetSize;
+
+TyabQueueDrawRect::TI02=TyCmdWIndex;
+TyCmdQueue[TyCmdWIndex]=4;
+TyCmdWIndex+=1;
+TyCmdQueue[TyCmdWIndex]=0;
+TyCmdWIndex+=1;
+TyCmdQueue[TyCmdWIndex]=PY1;
+TyCmdWIndex+=1;
+TyCmdQueue[TyCmdWIndex]=PX1;
+TyCmdWIndex+=1;
+TyCmdQueue[TyCmdWIndex]=PY2;
+TyCmdWIndex+=1;
+TyCmdQueue[TyCmdWIndex]=PX2;
+TyCmdWIndex+=1;
+TyCmdQueue[TyCmdWIndex]=PI01;
+TyCmdWIndex+=1;
+TyCmdSetSize;
+
+TyCmdSerializeProbData::TyCmdQueue[TyCmdWIndex]=PI04;
+TyCmdWIndex+=1;
+L01=0;
+((PI04>0))TyCmdSerProbDataL;
+
+TyCmdSerProbDataL::TyCmdQueue[TyCmdWIndex]=PIA01[L01];
+TyCmdWIndex+=1;
+TyCmdQueue[TyCmdWIndex]=PIA02[L01];
+TyCmdWIndex+=1;
+L01+=1;
+((L01<PI04))TyCmdSerProbDataL;
+
+TyCmdSerializeObstruct::TyCmdQueue[TyCmdWIndex]=PI05;
+TyCmdWIndex+=1;
+L01=0;
+((PI05>0))TyCmdSerObstL;
+
+TyCmdSerObstL::TyCmdQueue[TyCmdWIndex]=PIA03[L01];
+TyCmdWIndex+=1;
+TyCmdQueue[TyCmdWIndex]=PIA04[L01];
+TyCmdWIndex+=1;
+L01+=1;
+((L01<PI05))TyCmdSerObstL;
+
+TyCmdSetSize::TI01=TyCmdWIndex-TI02;
+TI02+=1;
+TyCmdQueue[TI02]=TI01;
+TyCmdQueue[TyCmdWIndex]=0;
+
+TyCmdNextCommand::RI01=0;
+((TyCmdRIndex<TyCmdWIndex))[TyCmdDoNextComamnd][TyCmdEmpty];
+
+TyCmdDoNextComamnd::RI01=1;
+((TyCmdQueue[TyCmdRIndex]==1))[TyCmdRMaze][TyCmdRNot1];
+
+TyCmdRNot1::((TyCmdQueue[TyCmdRIndex]==2))[TyCmdRPath][TyCmdRNot2];
+
+TyCmdRNot2::((TyCmdQueue[TyCmdRIndex]==3))[TyCmdRTPath][TyCmdRNot3];
+
+TyCmdRNot3::((TyCmdQueue[TyCmdRIndex]==4))[TyCmdRQueueDrawRect][TyCmdRNot4];
+
+TyCmdRNot4::TyCmdEmpty;
+
+TyCmdRMaze::TyCmdRIndex+=2;
+PY1=TyCmdQueue[TyCmdRIndex];
+TyCmdRIndex+=1;
+PX1=TyCmdQueue[TyCmdRIndex];
+TyCmdRIndex+=1;
+PY2=TyCmdQueue[TyCmdRIndex];
+TyCmdRIndex+=1;
+PX2=TyCmdQueue[TyCmdRIndex];
+TyCmdRIndex+=1;
+PI01=TyCmdQueue[TyCmdRIndex];
+TyCmdRIndex+=1;
+PI02=TyCmdQueue[TyCmdRIndex];
+TyCmdRIndex+=1;
+PI03=TyCmdQueue[TyCmdRIndex];
+TyCmdRIndex+=1;
+TyCmdDeSerializeProbData;
+TyIMaze;
+
+TyCmdRPath::TyCmdPathorTightDeSerialize;
+TyIPath;
+
+TyCmdRTPath::TyCmdPathorTightDeSerialize;
+TyITightPath;
+
+TyCmdPathorTightDeSerialize::TyCmdRIndex+=2;
+PY1=TyCmdQueue[TyCmdRIndex];
+TyCmdRIndex+=1;
+PX1=TyCmdQueue[TyCmdRIndex];
+TyCmdRIndex+=1;
+PX2=TyCmdQueue[TyCmdRIndex];
+TyCmdRIndex+=1;
+PX2=TyCmdQueue[TyCmdRIndex];
+TyCmdRIndex+=1;
+PY3=TyCmdQueue[TyCmdRIndex];
+TyCmdRIndex+=1;
+PX3=TyCmdQueue[TyCmdRIndex];
+TyCmdRIndex+=1;
+PY4=TyCmdQueue[TyCmdRIndex];
+TyCmdRIndex+=1;
+PX4=TyCmdQueue[TyCmdRIndex];
+TyCmdRIndex+=1;
+PI01=TyCmdQueue[TyCmdRIndex];
+TyCmdRIndex+=1;
+PI02=TyCmdQueue[TyCmdRIndex];
+TyCmdRIndex+=1;
+TyCmdDeSerializeProbData;
+TyCmdDeSerializeObstruct;
+
+TyCmdRQueueDrawRect::TyCmdRIndex+=1;
+TyCmdRIndex+=1;
+PY1=TyCmdQueue[TyCmdRIndex];
+TyCmdRIndex+=1;
+PX1=TyCmdQueue[TyCmdRIndex];
+TyCmdRIndex+=1;
+PY2=TyCmdQueue[TyCmdRIndex];
+TyCmdRIndex+=1;
+PX2=TyCmdQueue[TyCmdRIndex];
+TyCmdRIndex+=1;
+PI01=TyCmdQueue[TyCmdRIndex];
+TyCmdRIndex+=1;
+TyabDrawRect;
+
+TyCmdDeSerializeProbData::PI04=TyCmdQueue[TyCmdRIndex];
+TyCmdRIndex+=1;
+L01=0;
+((PI04>0))TyCmdDeSerProbDataL;
+
+TyCmdDeSerProbDataL::PIA01[L01]=TyCmdQueue[TyCmdRIndex];
+TyCmdRIndex+=1;
+PIA02[L01]=TyCmdQueue[TyCmdRIndex];
+TyCmdRIndex+=1;
+L01+=1;
+((L01<PI04))TyCmdDeSerProbDataL;
+
+TyCmdDeSerializeObstruct::PI05=TyCmdQueue[TyCmdRIndex];
+TyCmdRIndex+=1;
+L01=0;
+((PI05>0))TyCmdDeSerObstL;
+
+TyCmdDeSerObstL::PIA03[L01]=TyCmdQueue[TyCmdRIndex];
+TyCmdRIndex+=1;
+PIA04[L01]=TyCmdQueue[TyCmdRIndex];
+TyCmdRIndex+=1;
+L01+=1;
+((L01<PI05))TyCmdDeSerObstL;
+
+#. End --- TyabGenericScript.scr
+
+MyTimer::return;
+
+#.end --- testscript
+}

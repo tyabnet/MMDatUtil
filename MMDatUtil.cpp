@@ -1,5 +1,11 @@
 // Copyright (c) 2022 by Tyab. All rights reserved
 //
+#define NOMINMAX
+
+#define _WIN32_WINNT 0x0A00  // requried for long path support
+
+#include "resource.h"
+
 #include <stdio.h>
 #include <cstdint>
 #include <string>
@@ -303,16 +309,22 @@ class CommandLineParser
 
                 case 26:  // mergerect
                 {   // subregion. startrow,startcol,endrow,endcol. Each will be in its own token
-                    m_cmdOptions.m_srow = getIntParm(++i, false, tok.getName());
+                    int xlo = std::numeric_limits<int>::max();
+                    int ylo = std::numeric_limits<int>::max();
+                    int xhi = std::numeric_limits<int>::lowest();
+                    int yhi = std::numeric_limits<int>::lowest();
+
+                    ylo = getIntParm(++i, false, tok.getName());
                     if (m_error.empty())
-                        m_cmdOptions.m_scol = getIntParm(++i, false, tok.getName());
+                        xlo = getIntParm(++i, false, tok.getName());
                     if (m_error.empty())
-                        m_cmdOptions.m_erow = getIntParm(++i, false, tok.getName());
+                        yhi = getIntParm(++i, false, tok.getName());
                     if (m_error.empty())
-                        m_cmdOptions.m_ecol = getIntParm(++i, false, tok.getName());
+                        xhi = getIntParm(++i, false, tok.getName());
                     if (m_error.empty())
                     {
-                        if ((m_cmdOptions.m_srow <= m_cmdOptions.m_erow) && (m_cmdOptions.m_scol <= m_cmdOptions.m_ecol))
+                        m_cmdOptions.m_mergeRegion = MMUtil::Region(xlo, ylo, xhi, yhi);
+                        if (!m_cmdOptions.m_mergeRegion.empty())
                             m_cmdOptions.m_bMergeRect = true;
                         else
                         {
@@ -447,6 +459,43 @@ class CommandLineParser
 
                 case 46:   // -ansi. Output format is windows code page
                     m_cmdOptions.m_bSrcANSI7 = true;
+                    break;
+
+                case 47:   // -flattenrect  define region for flattten
+                {   // subregion. startrow,startcol,endrow,endcol. Each will be in its own token
+                    int xlo = std::numeric_limits<int>::max();
+                    int ylo = std::numeric_limits<int>::max();
+                    int xhi = std::numeric_limits<int>::lowest();
+                    int yhi = std::numeric_limits<int>::lowest();
+
+                    ylo = getIntParm(++i, false, tok.getName());
+                    if (m_error.empty())
+                        xlo = getIntParm(++i, false, tok.getName());
+                    if (m_error.empty())
+                        yhi = getIntParm(++i, false, tok.getName());
+                    if (m_error.empty())
+                        xhi = getIntParm(++i, false, tok.getName());
+                    if (m_error.empty())
+                    {
+                        m_cmdOptions.m_flattenRegion = MMUtil::Region(xlo, ylo, xhi, yhi);
+                        if (!m_cmdOptions.m_flattenRegion.empty())
+                            m_cmdOptions.m_bFlattenRect = true;
+                        else
+                        {
+                            m_bValid = false;
+                            m_error = L"invalid -flattenrect values";
+                        }
+                    }
+                    break;
+                }
+
+                case 48:   // -failure  filename parameter
+                    m_cmdOptions.m_failure = FilenameParameter(getStringParm(++i));
+                    if (m_cmdOptions.m_failure.empty())
+                    {
+                        m_bValid = false;
+                        m_error = L" -failure invalid filename";
+                    }
                     break;
 
 
@@ -610,10 +659,9 @@ class CommandLineParser
         { L"-nobom",          43 },     // do not output UTF BOM
         { L"-srcutf8",        44 },     // 8 bit source no BOM is considered UTF8
         { L"-ansi",           45 },     // output format is 8 bit windows code page
-        { L"-srcansi7",       46 }      // warn if any input is non-ANSI 7 bit
-
-
-
+        { L"-srcansi7",       46 },     // warn if any input is non-ANSI 7 bit
+        { L"-flattenrect",    47 },     // flatten region startrow,startcol,endrow,endcol
+        { L"-failure",        48 }      // filename contents will replace briefing failure section
     };
 
     std::wstring_view getStringParm(std::size_t i)
@@ -725,9 +773,11 @@ void help()
     wprintf(L"      -defcrystal     value for invalid crystals or resize, default 0\n");
     wprintf(L"      -defheight      value for invalid heights or resize, default 0\n");
     wprintf(L"      -defore         value for invalid ore or resize, default 0\n");
+    wprintf(L"      -failure        filename contents will replace briefingfailure text\n");
     wprintf(L"      -flattenabove   height,newheight. Heights > height set to newheight\n");
     wprintf(L"      -flattenbelow   height,newheight. Heights < height set to newheight\n");
     wprintf(L"      -flattenbetween low,high,value. low <= Heights <= high set to value\n");
+    wprintf(L"      -flattenrect    startrow,startcol,endrow,endcol region for flatten\n");
     wprintf(L"      -fix            fix invalid/missing tile, height, crystal, ore values\n");
     wprintf(L"      -help           display this help\n");
     wprintf(L"      -mapname        levelname: value saved in outmap info section\n");
@@ -762,7 +812,7 @@ void help()
     wprintf(L"      -utf32BE        output .dat is UTF32EE format\n");
     wprintf(L"      -utf32LE        output .dat is UTF32LE format\n");
     wprintf(L"\n");
-    wprintf(L" see TyabMMDatUtil.pdf for more details and examples\n");
+    wprintf(L" https://tyabnet.github.io/MMDatUtil/#/ for complete documentation\n");
 }
 
 
@@ -819,6 +869,7 @@ bool BackupFile(std::filesystem::path const& filename)
             wprintf(L"Error: %d creating backup file\n", GetLastError() );
             wprintf(L"   Trying to backup: %s\n", filename.wstring().c_str());
             wprintf(L"   To unique backup: %s\n", backup.wstring().c_str());
+            wprintf(L"   Win error: %s\n", Unicode::utf8_to_wstring(MMUtil::GetLastErrorAsString()).c_str());
             wprintf(L"Aborted. Output file not modified\n");
             return false;
         }
@@ -940,7 +991,7 @@ int wmain(int , wchar_t ** )   // ignore all passed in parameters
         }
     }
 
-    // using eraseoutmap with merge options makes no sense
+    // using copysrc with merge options makes no sense
     if (cmdParser.getOptions().m_bCopySrc)
     {
         if (cmdParser.getOptions().m_bMergeCrystal ||
@@ -988,20 +1039,15 @@ int wmain(int , wchar_t ** )   // ignore all passed in parameters
 
         wprintf(L"  Rows: %d  Columns: %d  Total lines: %d\n", srcMap.getHeight(), srcMap.getWidth(), srcMap.getNumLinesRead());
 
+        // setup merge rectangle, either the one on the command line or use the entire source map
         if (cmdParser.getOptions().m_bMergeRect)
         {
-            if (cmdParser.getOptions().m_erow >= srcMap.getHeight() || cmdParser.getOptions().m_ecol >= srcMap.getWidth())
-            {
-                wprintf(L" Error: -mergerect values are outside srcmap");
-                return 1;
-            }
+            // clamp to valid region
+            cmdParser.getOptions().m_mergeRegion.intersect( MMUtil::Region(0, 0, srcMap.getWidth()-1, srcMap.getHeight() - 1));
         }
         else
         {      // if not using subregion, set region to entire source
-            cmdParser.getOptions().m_srow = 0;
-            cmdParser.getOptions().m_scol = 0;
-            cmdParser.getOptions().m_erow = srcMap.getHeight() - 1;
-            cmdParser.getOptions().m_ecol = srcMap.getWidth() - 1;
+            cmdParser.getOptions().m_mergeRegion = MMUtil::Region(0, 0, srcMap.getWidth()-1, srcMap.getHeight() - 1);
         }
         srcMap.getErrors().printWarnings();     // display any warnings
     }
@@ -1068,7 +1114,7 @@ int wmain(int , wchar_t ** )   // ignore all passed in parameters
         }
 
         // tempOutMap is a temp file and can be used.
-        // two cases. If using -eraseoutmap then copy the srcmap.
+        // two cases. If using -copysrc then copy the srcmap.
         // otherwise, if we have an existing outmap then copy it.
         if (cmdParser.getOptions().m_bCopySrc)
         {
@@ -1132,6 +1178,7 @@ int wmain(int , wchar_t ** )   // ignore all passed in parameters
         outMap.clearErrorsWarnings();
         outMap.briefing(cmdParser.getOptions().m_briefing, cmdParser.getOptions().m_bReadANSI, cmdParser.getOptions().m_bSrcANSI7 );
         outMap.success ( cmdParser.getOptions().m_success, cmdParser.getOptions().m_bReadANSI, cmdParser.getOptions().m_bSrcANSI7 );
+        outMap.failure (cmdParser.getOptions().m_failure, cmdParser.getOptions().m_bReadANSI, cmdParser.getOptions().m_bSrcANSI7);
         outMap.getErrors().printErrors();
         outMap.getErrors().printWarnings();
         outMap.getErrors().printConsols();
@@ -1146,10 +1193,10 @@ int wmain(int , wchar_t ** )   // ignore all passed in parameters
         // see if using subregion
         if (cmdParser.getOptions().m_bMergeRect)
         {
-            wprintf(L"  Using srcmap subregion: [%d,%d] to [%d,%d]\n", cmdParser.getOptions().m_srow, cmdParser.getOptions().m_scol, cmdParser.getOptions().m_erow, cmdParser.getOptions().m_ecol);
+            wprintf(L"  Merging with srcmap subregion: [%d,%d] to [%d,%d]\n", cmdParser.getOptions().m_mergeRegion.ylo(), cmdParser.getOptions().m_mergeRegion.xlo(), cmdParser.getOptions().m_mergeRegion.yhi(), cmdParser.getOptions().m_mergeRegion.xhi());
         }
 
-        outMap.merging(srcMap, cmdParser.getOptions().m_srow, cmdParser.getOptions().m_scol, cmdParser.getOptions().m_erow, cmdParser.getOptions().m_ecol, cmdParser.getOptions().m_nOffsetRow, cmdParser.getOptions().m_nOffsetCol,
+        outMap.merging(srcMap, cmdParser.getOptions().m_mergeRegion, cmdParser.getOptions().m_nOffsetRow, cmdParser.getOptions().m_nOffsetCol,
                        cmdParser.getOptions().m_bMergeTiles, cmdParser.getOptions().m_bMergeHeight, cmdParser.getOptions().m_bMergeCrystal, cmdParser.getOptions().m_bMergeOre );
 
         // display merging performed
@@ -1170,20 +1217,29 @@ int wmain(int , wchar_t ** )   // ignore all passed in parameters
             wprintf(L"  Merging srcmap ore into outmap using offsets row: %d, columns: %d\n", cmdParser.getOptions().m_nOffsetRow, cmdParser.getOptions().m_nOffsetCol);
         }
 
+        // flatten is done after any merging, resizing, copying
+        if (cmdParser.getOptions().m_flattenRegion.empty())  // if we don't have a region, use entire map
+            cmdParser.getOptions().m_flattenRegion = MMUtil::Region(0, 0, outMap.getWidth() - 1,outMap.getHeight() - 1 ); // entire map
+        else
+        {
+            cmdParser.getOptions().m_flattenRegion.intersect(MMUtil::Region(0, 0, outMap.getWidth() - 1, outMap.getHeight() - 1)); // clamp to entire map
+            wprintf(L"  Using flatten region: [%d,%d] to [%d,%d]\n", cmdParser.getOptions().m_flattenRegion.ylo(), cmdParser.getOptions().m_flattenRegion.xlo(), cmdParser.getOptions().m_flattenRegion.yhi(), cmdParser.getOptions().m_flattenRegion.xhi());
+        }
+
         // process any height changes
         if (cmdParser.getOptions().m_bFlattenHigh)
         {
-            outMap.flattenHeightHigh(cmdParser.getOptions().m_flathighval, cmdParser.getOptions().m_flathighnewheight);
+            outMap.flattenHeightHigh(cmdParser.getOptions().m_flattenRegion, cmdParser.getOptions().m_flathighval, cmdParser.getOptions().m_flathighnewheight);
             wprintf(L"  Heights over %d set to %d\n", cmdParser.getOptions().m_flathighval, cmdParser.getOptions().m_flathighnewheight);
         }
         if (cmdParser.getOptions().m_bFlattenLow)
         {
-            outMap.flattenHeightLow(cmdParser.getOptions().m_flatlowval, cmdParser.getOptions().m_flatlownewheight);
+            outMap.flattenHeightLow(cmdParser.getOptions().m_flattenRegion, cmdParser.getOptions().m_flatlowval, cmdParser.getOptions().m_flatlownewheight);
             wprintf(L"  Heights below %d set to %d\n", cmdParser.getOptions().m_flatlowval, cmdParser.getOptions().m_flatlownewheight);
         }
         if (cmdParser.getOptions().m_bFlattenBetween)
         {
-            outMap.flattenHeightBetween(cmdParser.getOptions().m_flatBetweenLow, cmdParser.getOptions().m_flatBetweenHigh, cmdParser.getOptions().m_flatBetweenVal);
+            outMap.flattenHeightBetween(cmdParser.getOptions().m_flattenRegion, cmdParser.getOptions().m_flatBetweenLow, cmdParser.getOptions().m_flatBetweenHigh, cmdParser.getOptions().m_flatBetweenVal);
             wprintf(L"  Heights: [%d,%d] set to %d\n", cmdParser.getOptions().m_flatBetweenLow, cmdParser.getOptions().m_flatBetweenHigh, cmdParser.getOptions().m_flatBetweenVal);
         }
 
@@ -1289,6 +1345,7 @@ int wmain(int , wchar_t ** )   // ignore all passed in parameters
         if (retVal == 0)
         {
             wprintf(L" ERROR %d: unable to copy \"%s\" to \"%s\"", GetLastError(), tempOut.get().wstring().c_str(), cmdParser.getOptions().m_outmap.wstring().c_str());
+            wprintf(L" Win Error: %s\n",Unicode::utf8_to_wstring(MMUtil::GetLastErrorAsString()).c_str());
             return 1;
         }
         wprintf(L"  \"%s\" written. All done.\n", cmdParser.getOptions().m_outmap.c_str());

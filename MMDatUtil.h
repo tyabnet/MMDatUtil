@@ -305,6 +305,75 @@ namespace MMUtil
         return 0;
     }
 
+    // manage a rectangular region, used for copy, merge and flatten operations
+    class Region
+    {
+      public:
+        Region() { clear(); }
+        Region( int xlo, int ylo, int xhi, int yhi) : m_xlo(xlo), m_ylo(ylo), m_xhi(xhi), m_yhi(yhi) { checkfixEmpty(); }
+
+        int xlo() const { return m_xlo; }
+        int ylo() const { return m_ylo; }
+        int xhi() const { return m_xhi; }
+        int yhi() const { return m_yhi; }
+
+        void clear()  // empty is max inverted values
+        {
+            m_xlo = m_ylo = std::numeric_limits<int>::max();
+            m_xhi = m_yhi = std::numeric_limits<int>::lowest();
+        } 
+        bool empty() const { return (m_xhi < m_xlo); } // we only check one since we keep it valid all the time.
+        void unionWith(const Region& other)
+        {
+            m_xlo = std::min(m_xlo, other.m_xlo);
+            m_ylo = std::min(m_ylo, other.m_ylo);
+            m_xhi = std::max(m_xhi, other.m_xhi);
+            m_yhi = std::max(m_yhi, other.m_yhi);
+        }
+
+        void intersect(const Region& other)
+        {
+            m_xlo = std::max(m_xlo, other.m_xlo);
+            m_ylo = std::max(m_ylo, other.m_ylo);
+            m_xhi = std::min(m_xhi, other.m_xhi);
+            m_yhi = std::min(m_yhi, other.m_yhi);
+            checkfixEmpty();
+        }
+
+      protected:
+        void checkfixEmpty()
+        {
+            if ((m_xhi < m_xlo) || (m_yhi < m_ylo))
+                clear();
+        }
+          
+        int m_xlo;
+        int m_ylo;
+        int m_xhi;
+        int m_yhi;
+    };
+
+    std::string GetLastErrorAsString()
+    {
+        std::wstring wstring;
+        DWORD errorCode = GetLastError();
+        if (errorCode != 0)
+        {
+            LPWSTR messageBuffer = nullptr;
+
+            size_t size = FormatMessageW(
+                FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+                NULL, errorCode, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+                (LPWSTR)&messageBuffer, 0, NULL);
+
+            wstring = std::wstring(messageBuffer, size);
+
+            LocalFree(messageBuffer);
+        }
+        return Unicode::wstring_to_utf8( wstring );
+    }
+
+
 };  // namespace MMUtil
 
 
@@ -358,10 +427,9 @@ public:
     int          m_nDefCrystal = 0;
     int          m_nDefOre     = 0;
 
-    int          m_srow = 0;    // rect start row
-    int          m_scol = 0;    // rect start col
-    int          m_erow = 0;    // rect end row
-    int          m_ecol = 0;    // rect end col
+    MMUtil::Region m_mergeRegion; // merge region
+    MMUtil::Region m_flattenRegion; // flatten region
+
     int          m_flathighval       = 0;  // flatten high height to check
     int          m_flathighnewheight = 0;  // flatten high new height
     int          m_flatlowval        = 0;  // flatten low height to check
@@ -382,6 +450,7 @@ public:
     bool         m_bScrFixSpace   = false;  // automatic fix spaces where not allowed
     bool         m_bScrNoComments = false;  // remove all non #. comments
     bool         m_bMergeRect     = false;  // if true merge src is a subregion
+    bool         m_bFlattenRect   = false;  // if true merge src is a subregion
     bool         m_bFlattenHigh   = false;
     bool         m_bFlattenLow    = false;
     bool         m_bFlattenBetween= false;
@@ -399,8 +468,9 @@ public:
     bool         m_backup         = false;
     bool         m_bANSI          = false;  // if set output format is windows code page.
     bool         m_bSrcANSI7      = false;  // if set warn if any input file has 8 bit characters
-    std::filesystem::path m_briefing;  // contents of this file will be used for briefing message
-    std::filesystem::path m_success;   // contents of this file will be used for briefing success message
+    std::filesystem::path m_briefing;  // contents of this file will be used for briefing message          (empty not used)
+    std::filesystem::path m_success;   // contents of this file will be used for briefing success message  (empty not used)
+    std::filesystem::path m_failure;   // contents of this file will be used for briefing failure message  (empty not used)
 }; // class CommandLineOptions
 
 
@@ -676,7 +746,9 @@ class FileIO
         errno_t err = _wfopen_s( &fp, m_filename.wstring().c_str(), L"rb");
         if (err || fp == nullptr)
         {
-            errors.setError(std::make_shared<InputLine>(),"Unable to open: " + filename);
+            std::string winError = MMUtil::GetLastErrorAsString();
+            errors.setError(std::make_shared<InputLine>(),"Unable to open: " + filename + " Win Error: " + winError);
+
             return ilines;
         }
         determineEncoding(fp);         // check for BOM's determine type of encoding used by file.
@@ -726,7 +798,8 @@ class FileIO
         errno_t err = _wfopen_s( &fp, m_filename.wstring().c_str(), L"wb");
         if (err || fp == nullptr)
         {
-            errors.setError(std::make_shared<InputLine>(),"Unable to create: " + filename);
+            std::string winError = MMUtil::GetLastErrorAsString();
+            errors.setError(std::make_shared<InputLine>(),"Unable to create: " + filename + " Win error: " + winError);
             return false;
         }
 
@@ -762,7 +835,8 @@ class FileIO
             if (fwrite(bom, bomsize, 1, fp) != 1)
             {
                 retval = false;     // stop processing
-                errors.setError(std::make_shared<InputLine>(), "Error writing: " + filename);
+                std::string winError = MMUtil::GetLastErrorAsString();
+                errors.setError(std::make_shared<InputLine>(), "Error writing: " + filename + " Win error: " + winError);
             }
         }
         if (retval)
@@ -793,7 +867,8 @@ class FileIO
                 }
                 if (!retval)
                 {
-                    errors.setError(std::make_shared<InputLine>(), "Error writing: " + filename);
+                    std::string winError = MMUtil::GetLastErrorAsString();
+                    errors.setError(std::make_shared<InputLine>(), "Error writing: " + filename + " Win error: " + winError);
                     break;
                 }
             }
@@ -1312,11 +1387,11 @@ public:
     virtual void                 AddorModifyItem([[maybe_unused]] const std::string& key, [[maybe_unused]] const std::string& value) {}
     virtual void                 resize([[maybe_unused]] int height, [[maybe_unused]] int width, [[maybe_unused]] int defvalue1, [[maybe_unused]] int defvalue2) {}
     virtual void                 setBorders([[maybe_unused]] int defValue) {}
-    virtual void                 flattenHigh([[maybe_unused]] int testVal, [[maybe_unused]] int newValue) {}  // change all values above this to given value
-    virtual void                 flattenLow([[maybe_unused]] int testVal, [[maybe_unused]] int newValue) {}  // change all values above this to given value
-    virtual void                 flattenBetween([[maybe_unused]] int testLow, [[maybe_unused]] int testHigh, [[maybe_unused]] int newValue) {}  // change all values testLow <= value <=testHigh to newValue
+    virtual void                 flattenHigh([[maybe_unused]] MMUtil::Region const &, [[maybe_unused]] int testVal, [[maybe_unused]] int newValue) {}  // change all values above this to given value
+    virtual void                 flattenLow([[maybe_unused]] MMUtil::Region const &, [[maybe_unused]] int testVal, [[maybe_unused]] int newValue) {}  // change all values above this to given value
+    virtual void                 flattenBetween([[maybe_unused]] MMUtil::Region const &, [[maybe_unused]] int testLow, [[maybe_unused]] int testHigh, [[maybe_unused]] int newValue) {}  // change all values testLow <= value <=testHigh to newValue
     virtual bool                 verifyBounds([[maybe_unused]] int rows, [[maybe_unused]] int cols, [[maybe_unused]] bool bFix, [[maybe_unused]] const InputLinePtr& iline, [[maybe_unused]] ErrorWarning& errorWarning, [[maybe_unused]] const std::string& errwarnpre) { return true; }
-    virtual void                 merge([[maybe_unused]] const MapSection* src, [[maybe_unused]] int srow, [[maybe_unused]] int scol, [[maybe_unused]] int erow, [[maybe_unused]] int ecol, [[maybe_unused]] int rowOffset, [[maybe_unused]] int colOffset, [[maybe_unused]] bool bAllow1, [[maybe_unused]] bool bAllow2 ) {}  // merge in values from src that are in range
+    virtual void                 merge([[maybe_unused]] const MapSection* src, [[maybe_unused]] MMUtil::Region const &region, [[maybe_unused]] int rowOffset, [[maybe_unused]] int colOffset, [[maybe_unused]] bool bAllow1, [[maybe_unused]] bool bAllow2 ) {}  // merge in values from src that are in range
     virtual void                 setTo([[maybe_unused]] int defValue1, [[maybe_unused]] int defValue2) {}  // change all arrays to this value
 
 protected:
@@ -1642,19 +1717,26 @@ class IntArraySection : public MapSection
     // merge in data from src using the given offset, clipping to our boundary - it does not grow the data
     // negative offsets will clip src
     // be careful, offsets can be negative don't use std::size_t since its unsigned
-    virtual void merge(const MapSection *srcp, int srow, int scol, int erow, int ecol, int rowOffset, int colOffset, bool bAllow1, [[maybe_unused]] bool bAllow2 ) override  // merge in values from src that are in range
+    virtual void merge(const MapSection *srcp, MMUtil::Region const & region, int rowOffset, int colOffset, bool bAllow1, [[maybe_unused]] bool bAllow2 ) override  // merge in values from src that are in range
     {
         if (bAllow1)
         {
             const IntArraySection * src = dynamic_cast<const IntArraySection *>(srcp);
-            for (intmax_t row = srow; row <= erow; row++)
+            MMUtil::Region tregion = region;
+            tregion.intersect(MMUtil::Region(0, 0, src->getCols() - 1, src->getRows() - 1 )); // clip to source size
+            if (!tregion.empty())
             {
-                for (intmax_t col = scol; col <= ecol; col++)
+                int numrows = getRows();
+                int numcols = getCols();
+                for (int row = tregion.ylo(); row <= tregion.yhi(); row++)
                 {
-                    if (((row + rowOffset) >= 0) && ((row + rowOffset) < getRows()) && ((col + colOffset) >= 0) && ((col + colOffset) < getCols()))
+                    for (int col = tregion.xlo(); col <= tregion.xhi(); col++)
                     {
-                        int val = src->m_data[row][col];
-                        m_data[row + rowOffset][col + colOffset] = val;
+                        if (((row + rowOffset) >= 0) && ((row + rowOffset) < numrows) && ((col + colOffset) >= 0) && ((col + colOffset) < numcols))
+                        {
+                            int val = src->m_data[row][col];
+                            m_data[row + rowOffset][col + colOffset] = val;
+                        }
                     }
                 }
             }
@@ -1713,7 +1795,7 @@ class IntArraySection : public MapSection
         return output;
     }
 
-    std::deque<std::deque<int>> m_data;   // array of row vectors.
+    std::deque<std::deque<int>> m_data;   // array of col values.
     bool m_bAllowNeg = false;             // set to true if negative values allowed
 
 };
@@ -1802,13 +1884,13 @@ public:
         return m_ore.verifyBounds( rows, cols, bFix, iline, errorWarning, errwarnpre + " " + std::string(sore));
     }
 
-    virtual void merge(const MapSection* srcp, int srow, int scol, int erow, int ecol, int rowOffset, int colOffset, bool bAllow1, bool bAllow2) override  // merge in values from src that are in range
+    virtual void merge(const MapSection* srcp, MMUtil::Region const & region, int rowOffset, int colOffset, bool bAllow1, bool bAllow2) override  // merge in values from src that are in range
     {
         const ResourceSection *src = dynamic_cast<const ResourceSection *>(srcp);
         if (bAllow1)
-            m_crystals.merge( &src->m_crystals, srow, scol, erow, ecol, rowOffset, colOffset, true, false);
+            m_crystals.merge( &src->m_crystals, region, rowOffset, colOffset, true, false);
         if (bAllow2)
-            m_ore.merge( &src->m_ore, srow, scol, erow, ecol, rowOffset, colOffset, true, false);
+            m_ore.merge( &src->m_ore, region, rowOffset, colOffset, true, false);
     }
 
     virtual void setTo(int defcrystals, int defore)    // change all value to this value. Used when clearing out a map ready to receive merge data
@@ -1871,41 +1953,60 @@ class HeightSection : public IntArraySection  // heights are allowed to be negat
         return new HeightSection( *this );
     }
 
-    virtual void flattenHigh(int testVal, int newValue) override  // change all values above this to given value
+    // we do not change the border values
+    virtual void flattenHigh(MMUtil::Region const &region, int testVal, int newValue) override  // change all values above this to given value
     {
-        for (auto itr = m_data.begin(); itr != m_data.end(); itr++)
+        MMUtil::Region tregion( 1, 1, getCols()-2, getRows()-2 ); // region of this data excluding borders
+        tregion.intersect(region);                                // ensure the required region is fully contained
+        if (!tregion.empty())   // something to do
         {
-            std::deque<int> & rowvec = *itr;
-            for (auto itc = rowvec.begin(); itc != rowvec.end(); itc++)
+            for (int rowindex = tregion.ylo(); rowindex <= tregion.yhi(); rowindex++)
             {
-                if ((*itc) > testVal)
-                    (*itc) = newValue;
+                std::deque<int>& rowvec = m_data[rowindex];
+                for (int colindex = tregion.xlo(); colindex <= tregion.xhi(); colindex++)
+                {
+                    int& val = rowvec[colindex];
+                    if (val >= testVal)
+                        val = newValue;
+                }
             }
         }
     }
 
-    virtual void flattenLow(int testVal, int newValue) override  // change all values above this to given value
+    virtual void flattenLow(MMUtil::Region const &region,int testVal, int newValue) override  // change all values above this to given value
     {
-        for (auto itr = m_data.begin(); itr != m_data.end(); itr++)
+        MMUtil::Region tregion( 1, 1, getCols()-2, getRows()-2 ); // region of this data excluding borders
+        tregion.intersect(region);                                // ensure the required region is fully contained
+        if (!tregion.empty())   // something to do
         {
-            std::deque<int> & rowvec = *itr;
-            for (auto itc = rowvec.begin(); itc != rowvec.end(); itc++)
+            for (int rowindex = tregion.ylo(); rowindex <= tregion.yhi(); rowindex++)
             {
-                if ((*itc) < testVal)
-                    (*itc) = newValue;
+                std::deque<int>& rowvec = m_data[rowindex];
+                for (int colindex = tregion.xlo(); colindex <= tregion.xhi(); colindex++)
+                {
+                    int& val = rowvec[colindex];
+                    if (val <= testVal)
+                        val = newValue;
+                }
             }
         }
     }
 
-    virtual void flattenBetween(int testLow, int testHigh, int newValue) override  // change all values testLow <= value <=testHigh to newValue
+    virtual void flattenBetween(MMUtil::Region const &region,int testLow, int testHigh, int newValue) override  // change all values testLow <= value <=testHigh to newValue
     {
-        for (auto itr = m_data.begin(); itr != m_data.end(); itr++)
+        MMUtil::Region tregion( 1, 1, getCols()-2, getRows()-2 ); // region of this data excluding borders
+        tregion.intersect(region);                                // ensure the required region is fully contained
+        if (!tregion.empty())   // something to do
         {
-            std::deque<int> & rowvec = *itr;
-            for (auto itc = rowvec.begin(); itc != rowvec.end(); itc++)
+            for (int rowindex = tregion.ylo(); rowindex <= tregion.yhi(); rowindex++)
             {
-                if (((*itc) >= testLow) && ((*itc) <= testHigh))
-                    (*itc) = newValue;
+                std::deque<int>& rowvec = m_data[rowindex];
+                for (int colindex = tregion.xlo(); colindex <= tregion.xhi(); colindex++)
+                {
+                    int& val = rowvec[colindex];
+                    if ((val >= testLow) && (val <= testHigh))
+                        val = newValue;
+                }
             }
         }
     }
@@ -1921,12 +2022,13 @@ class HeightSection : public IntArraySection  // heights are allowed to be negat
         IntArraySection::resize(height+1, width+1, defheight, 0);
     }
 
-    virtual void merge(const MapSection* srcp, int srow, int scol, int erow, int ecol, int rowOffset, int colOffset, bool bAllow1, [[maybe_unused]] bool bAllow2) override  // merge in values from src that are in range
+    virtual void merge(const MapSection* srcp, MMUtil::Region const & region, int rowOffset, int colOffset, bool bAllow1, [[maybe_unused]] bool bAllow2) override  // merge in values from src that are in range
     {
         if (bAllow1)
         {
+            MMUtil::Region tregion(region.xlo(), region.ylo(), region.xhi() + 1, region.yhi() + 1); // expand region width and height by 1 for height data
             const HeightSection* src = dynamic_cast<const HeightSection*>(srcp);
-            IntArraySection::merge(src, srow, scol, erow + 1, ecol + 1, rowOffset, colOffset, true, false);
+            IntArraySection::merge(src, tregion, rowOffset, colOffset, true, false);
         }
     }
 };
@@ -2033,8 +2135,7 @@ class MMMap
                 auto nit = m_mapLookup.find(lcsecname);
                 if (nit == m_mapLookup.end())
                 {
-                    m_errors.setError(iline, "Unknown section name: " + lcsecname);
-                    return false;
+                    m_errors.setWarning(iline, "Unknown section name: " + lcsecname);
                 }
                 // we can only have a single instance of a section
                 if (m_sections.find(lcsecname) != m_sections.cend())  // its already in the map
@@ -2185,16 +2286,16 @@ class MMMap
         // now clear out the tiles, height, crystals and ore.
         // merge from source applying any offset
         MapSection *ms = findMapSection( stiles );
-        ms->setTo( options.m_nDefTileID, 0 );
-        ms->merge(rhs.findMapSection( stiles ), options.m_srow, options.m_scol, options.m_erow, options.m_ecol, options.m_nOffsetCol, options.m_nOffsetRow, true, false);
+        ms->setTo( options.m_nDefTileID, 0 ); // TODO rethink this
+        ms->merge(rhs.findMapSection( stiles ), options.m_mergeRegion, options.m_nOffsetCol, options.m_nOffsetRow, true, false);
 
         ms = findMapSection( sheight );
-        ms->setTo( options.m_nDefHeight, 0 );
-        ms->merge(rhs.findMapSection( sheight ), options.m_srow, options.m_scol, options.m_erow, options.m_ecol, options.m_nOffsetCol, options.m_nOffsetRow, true, false);
+        ms->setTo( options.m_nDefHeight, 0 );  // TODO rethink this
+        ms->merge(rhs.findMapSection( sheight ), options.m_mergeRegion, options.m_nOffsetCol, options.m_nOffsetRow, true, false);
 
         ms = findMapSection( sresources );
-        ms->setTo( options.m_nDefCrystal, options.m_nDefOre );
-        ms->merge(rhs.findMapSection( sresources ), options.m_srow, options.m_scol, options.m_erow, options.m_ecol, options.m_nOffsetCol, options.m_nOffsetRow, true, true);
+        ms->setTo( options.m_nDefCrystal, options.m_nDefOre );  // TODO rethink this
+        ms->merge(rhs.findMapSection( sresources ), options.m_mergeRegion, options.m_nOffsetCol, options.m_nOffsetRow, true, true);
     }
 
     // after reading source map, if output will be replaced with processed source, copy from the source to output
@@ -2240,42 +2341,42 @@ class MMMap
         ms->AddorModifyItem( srowcount, std::to_string(rowSize));
     }
 
-    bool merging(const MMMap& srcMap, int srow, int scol, int erow, int ecol, int nOffsetRow, int nOffsetCol, bool bMergeTiles, bool bMergeHeight, bool bMergeCrystal, bool bMergeOre)
+    bool merging(const MMMap& srcMap, MMUtil::Region const &region, int nOffsetRow, int nOffsetCol, bool bMergeTiles, bool bMergeHeight, bool bMergeCrystal, bool bMergeOre)
     {
         // see if merging
         if (bMergeTiles)
         {
-            findMapSection( stiles )->merge( srcMap.findMapSection(stiles), srow, scol, erow, ecol, nOffsetRow, nOffsetCol, true, false);
+            findMapSection( stiles )->merge( srcMap.findMapSection(stiles), region, nOffsetRow, nOffsetCol, true, false);
         }
 
         if (bMergeHeight)
         {
-            findMapSection( sheight )->merge( srcMap.findMapSection(sheight), srow, scol, erow, ecol, nOffsetRow, nOffsetCol, true, false);
+            findMapSection( sheight )->merge( srcMap.findMapSection(sheight), region, nOffsetRow, nOffsetCol, true, false);
         }
 
         if (bMergeCrystal || bMergeOre)
         {
-            findMapSection(sresources)->merge(srcMap.findMapSection(sresources), srow, scol, erow, ecol, nOffsetRow, nOffsetCol, bMergeCrystal, bMergeOre);
+            findMapSection(sresources)->merge(srcMap.findMapSection(sresources), region, nOffsetRow, nOffsetCol, bMergeCrystal, bMergeOre);
         }
         return true;
     }
 
-    void flattenHeightHigh( int testVal, int newValue)    // change all values above this to given value
+    void flattenHeightHigh( MMUtil::Region const &region, int testVal, int newValue)    // change all values above this to given value
     {
         MapSection *ms = findMapSection( sheight );
-        ms->flattenHigh( testVal, newValue);
+        ms->flattenHigh( region, testVal, newValue);
     }
 
-    void flattenHeightLow(int testVal, int newValue)      // change all values above this to given value
+    void flattenHeightLow( MMUtil::Region const &region, int testVal, int newValue)      // change all values above this to given value
     {
         MapSection *ms = findMapSection( sheight );
-        ms->flattenLow( testVal, newValue);
+        ms->flattenLow( region, testVal, newValue);
     }
     
-    void flattenHeightBetween(int testLow, int testHigh, int newValue)    // change all values testLow <= value <=testHigh to newValue
+    void flattenHeightBetween( MMUtil::Region const &region, int testLow, int testHigh, int newValue)    // change all values testLow <= value <=testHigh to newValue
     {
         MapSection *ms = findMapSection( sheight );
-        ms->flattenBetween( testLow, testHigh, newValue);
+        ms->flattenBetween( region, testLow, testHigh, newValue);
     }
 
     void borderHeight(int height)
@@ -2404,6 +2505,40 @@ class MMMap
         }
         return 0;
     }
+
+    // return number of lines replaced, 0 if unchanged
+    int failure(std::filesystem::path const& filename, bool bAnsi, bool bAnsi7)
+    {
+        if (!filename.empty())
+        {
+            FileIO file;
+            file.setFileName(filename);
+            file.setAnsi(bAnsi);
+            if (file.exists())
+            {
+                std::deque<InputLinePtr> ilp = file.readFile(m_errors);
+                if (bAnsi7)
+                    checkFor8bit(ilp);
+
+                if (m_errors.emptyErrors() && !ilp.empty())
+                {
+                    MapSection* mp = findMapSection(sbriefingfailure);
+                    if (mp)
+                    {
+                        mp->setLines(ilp);
+                        m_errors.setConsole(nullptr, std::string("Read failure file: ") + filename.string());
+                        m_errors.setConsole(nullptr, std::string("Encoding: ") + file.getEncodingStr() + ", Lines read: " + std::to_string(ilp.size()));
+                        return (int)ilp.size();  // number of lines
+                    }
+                }
+            }
+            else
+                m_errors.setWarning(InputLinePtr(), std::string("Unable to open briefingfailure file: ") + filename.string());
+        }
+        return 0;
+    }
+
+
 
     void clearErrorsWarnings()
     {

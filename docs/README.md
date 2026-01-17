@@ -2,20 +2,23 @@
 
 THIS IS DEVELOPMENT DOCUMENTATION. WHEN RELEASED CHANGE LINK IN MAIN README.MD
 
+THIS IS FROM THE `development` BRANCH.
+
 MMDatUtil is a windows command line utility that provides many operations on Manic Miners .DAT files.
 
 - Quick read-only analysis of the .DAT file checking for overall correct layout. It does include some objective, blocks, and script checking.
 - Ability to merge parts of map into another map, optionally resizing and offset, changing height, borders and other items.
 - Override map information such as creator, level name and other items.
 - Have the briefing and successbriefing sections be replaced by a user defined file.
-- Replace the script section with script from another file with useful enhancements such as macro substitution, include files, removing comments, and even variable and event chain name optimization.
+- Replace the script section with script from another file with useful enhancements such as macro substitution, include files, removing comments, allowing indentation and even variable and event chain name optimization.
+- Change UTF/ANSI encoding.
 - many more options.
 
 Why have this utility?
 
 The primary reason for this utility is to bring to a Manic Miner Map developer the same process any software engineer would expect.  That process is edit, build, deploy, test, iterate, use github for version control.
 
-Thus one is able to have a source map. Then combine (compile) into that map separate scripts and briefings, change meta data and generate a destination map file. The script may use both predefined and custom macros and can event imbed github commit hash. That can then be deployed to Manic Miners for testing. If the actual map needs to be editor, the user can bring back the modified map making it their new source map. And the process repeats with the user using github to manage branches, tags, stories, and all of the editable files.
+Thus one is able to have a source map. Then combine (compile) into that map separate scripts and briefings, change meta data and generate a destination map file. The script section may use both predefined and custom macros and can event imbed github commit hash. That can then be deployed to Manic Miners for testing. If the actual map needs to be edited, the user may bring back the modified map making it their new source map. And the process repeats with the user using github to manage branches, tags, stories, and all of the editable files.
 
 Development process (high-level)
 
@@ -44,7 +47,7 @@ Development process (high-level)
 			      |
 			      v
 		  +-------------------------+
-		  | Deploy / Test in game   |
+		  | Deploy (copy) / Test    |
 		  +-----------+-------------+
 			      |
 	      if changes needed |  (edit in the level editor or edit the user files)
@@ -77,7 +80,7 @@ MMDATUtil -srcmap "dest.dat" -outmap "dest.dat" -copysrc -creator "Tyab"
 ```
 
 The general format is:
- - -srcmap  Full path to the source map. Can be optional if source and destination are the same.
+ - -srcmap  Full path to the source map. Optional if source and destination are the same.
  - -outmap  Full path to the destination map. Required if modifying or creating a map.
  - -options that affect the source map.
  - -options that affect the destination map.
@@ -88,3 +91,6 @@ Review the list of options for more details.
 - [File Encoding](fileencoding.md)
 - [Filenames](filenames.md)
 - [Options](options.md)
+- [Tile Layout](tilelayout.md)
+- [Manic Miner File Format](https://manicminers.github.io/docs/#/_pages/DATFileFormat)
+- [MM Tile IDs](https://manicminers.github.io/docs/#/_pages/DATTileReference)

@@ -4,7 +4,7 @@ Command line options may begin with any of the following:
 - Double dash `--`
 - Forward slash `/`
 
-After every option at least one blank space is needed. Some options have parameters, but after a parameter there needs to be a blank space before the next option.
+After every option at least one blank space is needed. Some options have parameters, after the last parameter there needs to be a blank space before the next option.
 
 The order of options on the command line does not matter.
 
@@ -17,21 +17,23 @@ The order of options on the command line does not matter.
 | [ -briefing ](options/briefing.md) | filename | Contents of file replace briefing section. |
 | [ -copysrc ](options/copysrc.md) |  | Output map will have the contents of the -srcmap. |
 | [ -creator ](options/creator.md) | string | Set the map creator in the info section. |
-| [ -deftile ](options/deftile.md) | integer | Provide default tile for newly created tiles. Default is ground (1). |
+| [ -deftile ](options/deftile.md) | integer | Provide default tile for newly created tiles. Default is ground 1. |
 | [ -defheight ](options/defheight.md) | integer | Set default height value for new tiles. Default is 0. |
 | [ -defcrystal ](options/defcrystal.md) | integer | Set default number of crystals for new tiles. Default is 0. |
 | [ -defore ](options/defore.md) | integer | Set default number of ore for new tiles. Default is 0. |
+| [ -failure ](options/failure.md) | filename | Contents of file replace failure section. |
+| [ -fix ](options/fix.md) |  | Fix incorrect source map heights, tiles, crystals, ore. |
 | [ -flattenabove ](options/flattenabove.md) | values | Change heights larger than high to given value. |
 | [ -flattenbelow ](options/flattenbelow.md) | values | Change heights smaller than low to given value. |
 | [ -flattenbetween ](options/flattenbetween.md) | values | Change heights between low and high to given value. |
-| [ -fix ](options/fix.md) |  | Fix incorrect source map heights, tiles, crystals, ore. |
+| [ -flattenrect ](options/flattenrect.md) | values | Define region to apply flatten to |
 | [ -help ](options/help.md) |  | Display help text |
 | [ -mapname ](options/mapname.md) | string | Set the map name in the info section. |
 | [ -mergecrystal ](options/mergecrystal.md)|  | Merge source map crystals with existing output map. |
 | [ -mergeheight ](options/mergeheight.md) |  | Merge source map heights with existing output map. |
+| [ -mergeore ](options/mergeore.md) |  | Merge source map ore with existing output map. |
 | [ -mergerect ](options/mergerect.md) | values | Define region in source map to merge into existing output map. |
 | [ -mergetile ](options/mergetile.md) |  | Merge source map tiles with existing output map |
-| [ -mergeore ](options/mergeore.md) |  | Merge source map ore with existing output map. |
 | [ -nobom ](options/nobom.md) |  | Output UTF encoding will not have a BOM. |
 | [ -outmap ](options/outmap.md) | filename | Output map filename. |
 | [ -offsetcol ](options/offsetcol.md) | integer | defines offset width for merge operations. |

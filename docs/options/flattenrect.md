@@ -1,15 +1,14 @@
-# -mergerect
+# -flattenrect
 
 Parameters: `rowStart,colStart,rowEnd,colEnd`
 
 `rowStart`,`colStart`,`rowEnd`,`colEnd` are positive integers.
 
-This defines an inclusive region from [`rowStart`,`colStart`] to [`rowEnd`,`colEnd`] in the map to constrict all merge operations to. 
+This defines an inclusive region from [`rowStart`,`colStart`] to [`rowEnd`,`colEnd`] in the map to constrict all flatten operations to. 
 
-This affects `-mergecrystal`, `-mergeheight`, `-mergeore`, `-mergetile`
+This affects `-flattenabove`, `-flattenbelow`, `-flattenbetween`
 
 >The region supplied is clipped to valid map space.
-
 
 Example:
 
@@ -24,10 +23,6 @@ MMDatUtil -srcmap "source.dat" -outmap "destination.dat" -copysrc -flattenbetwee
 
 
 > The map border heights are never changed by any flatten option.
-
-### Links
-- [Back to Overview](../README.md)
-
 
 ### Links
 - [Back to Overview](../README.md)

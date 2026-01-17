@@ -1,5 +1,7 @@
 # -backup
 
+No parameter.
+
 Destination file (if it exists) will be backed up so its contents will never be lost.
 
 MMDatUtil first writes any output to a temp file. Then if this option is used, the current (if it exists) destination file is copied to a backup file with a unique name, following the pattern described below. Once the current destination has been backed up, then the temp file is copied to the destination file.
@@ -19,6 +21,14 @@ The file name format is:
 
  The sequence number starts at 1 for the current date and increments by one for every backup. Thus 1 is the oldest backup, and the highest number in the directory is the latest backup.
  Because no backup file is ever overwritten with this option, you will get more and more .DAT backups over time and may eventually want to clean up the backups manually.
+
+ Example:
+
+```
+MMDatUtil -srcmap "source.dat" -outmap "destination.dat" -copysrc -backup
+```
+source.dat is rewritten as destination.dat with destination.dat being backed-up prior to replacement if it already exists.
+
 
 ### Links
 - [Filenames](../filenames.md)

@@ -1,6 +1,6 @@
 # -help
 
-Usage: `-help`
+No parameter.
 
 Display the built-in short help output. Useful to quickly see available options.
 

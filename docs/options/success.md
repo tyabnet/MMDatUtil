@@ -20,6 +20,10 @@ MMDatUtil -srcmap "source.dat" -outmap "destination.dat" -success "MySuccess.txt
 ```
 The contents of source.dat are copied to destination.dat with the contents of the file MySuccess.txt replacing the text in the briefingsuccess section.
 
+The encoding of the success file is automatically detected. If it has 8 bit encoding and no BOM, it is treated as Windows current code page unless changed by the `-srcutf8` option.
+
+The keyword `Cadet` will be replaced by the game engine with your player name.
+
 
 ### Links
 - [Filenames](../filenames.md)

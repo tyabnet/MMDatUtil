@@ -149,6 +149,7 @@ protected:
     const std::string kStr_granitegrinder               = "granitegrinder";                  // | Macro | Number of Granite Grinders. |
     const std::string kStr_GraniteGrinder_C             = "GraniteGrinder_C";                // | Macro | Number of Granite Grinders. |
     const std::string kStr_green                        = "green";                           // | Color | Arrow colors. |
+    const std::string kStr_ground                       = "ground";                          // | Macro | Tile id of ground (1). |
     const std::string kStr_hard_rock                    = "hard_rock";                       // | Macro | Tile ID of hard rock(34). |
     const std::string kStr_heal                         = "heal";                            // | Event | Heal object. |
     const std::string kStr_health                       = "health";                          // | Data Field | Object hitpoints.Same has hp. |
@@ -234,6 +235,7 @@ protected:
     const std::string kStr_RockMonster                  = "RockMonster";                     // | Collection | Rock Monsters. |
     const std::string kStr_RockMonster_C                = "RockMonster_C";                   // | Collection | Rock Monsters. |
     const std::string kStr_row                          = "row";                             // | Data Field | Object row. |
+    const std::string kStr_rubble                       = "rubble";                          // | Macro | Tile id of rubble (5). |
     const std::string kStr_S                            = "S";                               // | Emerge Direction | South. |
     const std::string kStr_save                         = "save";                            // | Event | Save last miner that activated a trigger into a variable. |
     const std::string kStr_savebuilding                 = "savebuilding";                    // | Event | Save last building that activated a trigger into a variable.
@@ -403,6 +405,7 @@ protected:
     const std::string kS_granitegrinder               = MMUtil::toLower( kStr_granitegrinder               );   // | Macro | Number of Granite Grinders. |
     const std::string kS_GraniteGrinder_C             = MMUtil::toLower( kStr_GraniteGrinder_C             );   // | Macro | Number of Granite Grinders. |
     const std::string kS_green                        = MMUtil::toLower( kStr_green                        );   // | Color | Arrow colors. |
+    const std::string kS_ground                       = MMUtil::toLower( kStr_ground                       );   // | Macro | Tile id of ground (1). |
     const std::string kS_hard_rock                    = MMUtil::toLower( kStr_hard_rock                    );   // | Macro | Tile ID of hard rock(34). |
     const std::string kS_heal                         = MMUtil::toLower( kStr_heal                         );   // | Event | Heal object. |
     const std::string kS_health                       = MMUtil::toLower( kStr_health                       );   // | Data Field | Object hitpoints.Same has hp. |
@@ -488,6 +491,7 @@ protected:
     const std::string kS_RockMonster                  = MMUtil::toLower( kStr_RockMonster                  );   // | Collection | Rock Monsters. |
     const std::string kS_RockMonster_C                = MMUtil::toLower( kStr_RockMonster_C                );   // | Collection | Rock Monsters. |
     const std::string kS_row                          = MMUtil::toLower( kStr_row                          );   // | Data Field | Object row. |
+    const std::string kS_rubble                       = MMUtil::toLower( kStr_rubble                       );   // | Macro | Tile id of rubble (5). |
     const std::string kS_S                            = MMUtil::toLower( kStr_S                            );   // | Emerge Direction | South. |
     const std::string kS_save                         = MMUtil::toLower( kStr_save                         );   // | Event | Save last miner that activated a trigger into a variable. |
     const std::string kS_savebuilding                 = MMUtil::toLower( kStr_savebuilding                 );   // | Event | Save last building that activated a trigger into a variable.
@@ -664,6 +668,7 @@ protected:
         { kS_granitegrinder               , kStr_granitegrinder               },   // | Macro | Number of Granite Grinders. |
         { kS_GraniteGrinder_C             , kStr_GraniteGrinder_C             },   // | Macro | Number of Granite Grinders. |
         { kS_green                        , kStr_green                        },   // | Color | Arrow colors. |
+        { kS_ground                       , kStr_ground                       },   // | Macro | returns tile id of ground (1). |
         { kS_hard_rock                    , kStr_hard_rock                    },   // | Macro | Tile ID of hard rock(34). |
         { kS_heal                         , kStr_heal                         },   // | Event | Heal object. |
         { kS_health                       , kStr_health                       },   // | Data Field | Object hitpoints.Same has hp. |
@@ -749,6 +754,7 @@ protected:
         { kS_RockMonster                  , kStr_RockMonster                  },   // | Collection | Rock Monsters. |
         { kS_RockMonster_C                , kStr_RockMonster_C                },   // | Collection | Rock Monsters. |
         { kS_row                          , kStr_row                          },   // | Data Field | Object row. |
+        { kS_rubble                       , kStr_rubble                       },   // | Macro | returns tile id of rubble (5). |
         { kS_S                            , kStr_S                            },   // | Emerge Direction | South. |
         { kS_save                         , kStr_save                         },   // | Event | Save last miner that activated a trigger into a variable. |
         { kS_savebuilding                 , kStr_savebuilding                 },   // | Event | Save last building that activated a trigger into a variable.
@@ -891,6 +897,7 @@ protected:
         { kS_get                          , eMacroFlagReturnNumeric | eMacroFlag2Param },   // | Macro | Get tile ID. |
         { kS_granitegrinder               , eMacroFlagReturnNumeric },   // | Macro | Number of Granite Grinders. |
         { kS_GraniteGrinder_C             , eMacroFlagReturnNumeric },   // | Macro | Number of Granite Grinders. |
+        { kS_ground                       , eMacroFlagReturnNumeric },   // | Macro | Tile ID of ground (1). |
         { kS_hard_rock                    , eMacroFlagReturnNumeric },   // | Macro | Tile ID of hard rock(34). |
         { kS_hostiles                     , eMacroFlagReturnNumeric },   // | Macro | Number of hostile creatures. |
         { kS_hoverscout                   , eMacroFlagReturnNumeric },   // | Macro | Number of Hover Scouts. |
@@ -927,6 +934,7 @@ protected:
         { kS_RechargeSeamGoal_C           , eMacroFlagReturnNumeric },   // | Collection | Visible recharge seams. |
         { kS_RockMonster                  , eMacroFlagReturnNumeric },   // | Collection | Rock Monsters. |
         { kS_RockMonster_C                , eMacroFlagReturnNumeric },   // | Collection | Rock Monsters. |
+        { kS_rubble                       , eMacroFlagReturnNumeric },   // | Macro | Tile ID of rubble (5). |
         { kS_SlimySlug                    , eMacroFlagReturnNumeric },   // | Collection | Slimy Slugs. |
         { kS_SlimySlug_C                  , eMacroFlagReturnNumeric },   // | Collection | Slimy Slugs. |
         { kS_slug_hole                    , eMacroFlagReturnNumeric },   // | Macro | Tile id of slimy slug hole(12). |

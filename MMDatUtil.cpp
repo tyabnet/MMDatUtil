@@ -1301,6 +1301,7 @@ int wmain(int , wchar_t ** )   // ignore all passed in parameters
             return 1;
         }
         scrEngine.getErrors().printWarnings();
+        scrEngine.getErrors().printConsols();
 
         wprintf(L"  Replacing outmap script. %d lines total\n", outscriptlen);
 

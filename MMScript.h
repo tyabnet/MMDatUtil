@@ -2714,11 +2714,11 @@ protected:
 
     // perform full line comments with spaces processing
     // Since we have the sfixspace options, comments with leading spaces may be inside of an event chain and those spaces need to be removed, turning it into a full comment line with no leading spaces.
-    // also comments with leading spaces may be at the end of an event chain. We need to tag that so the spaces are not removed.
+    // also comments with leading spaces may be at the end of an event chain. These end the event chain but will cause an error when run. We fix these by adding in a blank line before the comment which then we leave the spaces
     void fullCommentLineWithSpacesProcessing(bool bFixSpace)
     {
         bool bInEventChain = false;   // will be tracking if we are inside of an event chain
-        for (size_t index = 0; index < m_scriptlines.size(); index++)  // doing it this way for easy lookahead
+        for (size_t index = 0; index < m_scriptlines.size(); index++)  // use index since we may be inserting blank lines and we want to look ahead
         {
             ScriptLine& it = m_scriptlines[index];
             if (bInEventChain)
@@ -2739,16 +2739,16 @@ protected:
                 }
                 else if (it.getCommentLineNoSpace())    // can ignore full comment line with no spaces
                     continue;
-                else if (it.getCommentLineSpace())  // full comment line with spaces
+                else if (it.getCommentLineSpace())  // full comment line with spaces. This is the problem case
                 {
                     // inside event chain and we have a comment with spaces. 
                     // we have to determine what comes next to decide what to do.
-                    if (!bFixSpace)   // we are not fixing spaces, so it ends the chain
+                    if (!bFixSpace)   // we are not fixing spaces, so it ends the chain. At runtime you get an warning in the log about unknown event that has no name.
                     {
                         it.setEventChainEnd();   // this ends the event chain
                         bInEventChain = false;   // ends the event chain
                     }
-                    else  // remove spaces if this is inside of chain, otherwise it ends the chain.
+                    else  // remove spaces if this is inside of chain, otherwise it ends the chain but we have to put a blank line before the comment so we can keep the spacees
                     {
                         bool bInside = false;   // scan ahead to see if next non-comment line is also inside event chain
                         for (size_t nextindex = index + 1; nextindex < m_scriptlines.size(); nextindex++)
@@ -2758,8 +2758,11 @@ protected:
                                 continue;
                             else if (nit.getCommentLineNoSpace()) // ignore comment
                                 continue;
-                            else if (nit.isEmpty())  // blank line ends the chain so our comment did end the chain
+                            else if (nit.isEmpty())  // blank line ends the chain so our comment can stay but without the leading spaces
+                            {
+                                bInside = true;
                                 break;
+                            }
                             else if (nit.m_bEventChain || nit.m_bTrigger || nit.m_bVariableDecl) // comment ended the chain
                                 break;
                             else  // all that remains is event so we are inside of the chain. Safe to optimize
@@ -2772,13 +2775,22 @@ protected:
                         {
                             it.convert2CommentLineNoSpace();
                         }
-                        // and continue inside the chain looking at next line
+                        else  // need to end chain before comment. We do this by inserting a blank line before this line. A blank line has no tokens.
+                        {
+                            // insert a blank line before this line to end the chain. It will have our line number since it is a created line
+                            ScriptLine blankline(std::make_shared<InputLine>(std::string(), it.getLine()->getLineNum(), it.getLine()->getFileName()));
+                            blankline.setEventChainEnd();   // blank line we are insert before this comment is the end of the event chain
+                            m_scriptlines.insert(m_scriptlines.begin() + index, blankline);  // this will cause some repacking within that dequeue block. Not worring about it.
+                            it.m_bEventChainEnd = false;  // this line is no longer ending the event chain, it is not inside of an event chain anymore.
+                            bInEventChain = false;   // ended the event chain
+                            m_errors.setConsole(it.getLine(), "Inserted blank line to properly terminate event chain.");
+                        }
                     }
                 }
                 else if (it.m_bEventChainEnd)   // this line ends the event chain
                     bInEventChain = false;
             }  // bInEventChain
-            else
+            else  // not in event chain
             {
                 if (it.m_bTrigger || it.m_bVariableDecl || it.isEmpty() || it.getCommentLineNoSpace() || it.getCommentLineSpace()) // all of can be ignored outside of event chain
                     continue;

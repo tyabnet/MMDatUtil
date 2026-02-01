@@ -2910,12 +2910,12 @@ protected:
             }
 
             // have "#pragma " in pos 0.
-            linelcview = MMUtil::removeLeadingWhite(linelcview.substr(pos+std::size(kPragma1)-1));  // lower case version
-            lineview   = MMUtil::removeLeadingWhite(lineview.substr  (pos+std::size(kPragma1)-1));  // original case version
+            linelcview = MMUtil::removeLeadingWhite(linelcview.substr(pos+std::size(kPragma1)-1));  // lower case version, its how we search
+            lineview = MMUtil::removeLeadingWhite(lineview.substr(pos + std::size(kPragma1) - 1));  // original case version, passed to processing functions
 
             if (linelcview.find("define ") == 0)    // define new macro key=value
             {
-                if (!processPragmaDefine(iline, linelcview, sizeof(kdefine),indent))
+                if (!processPragmaDefine(iline, lineview, sizeof(kdefine),indent))
                     return false;
                 // change line we store to ##pragma so it can't be processed again
                 m_inputlines.push_back( std::make_shared<InputLine> (std::string("#")+iline->getLine(),iline->getLineNum(), iline->getFileName()) );
@@ -2923,7 +2923,7 @@ protected:
             else if (linelcview.find(ktyabscriptdate) == 0) // add in file time info from main script file
             {
                 std::string value;
-                if (!processPragmatyabscriptdate(iline, linelcview, sizeof(ktyabscriptdate), value, indent))
+                if (!processPragmatyabscriptdate(iline, lineview, sizeof(ktyabscriptdate), value, indent))
                     return false;
                 // change line we store to ##pragma so it can't be processed again
                 m_inputlines.push_back( std::make_shared<InputLine> (std::string("#")+iline->getLine()+" "+value, iline->getLineNum(), iline->getFileName()));
@@ -2931,7 +2931,7 @@ protected:
             else if (linelcview.find(ktyabscriptincdate) == 0) // add in file time info from current included script file
             {
                 std::string value;
-                if (!processPragmatyabscriptincdate(iline, linelcview, sizeof(ktyabscriptincdate), foundfullpath, value, indent))
+                if (!processPragmatyabscriptincdate(iline, lineview, sizeof(ktyabscriptincdate), foundfullpath, value, indent))
                     return false;
                 // change line we store to ##pragma so it can't be processed again
                 m_inputlines.push_back( std::make_shared<InputLine> (std::string("#")+iline->getLine()+" "+value, iline->getLineNum(), iline->getFileName()));

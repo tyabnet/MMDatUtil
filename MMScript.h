@@ -2910,7 +2910,8 @@ protected:
             }
 
             // have "#pragma " in pos 0.
-            linelcview = MMUtil::removeLeadingWhite(linelcview.substr(pos+std::size(kPragma1)-1));
+            linelcview = MMUtil::removeLeadingWhite(linelcview.substr(pos+std::size(kPragma1)-1));  // lower case version
+            lineview   = MMUtil::removeLeadingWhite(lineview.substr  (pos+std::size(kPragma1)-1));  // original case version
 
             if (linelcview.find("define ") == 0)    // define new macro key=value
             {
@@ -2939,7 +2940,7 @@ protected:
             {
                 // change line we store to ##pragma so it can't be processed again
                 m_inputlines.push_back( std::make_shared<InputLine> (std::string("#")+iline->getLine(),iline->getLineNum(), iline->getFileName()) );
-                if (!processPragmaInclude(linelcview,sizeof(kinclude),incdirs, processed, iline, bAnsi, indent))
+                if (!processPragmaInclude(lineview,sizeof(kinclude),incdirs, processed, iline, bAnsi, indent))
                     return false;
             }
             else if (linelcview.find(ktyabMMDatUtil) == 0)  // info on this utility

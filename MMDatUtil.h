@@ -926,11 +926,66 @@ class FileIO
         return std::filesystem::path();   // unable to find, return empty
     }
 
+    // convert input path to absolute path resolving any relative path parts.
+    static std::filesystem::path make_absolute_windowsPath(const std::filesystem::path& input)
+    {
+        std::wstring src = input.wstring();
+
+        // Start with a reasonable buffer size
+        DWORD size = 256;
+        std::wstring buffer(size, L'\0');
+
+        while (true)
+        {
+            DWORD result = GetFullPathNameW(
+                src.c_str(),
+                size,
+                buffer.data(),
+                nullptr
+            );
+
+            if (result == 0)  // API error return empty path
+            {
+                buffer.clear();
+                break;
+            }
+
+            if (result < size)
+                break;
+
+            // Buffer too small - grow and retry. This should only happen once and only with long paths
+            size = result + 16;
+            buffer.resize(size);
+        }
+        return std::filesystem::path(buffer);
+    }
+
+    // read a line of wide chars until newline or eof, return as wstring. Does not include newline in result.
+    static std::wstring read_wline(FILE* fp)
+    {
+        std::wstring result;
+
+        if (fp)
+        {
+            while (true)  // stay in loop until we hit newline or eof
+            {
+                wint_t wc = fgetwc(fp);
+
+                if (!wc || (wc == WEOF) || (wc == L'\n') || (wc == L'\r'))
+                    break;
+
+                result.push_back(static_cast<wchar_t>(wc));
+            }
+        }
+        return result;
+    }
+
     // returns string that has the short form of the git commit for the given path.
-    // emptystr returned if any error - no git, file not under git control, etc.
+    // empty str returned if any error - no git, file not under git control, etc.
+    // Note that git is case sensitive on file names even under windows.
     static std::string getGitCommit(const std::filesystem::path & path)
     {
-        class saveRestoreCWD
+        class saveRestoreCWD  // helper class to auto save and restore current working directory
         {
         public:
             saveRestoreCWD()
@@ -952,7 +1007,10 @@ class FileIO
 
         std::error_code ec;
 
-        std::filesystem::path fpath = path;             // get the full filename path
+        std::filesystem::path fpath = make_absolute_windowsPath(path);  // get the full filename path with relative resolved.
+        if (fpath.empty())  // if no input path, return empty
+            return retS;
+
         std::filesystem::path fname = fpath.filename(); // get just the filename
         fpath.remove_filename();                        // just the path
 
@@ -962,10 +1020,8 @@ class FileIO
         FILE* fp = _wpopen((L"git log --no-color -1 --abbrev-commit " + fname.wstring()).c_str(), L"r");
         if (fp)
         {
-            wchar_t buffer[512] = { 0 };
-            fgetws(buffer, sizeof(buffer) - 1, fp);      // first string will be commit shorthash
+            retS = Unicode::wstring_to_utf8(read_wline(fp));
             _pclose(fp);
-            retS = Unicode::wstring_to_utf8(buffer);
 
             std::size_t pos = retS.find("commit ");
             if (pos == 0)   // it found it

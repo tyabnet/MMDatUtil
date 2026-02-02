@@ -960,24 +960,46 @@ class FileIO
         return std::filesystem::path(buffer);
     }
 
-    // read a line of wide chars until newline or eof, return as wstring. Does not include newline in result.
-    static std::wstring read_wline(FILE* fp)
-    {
-        std::wstring result;
+    // read all data from pipe. save as a collection of strings. Raw data read is windows code page chars
+    // it is assumed the data is text. We ignore carriage-returns, null, line feed or EOF ends a line
+    // data is converted to utf8
 
+    static std::deque<std::string> read_lines_from_pipe(FILE* fp)
+    {
+        std::deque<std::string> lines;
         if (fp)
         {
-            while (true)  // stay in loop until we hit newline or eof
+            std::string current;
+            for (;;)
             {
-                wint_t wc = fgetwc(fp);
+                int c = std::fgetc(fp);
 
-                if (!wc || (wc == WEOF) || (wc == L'\n') || (wc == L'\r'))
+                if (c == EOF || c == 0)
+                {
+                    if (!current.empty())
+                    {
+                        current.clear();
+                    }
                     break;
+                }
 
-                result.push_back(static_cast<wchar_t>(wc));
+                if (c == '\r')  // ignore CR
+                    continue;
+
+                else if (c == '\n')  // end of line, do not include LF
+                {
+                    lines.push_back(Unicode::ansi_to_utf8_string(current));
+                    current.clear();
+                }
+                else
+                {
+                    current.push_back(static_cast<char>(c));
+                }
             }
+            if (!current.empty())
+                lines.push_back(Unicode::ansi_to_utf8_string(current));
         }
-        return result;
+        return lines;
     }
 
     // returns string that has the short form of the git commit for the given path.
@@ -1017,29 +1039,32 @@ class FileIO
         std::filesystem::current_path(fpath, ec); // change current dir so git will be in the correct directory
 
         // using windows wide version - piped output will be unicode and needs to be converted back to utf8
-        FILE* fp = _wpopen((L"git log --no-color -1 --abbrev-commit " + fname.wstring()).c_str(), L"r");
+        FILE* fp = _wpopen((L"git log --no-color -1 --abbrev-commit " + fname.wstring()).c_str(), L"rt");
         if (fp)
         {
-            retS = Unicode::wstring_to_utf8(read_wline(fp));
+            auto retLines = read_lines_from_pipe(fp);
             _pclose(fp);
-
-            std::size_t pos = retS.find("commit ");
-            if (pos == 0)   // it found it
+            if (!retLines.empty())
             {
-                pos += 7;   // should be start of commit
-                std::size_t epos = pos;
-                for (; epos < retS.size(); epos++)
+                retS = retLines[0];  // get first line
+                std::size_t pos = retS.find("commit ");
+                if (pos == 0)   // it found it
                 {
-                    int ch = std::tolower((unsigned char)retS[epos]);
-                    if ((ch >= '0') && (ch <= '9'))     // make sure in range
-                        continue;
-                    if ((ch >= 'a') && (ch <= 'f'))     // make sure in range
-                        continue;
-                    break;
-                }
-                if ((pos < retS.size()) && (epos >= pos + 4)) // min short hash is 4 chars
-                {
-                    retS = retS.substr(pos, epos - pos);  // short hash
+                    pos += 7;   // should be start of commit
+                    std::size_t epos = pos;
+                    for (; epos < retS.size(); epos++)
+                    {
+                        int ch = std::tolower((unsigned char)retS[epos]);
+                        if ((ch >= '0') && (ch <= '9'))     // make sure in range
+                            continue;
+                        if ((ch >= 'a') && (ch <= 'f'))     // make sure in range
+                            continue;
+                        break;
+                    }
+                    if ((pos < retS.size()) && (epos >= pos + 4)) // min short hash is 4 chars
+                    {
+                        retS = retS.substr(pos, epos - pos);  // short hash
+                    }
                 }
             }
         }

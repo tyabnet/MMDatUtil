@@ -348,14 +348,13 @@ namespace Unicode
     }
 #endif
     // input string is assumed to be in system ansi code page. We are returning UTF16 data.
-    // this will then have to converted to utf16 and then utf8
     static inline std::u16string ansi_to_utf16_string(std::string const & str)
     {
         std::u16string rets;
 
         if (!str.empty())
         {
-            int size_needed = MultiByteToWideChar(CP_ACP, 0, str.c_str(), -1, nullptr, 0);
+            int size_needed = MultiByteToWideChar(CP_ACP, 0, str.c_str(), -1, nullptr, 0); // compute size need to convert data
             if (size_needed > 0)
             {
                 int buffsize = size_needed + 16; // add some extra space

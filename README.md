@@ -5,7 +5,7 @@ A command-line utility for viewing, merging and manipulating Manic Miner .DAT le
 
 This repository contains the source for `MMDatUtil` (C++), a small tool for merging data from one .DAT map into another, editing map metadata, processing Script, and converting text encodings of .dat files.
 
-This `README.md` is the official documentation for MMDatUtil. The previous PDF/DOCX user manual has been retired and the documentation has been consolidated here.
+This `README.md` is the official documentation for MMDatUtil and is the root for the on-line documentation. The previous PDF/DOCX user manual has been retired.
 
 Quick usage
 -----------
@@ -44,10 +44,10 @@ Examples
 
 Build and run
 -------------
-This project is a Visual Studio C++ solution (.sln) and uses the MSVC toolchain.
+This project is a Microsoft Visual Studio 2026 C++ solution (.sln) and uses the v145 MSVC toolchain.
 
 To build in Visual Studio:
-- Open `MMDatUtil.sln` in Visual Studio 2022+ and build the solution.
+- Open `MMDatUtil.sln` in Visual Studio 2026+ and build the solution.
 
 To run from Developer Command Prompt or PowerShell (after building):
 - Run the executable from the `x64\Debug` or `x64\Release` folder, e.g.:
@@ -56,7 +56,7 @@ To run from Developer Command Prompt or PowerShell (after building):
 
 Further documentation
 ---------------------
-This repository contains a small static documentation site under the `docs/` folder. The site contains a page for each command-line option and a navigation menu.
+Github is hosting the online documentation. While not required, one can look at the documentation locally. One may also run a local http server to view it.
 
 To view locally, open `docs/index.html` in your browser. For a better experience (and to avoid local file restrictions), serve the `docs/` folder using a simple static server. For example, with Python 3 installed:
 
